@@ -18,7 +18,17 @@
   const PICKUP_R = PLAYER_R + BALL_R + 2;
   const SHOOT_POWER = 300, PASS_POWER = 220, CLEAR_POWER = 260;
   const KICK_COOLDOWN_MS = 300;
-  const MATCH_SECONDS = 120;
+
+  // ---------- Clock ----------
+  // Each half shows 46 game-minutes on the scoreboard, compressed into
+  // HALF_REAL_SECONDS of actual wall-clock play.
+  const HALF_REAL_SECONDS = 110; // 1:50
+  const HALF_DISPLAY_MINUTES = 46;
+  const HALF_DISPLAY_SECONDS = HALF_DISPLAY_MINUTES * 60;
+  const CLOCK_SCALE = HALF_DISPLAY_SECONDS / HALF_REAL_SECONDS; // game-seconds per real-second
+  const TECH_TIMEOUT_MINUTE = 23;
+  const TECH_TIMEOUT_REAL_SECONDS = 10;
+  const HALFTIME_REAL_SECONDS = 15;
 
   const INSTRUCTIONS = [
     { key: 'zona', label: 'Zona' },
@@ -88,6 +98,7 @@
   const scoreHomeEl = document.getElementById('score-home');
   const scoreAwayEl = document.getElementById('score-away');
   const timerEl = document.getElementById('timer');
+  const halfLabelEl = document.getElementById('half-label');
   const btnPause = document.getElementById('btn-pause');
   const btnSpeed = document.getElementById('btn-speed');
   const btnTactics = document.getElementById('btn-tactics');
@@ -110,7 +121,6 @@
   let players = [];
   let ball;
   let score = { home: 0, away: 0 };
-  let timeLeft = MATCH_SECONDS;
   let paused = false;
   let speedMultiplier = 1;
   let matchOver = false;
@@ -119,6 +129,13 @@
   let lastFrame = null;
   let homeTactic = 'equilibrado';
   let awayTactic = 'equilibrado';
+
+  // clock state
+  let half = 1;
+  let displaySeconds = 0; // elapsed game-seconds within the current half (0..HALF_DISPLAY_SECONDS)
+  let techTimeoutDone = false;
+  let breakKind = null; // null | 'tech' | 'halftime'
+  let breakTimer = 0; // ms remaining in the current break
 
   function makePlayer(team, role, number, x, y) {
     return {
@@ -171,13 +188,30 @@
     awayTactic = TACTIC_KEYS[Math.floor(Math.random() * TACTIC_KEYS.length)];
     resetPositions();
     score = { home: 0, away: 0 };
-    timeLeft = MATCH_SECONDS;
+    half = 1;
+    displaySeconds = 0;
+    techTimeoutDone = false;
+    breakKind = null;
+    breakTimer = 0;
     paused = false;
     speedMultiplier = 1;
     matchOver = false;
     goalPause = 0;
     hideOverlay();
     updateScoreUI();
+    halfLabelEl.textContent = '1T';
+    timerEl.textContent = formatClock(0);
+  }
+
+  function startSecondHalf() {
+    half = 2;
+    displaySeconds = 0;
+    techTimeoutDone = false;
+    breakKind = null;
+    hideOverlay();
+    resetPositions();
+    halfLabelEl.textContent = '2T';
+    timerEl.textContent = formatClock(0);
   }
 
   // ---------- Input ----------
@@ -549,8 +583,8 @@
     scoreHomeEl.textContent = score.home;
     scoreAwayEl.textContent = score.away;
   }
-  function formatTime(s) {
-    s = Math.max(0, Math.ceil(s));
+  function formatClock(s) {
+    s = Math.max(0, Math.min(HALF_DISPLAY_SECONDS, Math.floor(s)));
     const m = Math.floor(s / 60), sec = s % 60;
     return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
   }
@@ -566,6 +600,16 @@
     overlaySub.textContent = `Bandeirantes ${score.home} - ${score.away} Adversário`;
     overlayRestart.classList.remove('hidden');
     overlay.classList.remove('hidden');
+  }
+  function showBreak() {
+    overlayTitle.textContent = breakKind === 'halftime' ? 'INTERVALO' : 'PARADA TÉCNICA';
+    overlayRestart.classList.add('hidden');
+    overlay.classList.remove('hidden');
+    updateBreakSub();
+  }
+  function updateBreakSub() {
+    const secsLeft = Math.max(0, Math.ceil(breakTimer / 1000));
+    overlaySub.textContent = `Voltamos em ${secsLeft}s...`;
   }
 
   // ---------- Render ----------
@@ -675,17 +719,42 @@
         if (goalPause > 0) {
           goalPause -= dt * 1000;
           if (goalPause <= 0) hideOverlay();
+        } else if (breakKind) {
+          breakTimer -= dt * 1000;
+          if (breakTimer <= 0) {
+            if (breakKind === 'halftime') {
+              startSecondHalf();
+            } else {
+              breakKind = null;
+              hideOverlay();
+            }
+          } else {
+            updateBreakSub();
+          }
         } else {
           pickControlled();
           for (const p of players) updatePlayer(p, dt);
           awayAIAct();
           updateBall(dt);
 
-          timeLeft -= dt;
-          timerEl.textContent = formatTime(timeLeft);
-          if (timeLeft <= 0) {
-            matchOver = true;
-            showFullTime();
+          displaySeconds += dt * CLOCK_SCALE;
+          timerEl.textContent = formatClock(displaySeconds);
+
+          const minute = Math.floor(displaySeconds / 60);
+          if (!techTimeoutDone && minute >= TECH_TIMEOUT_MINUTE) {
+            techTimeoutDone = true;
+            breakKind = 'tech';
+            breakTimer = TECH_TIMEOUT_REAL_SECONDS * 1000;
+            showBreak();
+          } else if (displaySeconds >= HALF_DISPLAY_SECONDS) {
+            if (half === 1) {
+              breakKind = 'halftime';
+              breakTimer = HALFTIME_REAL_SECONDS * 1000;
+              showBreak();
+            } else {
+              matchOver = true;
+              showFullTime();
+            }
           }
         }
       }

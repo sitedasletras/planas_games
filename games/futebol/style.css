@@ -66,10 +66,17 @@ html, body {
 .timer {
   margin-left: auto;
   background: #0e1c15;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 8px;
   font-weight: bold;
   color: #ffd54a;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+#half-label {
+  font-size: 0.65rem;
+  opacity: 0.7;
 }
 
 .controls-top {
