@@ -1,0 +1,201 @@
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: #0a1a14;
+  overflow: hidden;
+  touch-action: none;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  user-select: none;
+}
+
+.game-wrap {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.topbar {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #16281f;
+  color: white;
+  flex-shrink: 0;
+}
+
+.back-btn {
+  color: #ffd54a;
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: bold;
+  padding: 0 4px;
+}
+
+.score-panel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0e1c15;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.team-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.team-tag.home { background: #222; color: white; border: 1px solid #fff; }
+.team-tag.away { background: #b02c2c; color: white; }
+
+.dash { opacity: 0.5; }
+
+.timer {
+  margin-left: auto;
+  background: #0e1c15;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #ffd54a;
+}
+
+.controls-top {
+  display: flex;
+  gap: 4px;
+}
+
+.controls-top button {
+  background: #ffd54a;
+  border: none;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+canvas {
+  width: 100%;
+  max-width: 400px;
+  flex: 1;
+  min-height: 0;
+  object-fit: contain;
+  background: #2f9e44;
+}
+
+.touch-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 20px;
+  pointer-events: none;
+}
+
+.joystick-zone {
+  pointer-events: auto;
+  width: 110px;
+  height: 110px;
+}
+
+.joystick-base {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  position: relative;
+}
+
+.joystick-knob {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,213,74,0.85);
+  position: absolute;
+  top: 28px;
+  left: 28px;
+  pointer-events: none;
+}
+
+.kick-btn {
+  pointer-events: auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #ffd54a;
+  border: 3px solid #fff;
+  font-size: 1.6rem;
+  cursor: pointer;
+}
+
+.kick-btn:active {
+  background: #ffb300;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.overlay-card {
+  background: #16281f;
+  border: 2px solid #ffd54a;
+  border-radius: 14px;
+  padding: 28px 36px;
+  text-align: center;
+  color: white;
+}
+
+.overlay-title {
+  font-size: 2rem;
+  color: #ffd54a;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.overlay-sub {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+.overlay-btn {
+  background: #2f9e44;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.overlay-btn.hidden {
+  display: none;
+}

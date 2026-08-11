@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Futebol</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-wrap">
+    <div class="topbar">
+      <a class="back-btn" href="../../index.html">←</a>
+      <div class="score-panel">
+        <span class="team-tag home">B</span>
+        <span id="score-home">0</span>
+        <span class="dash">-</span>
+        <span id="score-away">0</span>
+        <span class="team-tag away">A</span>
+      </div>
+      <div class="timer" id="timer">02:00</div>
+      <div class="controls-top">
+        <button id="btn-speed" title="Acelerar">⏩</button>
+        <button id="btn-pause" title="Pausar">⏸</button>
+      </div>
+    </div>
+
+    <canvas id="field" width="400" height="711"></canvas>
+
+    <div class="touch-controls">
+      <div class="joystick-zone" id="joystick-zone">
+        <div class="joystick-base">
+          <div class="joystick-knob" id="joystick-knob"></div>
+        </div>
+      </div>
+      <button class="kick-btn" id="kick-btn">⚽</button>
+    </div>
+
+    <div class="overlay hidden" id="overlay">
+      <div class="overlay-card">
+        <div class="overlay-title" id="overlay-title">GOL!</div>
+        <div class="overlay-sub" id="overlay-sub"></div>
+        <button class="overlay-btn hidden" id="overlay-restart">Jogar novamente</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
