@@ -159,11 +159,22 @@
   function kick(player, targetX, targetY, power) {
     const dx = targetX - ball.x, dy = targetY - ball.y;
     const len = Math.hypot(dx, dy) || 1;
-    ball.vx = (dx / len) * power;
-    ball.vy = (dy / len) * power;
+    const ux = dx / len, uy = dy / len;
+    ball.vx = ux * power;
+    ball.vy = uy * power;
+    // nudge the ball clear of the kicker right away so it can't be
+    // re-picked-up on the very next frame before it has actually moved
+    ball.x += ux * (PLAYER_R + BALL_R + 6);
+    ball.y += uy * (PLAYER_R + BALL_R + 6);
+    clampBall();
     ball.owner = null;
     ball.kickerImmune = player;
     ball.kickCooldown = KICK_COOLDOWN_MS;
+  }
+
+  function clampBall() {
+    ball.x = Math.max(BALL_R, Math.min(FIELD_W - BALL_R, ball.x));
+    ball.y = Math.max(BALL_R, Math.min(FIELD_H - BALL_R, ball.y));
   }
 
   function doKick() {
@@ -424,6 +435,21 @@
     drawBall();
   }
 
+  // ---------- Error resilience ----------
+  let errorShown = false;
+  function showErrorBanner(err) {
+    console.error(err);
+    if (errorShown) return;
+    errorShown = true;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#b02c2c;' +
+      'color:#fff;font:11px monospace;padding:6px;z-index:9999;white-space:pre-wrap;' +
+      'max-height:40vh;overflow:auto;';
+    el.textContent = 'Erro no jogo: ' + (err && err.stack ? err.stack : err);
+    document.body.appendChild(el);
+  }
+  window.addEventListener('error', (e) => showErrorBanner(e.error || e.message));
+
   // ---------- Main loop ----------
   function frame(ts) {
     if (lastFrame === null) lastFrame = ts;
@@ -431,26 +457,34 @@
     lastFrame = ts;
     dt = Math.min(dt, 0.05) * speedMultiplier;
 
-    if (!paused && !matchOver) {
-      if (goalPause > 0) {
-        goalPause -= dt * 1000;
-        if (goalPause <= 0) hideOverlay();
-      } else {
-        pickControlled();
-        for (const p of players) updatePlayer(p, dt);
-        awayAIAct();
-        updateBall(dt);
+    try {
+      if (!paused && !matchOver) {
+        if (goalPause > 0) {
+          goalPause -= dt * 1000;
+          if (goalPause <= 0) hideOverlay();
+        } else {
+          pickControlled();
+          for (const p of players) updatePlayer(p, dt);
+          awayAIAct();
+          updateBall(dt);
 
-        timeLeft -= dt;
-        timerEl.textContent = formatTime(timeLeft);
-        if (timeLeft <= 0) {
-          matchOver = true;
-          showFullTime();
+          timeLeft -= dt;
+          timerEl.textContent = formatTime(timeLeft);
+          if (timeLeft <= 0) {
+            matchOver = true;
+            showFullTime();
+          }
         }
       }
+    } catch (err) {
+      showErrorBanner(err);
     }
 
-    render();
+    try {
+      render();
+    } catch (err) {
+      showErrorBanner(err);
+    }
     requestAnimationFrame(frame);
   }
 
