@@ -1,0 +1,120 @@
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  background: #0a1a14;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: white;
+}
+
+.elenco-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 24px;
+}
+
+.elenco-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #16281f;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.back-btn {
+  color: #ffd54a;
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.elenco-topbar h1 {
+  font-size: 1.15rem;
+  color: #ffd54a;
+}
+
+.elenco-sections {
+  padding: 12px;
+}
+
+.elenco-section {
+  margin-bottom: 18px;
+}
+
+.elenco-section h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9fd8b8;
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #16281f;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border-left: 3px solid transparent;
+}
+
+.player-card.gk { border-left-color: #a05a2c; }
+.player-card.def { border-left-color: #4a7fd6; }
+.player-card.mid { border-left-color: #ffd54a; }
+.player-card.att { border-left-color: #e85555; }
+
+.player-number {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #0e1c15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.player-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-name {
+  font-weight: bold;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-position {
+  font-size: 0.72rem;
+  color: #9fd8b8;
+}
+
+.player-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.badge {
+  font-size: 0.62rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #0e1c15;
+  color: #ccc;
+  white-space: nowrap;
+}
+
+.badge.foot { color: #ffd54a; }
+.badge.trait { color: #9fd8b8; }

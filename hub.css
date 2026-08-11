@@ -64,6 +64,11 @@ body {
   transform: scale(0.96);
 }
 
+.game-card.playable.secondary {
+  background: linear-gradient(160deg, #2c2c2c, #14141f);
+  border-color: #9fd8b8;
+}
+
 .game-card.locked {
   background: #1c1c1c;
   opacity: 0.5;

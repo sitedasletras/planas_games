@@ -45,6 +45,7 @@
     equilibrado: {
       label: 'Equilibrado',
       drift: 0.3,
+      formation: [4, 3, 3],
       slots: [
         { d: 150, x: 70 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 330 },
         { d: 340, x: 110 }, { d: 340, x: 200 }, { d: 340, x: 290 },
@@ -54,6 +55,7 @@
     abafa: {
       label: 'Abafa (3-2-5)',
       drift: 0.4,
+      formation: [3, 2, 5],
       slots: [
         { d: 170, x: 110 }, { d: 170, x: 200 }, { d: 170, x: 290 },
         { d: 320, x: 150 }, { d: 320, x: 250 },
@@ -65,6 +67,7 @@
     ferrolho: {
       label: 'Ferrolho (6-3-1)',
       drift: 0.15,
+      formation: [6, 3, 1],
       slots: [
         { d: 110, x: 40 }, { d: 110, x: 110 }, { d: 110, x: 180 }, { d: 110, x: 220 }, { d: 110, x: 290 }, { d: 110, x: 360 },
         { d: 260, x: 110 }, { d: 260, x: 200 }, { d: 260, x: 290 },
@@ -74,6 +77,7 @@
     lateral: {
       label: 'Pelas Laterais',
       drift: 0.3,
+      formation: [4, 3, 3],
       slots: [
         { d: 150, x: 50 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 350 },
         { d: 330, x: 130 }, { d: 330, x: 200 }, { d: 330, x: 270 },
@@ -83,6 +87,7 @@
     lancamentos: {
       label: 'Bola Longa',
       drift: 0.3,
+      formation: [4, 3, 3],
       slots: [
         { d: 150, x: 70 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 330 },
         { d: 340, x: 110 }, { d: 340, x: 200 }, { d: 340, x: 290 },
@@ -90,6 +95,15 @@
       ],
     },
   };
+
+  function tacticBuckets(tacticKey) {
+    const [nDef, nMid, nAtt] = TACTICS[tacticKey].formation;
+    const buckets = [];
+    for (let i = 0; i < nDef; i++) buckets.push('DEF');
+    for (let i = 0; i < nMid; i++) buckets.push('MID');
+    for (let i = 0; i < nAtt; i++) buckets.push('ATT');
+    return buckets;
+  }
   const TACTIC_KEYS = Object.keys(TACTICS);
 
   // ---------- DOM ----------
@@ -137,12 +151,18 @@
   let breakKind = null; // null | 'tech' | 'halftime'
   let breakTimer = 0; // ms remaining in the current break
 
-  function makePlayer(team, role, number, x, y) {
+  const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
+
+  function makePlayer(team, role, number, x, y, extra) {
     return {
       team, role, number, x, y, vx: 0, vy: 0,
       facing: { x: 0, y: team === 'home' ? -1 : 1 },
       baseX: x, baseY: y,
       instruction: 'zona', markTarget: null,
+      name: (extra && extra.name) || null,
+      foot: (extra && extra.foot) || 'destro',
+      traits: (extra && extra.traits) || [],
+      improvised: !!(extra && extra.improvised),
     };
   }
 
@@ -150,9 +170,47 @@
     return { x: slot.x, y: team === 'home' ? FIELD_H - slot.d : slot.d };
   }
 
+  function selectStarters(squad, tacticKey) {
+    const buckets = tacticBuckets(tacticKey);
+    const pools = { GK: [], DEF: [], MID: [], ATT: [] };
+    squad.players.forEach((p) => pools[p.bucket].push(p));
+    Object.values(pools).forEach((arr) => arr.sort(() => Math.random() - 0.5));
+
+    let gk = pools.GK.shift();
+    if (!gk) gk = pools.DEF.shift() || pools.MID.shift() || pools.ATT.shift();
+
+    const borrowOrder = { DEF: ['MID', 'ATT'], MID: ['DEF', 'ATT'], ATT: ['MID', 'DEF'] };
+    const outfield = buckets.map((bucket) => {
+      let player = pools[bucket].shift();
+      let improvised = false;
+      if (!player) {
+        for (const alt of borrowOrder[bucket]) {
+          player = pools[alt].shift();
+          if (player) { improvised = true; break; }
+        }
+      }
+      return player ? { player, improvised } : null;
+    });
+    return { gk, outfield };
+  }
+
   function buildTeam(team, tacticKey) {
     const tactic = TACTICS[tacticKey];
     const gkY = team === 'home' ? FIELD_H - 36 : 36;
+
+    if (team === 'home' && homeSquad) {
+      const { gk, outfield } = selectStarters(homeSquad, tacticKey);
+      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits } : null;
+      const list = [makePlayer('home', 'GK', gk ? gk.number : 1, 200, gkY, gkExtra)];
+      tactic.slots.forEach((slot, i) => {
+        const { x, y } = slotToXY('home', slot);
+        const entry = outfield[i];
+        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised } : null;
+        list.push(makePlayer('home', 'OUT', entry ? entry.player.number : i + 2, x, y, extra));
+      });
+      return list;
+    }
+
     const list = [makePlayer(team, 'GK', 1, 200, gkY)];
     tactic.slots.forEach((slot, i) => {
       const { x, y } = slotToXY(team, slot);
@@ -161,9 +219,27 @@
     return list;
   }
 
-  function resetPositions() {
+  function resetPositions(keepXI) {
     const prevInstructions = players.map(p => ({ team: p.team, number: p.number, instruction: p.instruction }));
-    players = [...buildTeam('home', homeTactic), ...buildTeam('away', awayTactic)];
+
+    if (keepXI && players.length && homeSquad) {
+      // same starting XI, just line them back up for kickoff at their current tactic's slots
+      const homePlayers = players.filter(p => p.team === 'home');
+      const gkP = homePlayers.find(p => p.role === 'GK');
+      const outfieldP = homePlayers.filter(p => p.role !== 'GK');
+      const tactic = TACTICS[homeTactic];
+      const gkY = FIELD_H - 36;
+      gkP.x = 200; gkP.y = gkY; gkP.baseX = 200; gkP.baseY = gkY; gkP.vx = 0; gkP.vy = 0;
+      outfieldP.forEach((p, i) => {
+        const slot = tactic.slots[i % tactic.slots.length];
+        const { x, y } = slotToXY('home', slot);
+        p.x = x; p.y = y; p.baseX = x; p.baseY = y; p.vx = 0; p.vy = 0;
+      });
+      players = [gkP, ...outfieldP, ...buildTeam('away', awayTactic)];
+    } else {
+      players = [...buildTeam('home', homeTactic), ...buildTeam('away', awayTactic)];
+    }
+
     for (const p of players) {
       const prev = prevInstructions.find(x => x.team === p.team && x.number === p.number);
       if (prev) p.instruction = prev.instruction;
@@ -186,7 +262,7 @@
 
   function resetMatch() {
     awayTactic = TACTIC_KEYS[Math.floor(Math.random() * TACTIC_KEYS.length)];
-    resetPositions();
+    resetPositions(false);
     score = { home: 0, away: 0 };
     half = 1;
     displaySeconds = 0;
@@ -209,7 +285,7 @@
     techTimeoutDone = false;
     breakKind = null;
     hideOverlay();
-    resetPositions();
+    resetPositions(true);
     halfLabelEl.textContent = '2T';
     timerEl.textContent = formatClock(0);
   }
@@ -407,6 +483,12 @@
     return { target, power: PASS_POWER };
   }
 
+  function footBias(foot) {
+    if (foot === 'canhoto') return -8;
+    if (foot === 'destro') return 8;
+    return 0; // ambidestro / pé invertido / sem preferência marcada
+  }
+
   function doKick() {
     if (matchOver || goalPause > 0) return;
     if (!ball.owner || ball.owner !== controlled) return;
@@ -414,7 +496,7 @@
     const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
     const nearGoal = p.team === 'home' ? p.y < 260 : p.y > FIELD_H - 260;
     if (nearGoal) {
-      const spread = (Math.random() - 0.5) * 40;
+      const spread = (Math.random() - 0.5) * 32 + footBias(p.foot);
       kick(p, 200 + spread, attackingGoalY, SHOOT_POWER);
       return;
     }
@@ -451,11 +533,12 @@
       const opp = opponentsOf(p.team);
       const chaser = nearestTo(opp.length ? teammates(p.team).filter(t => t.role !== 'GK') : [], ball);
       const isChaser = chaser === p;
+      const fitFactor = p.improvised ? 0.9 : 1; // out-of-position players are a bit less sharp
       if (isChaser) {
         const dx = ball.x - p.x, dy = ball.y - p.y;
         const len = Math.hypot(dx, dy) || 1;
-        p.vx = (dx / len) * CHASER_SPEED;
-        p.vy = (dy / len) * CHASER_SPEED;
+        p.vx = (dx / len) * CHASER_SPEED * fitFactor;
+        p.vy = (dy / len) * CHASER_SPEED * fitFactor;
         p.facing = { x: dx / len, y: dy / len };
       } else {
         const instr = p.instruction || 'zona';
@@ -483,7 +566,7 @@
         }
         const dx = tx - p.x, dy = ty - p.y;
         const len = Math.hypot(dx, dy) || 1;
-        const speed = Math.min(TEAMMATE_SPEED, len * 4);
+        const speed = Math.min(TEAMMATE_SPEED, len * 4) * fitFactor;
         p.vx = (dx / len) * speed;
         p.vy = (dy / len) * speed;
       }
@@ -574,7 +657,7 @@
     score[scoringTeam]++;
     updateScoreUI();
     showGoal(scoringTeam);
-    resetPositions();
+    resetPositions(true);
     goalPause = 1400;
   }
 
@@ -676,6 +759,16 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(p.number, p.x, p.y + 1);
+
+    if (p.improvised) {
+      ctx.beginPath();
+      ctx.arc(p.x + PLAYER_R - 2, p.y - PLAYER_R + 2, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff9800';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
 
     if (ball.owner === p) {
       ctx.beginPath();
