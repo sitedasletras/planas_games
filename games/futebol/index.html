@@ -4,65 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>WSP Futebol</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="landing.css">
 </head>
 <body>
-  <div class="game-wrap">
-    <div class="topbar">
+  <div class="landing-wrap">
+    <div class="landing-topbar">
       <a class="back-btn" href="../../index.html">←</a>
-      <div class="score-panel">
-        <span class="team-tag home">B</span>
-        <span id="score-home">0</span>
-        <span class="dash">-</span>
-        <span id="score-away">0</span>
-        <span class="team-tag away">A</span>
-      </div>
-      <div class="timer"><span id="half-label">1T</span> <span id="timer">00:00</span></div>
-      <div class="controls-top">
-        <button id="btn-instructions" title="Instruções">👤</button>
-        <button id="btn-tactics" title="Tática">📋</button>
-        <button id="btn-speed" title="Acelerar">⏩</button>
-        <button id="btn-pause" title="Pausar">⏸</button>
-      </div>
+      <h1>Futebol</h1>
     </div>
 
-    <canvas id="field" width="400" height="711"></canvas>
-
-    <div class="touch-controls">
-      <div class="joystick-zone" id="joystick-zone">
-        <div class="joystick-base">
-          <div class="joystick-knob" id="joystick-knob"></div>
-        </div>
-      </div>
-      <button class="kick-btn" id="kick-btn">⚽</button>
+    <div class="club-card">
+      <div class="club-badge">⚫⚪</div>
+      <div class="club-name" id="club-name">Bandeirantes</div>
     </div>
 
-    <div class="overlay hidden" id="overlay">
-      <div class="overlay-card">
-        <div class="overlay-title" id="overlay-title">GOL!</div>
-        <div class="overlay-sub" id="overlay-sub"></div>
-        <button class="overlay-btn hidden" id="overlay-restart">Jogar novamente</button>
-      </div>
-    </div>
-
-    <div class="overlay hidden" id="tactics-overlay">
-      <div class="overlay-card">
-        <div class="overlay-title" style="font-size:1.3rem;">Escolha a tática</div>
-        <div class="tactics-list" id="tactics-list"></div>
-        <button class="overlay-btn" id="tactics-close">Fechar</button>
-      </div>
-    </div>
-
-    <div class="overlay hidden" id="instructions-overlay">
-      <div class="overlay-card instructions-card">
-        <div class="overlay-title" style="font-size:1.15rem;">Instruções por jogador</div>
-        <div class="instructions-list" id="instructions-list"></div>
-        <button class="overlay-btn" id="instructions-close">Fechar</button>
-      </div>
+    <div class="landing-actions">
+      <a class="action-btn primary" href="match.html">
+        <span class="action-icon">▶</span>
+        <span>Jogar</span>
+      </a>
+      <a class="action-btn" href="elenco.html">
+        <span class="action-icon">📋</span>
+        <span>Elenco</span>
+      </a>
     </div>
   </div>
 
   <script src="squad.js"></script>
-  <script src="game.js"></script>
+  <script>
+    if (window.WSPSquad) {
+      document.getElementById('club-name').textContent = window.WSPSquad.loadSquad().clubName;
+    }
+  </script>
 </body>
 </html>
