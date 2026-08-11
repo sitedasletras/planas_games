@@ -65,6 +65,42 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9fd8b8;
+  margin: 18px 14px 8px;
+}
+
+.sponsor-current {
+  font-size: 0.72rem;
+  color: #ccc;
+  margin-bottom: 4px;
+}
+
+.sponsor-current .none {
+  color: #888;
+  font-style: italic;
+}
+
+.sponsor-proposal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reroll-btn {
+  background: #0e1c15;
+  color: #ffd54a;
+  border: 1px solid #345c48;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
 }
 
 .dept-card {

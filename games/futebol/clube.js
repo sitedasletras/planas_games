@@ -1,10 +1,14 @@
 (() => {
   'use strict';
-  const { DEPARTMENTS, MAX_LEVEL, upgradeCost, loadClub, upgradeDepartment } = window.WSPClub;
+  const {
+    DEPARTMENTS, MAX_LEVEL, upgradeCost, loadClub, upgradeDepartment,
+    SPONSOR_SLOTS, acceptSponsor, rerollSponsor,
+  } = window.WSPClub;
 
   const club = loadClub();
   const budgetEl = document.getElementById('budget-value');
   const listEl = document.getElementById('dept-list');
+  const sponsorListEl = document.getElementById('sponsor-list');
 
   function formatMoney(n) {
     return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
@@ -68,6 +72,66 @@
 
       card.appendChild(info);
       listEl.appendChild(card);
+    });
+
+    renderSponsors();
+  }
+
+  function renderSponsors() {
+    sponsorListEl.innerHTML = '';
+
+    Object.keys(SPONSOR_SLOTS).forEach((key) => {
+      const slotDef = SPONSOR_SLOTS[key];
+      const slot = club.sponsors[key];
+
+      const card = document.createElement('div');
+      card.className = 'dept-card';
+
+      const icon = document.createElement('div');
+      icon.className = 'dept-icon';
+      icon.textContent = slotDef.icon;
+      card.appendChild(icon);
+
+      const info = document.createElement('div');
+      info.className = 'dept-info';
+
+      const name = document.createElement('div');
+      name.className = 'dept-name';
+      name.textContent = slotDef.label;
+      info.appendChild(name);
+
+      const current = document.createElement('div');
+      current.className = 'sponsor-current';
+      current.innerHTML = slot.current
+        ? 'Patrocinador atual: <strong>' + slot.current.name + '</strong> (' + formatMoney(slot.current.value) + ')'
+        : '<span class="none">Nenhum patrocinador ainda</span>';
+      info.appendChild(current);
+
+      const proposalRow = document.createElement('div');
+      proposalRow.className = 'sponsor-proposal';
+
+      const btn = document.createElement('button');
+      btn.className = 'upgrade-btn';
+      btn.textContent = 'Aceitar ' + slot.proposal.name + ' — ' + formatMoney(slot.proposal.value);
+      btn.addEventListener('click', () => {
+        acceptSponsor(club, key);
+        render();
+      });
+      proposalRow.appendChild(btn);
+
+      const reroll = document.createElement('button');
+      reroll.className = 'reroll-btn';
+      reroll.textContent = '🔄';
+      reroll.title = 'Ver outra proposta';
+      reroll.addEventListener('click', () => {
+        rerollSponsor(club, key);
+        render();
+      });
+      proposalRow.appendChild(reroll);
+
+      info.appendChild(proposalRow);
+      card.appendChild(info);
+      sponsorListEl.appendChild(card);
     });
   }
 
