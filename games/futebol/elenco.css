@@ -69,17 +69,34 @@ html, body {
 .player-card.mid { border-left-color: #ffd54a; }
 .player-card.att { border-left-color: #e85555; }
 
-.player-number {
-  width: 26px;
-  height: 26px;
+.avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+}
+
+.avatar-wrap svg {
   border-radius: 50%;
   background: #0e1c15;
+  display: block;
+}
+
+.jersey-chip {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd54a;
+  color: #1c1c1c;
+  font-size: 0.6rem;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 0.8rem;
-  flex-shrink: 0;
+  border: 1.5px solid #16281f;
 }
 
 .player-info {

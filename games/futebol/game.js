@@ -30,6 +30,17 @@
   const TECH_TIMEOUT_REAL_SECONDS = 10;
   const HALFTIME_REAL_SECONDS = 15;
 
+  // ---------- Fouls / cards / offside ----------
+  const FOUL_CHANCE = 0.015;       // per-frame chance a tackle attempt is a foul
+  const STEAL_CHANCE = 0.06;       // per-frame chance of a clean steal (unchanged)
+  const HARD_FOUL_SHARE = 0.25;    // fraction of fouls that come in hard
+  const YELLOW_CHANCE_NORMAL = 0.15;
+  const YELLOW_CHANCE_HARD = 0.45;
+  const RED_CHANCE_HARD = 0.08;
+  const STAGGER_MS = 900;          // hard foul knocks the fouled player down briefly
+  const CLOSE_FK_RANGE = 150, LONG_FK_RANGE = 280;
+  const STOPPAGE_MS = 1100;
+
   const INSTRUCTIONS = [
     { key: 'zona', label: 'Zona' },
     { key: 'individual', label: 'Marc.' },
@@ -138,7 +149,7 @@
   let paused = false;
   let speedMultiplier = 1;
   let matchOver = false;
-  let goalPause = 0; // ms remaining while celebrating a goal
+  let stopPause = 0; // ms remaining while play is stopped (goal/falta/cartão/impedimento)
   let controlled = null;
   let lastFrame = null;
   let homeTactic = 'equilibrado';
@@ -163,6 +174,7 @@
       foot: (extra && extra.foot) || 'destro',
       traits: (extra && extra.traits) || [],
       improvised: !!(extra && extra.improvised),
+      yellowCards: 0, redCard: false, staggerMs: 0,
     };
   }
 
@@ -272,7 +284,7 @@
     paused = false;
     speedMultiplier = 1;
     matchOver = false;
-    goalPause = 0;
+    stopPause = 0;
     hideOverlay();
     updateScoreUI();
     halfLabelEl.textContent = '1T';
@@ -489,20 +501,44 @@
     return 0; // ambidestro / pé invertido / sem preferência marcada
   }
 
+  function isPassOffside(passer, target) {
+    const opp = opponentsOf(passer.team).filter(o => o.role !== 'GK');
+    if (opp.length < 2) return false;
+    const sorted = passer.team === 'home'
+      ? opp.slice().sort((a, b) => a.y - b.y)
+      : opp.slice().sort((a, b) => b.y - a.y);
+    const offsideLineY = sorted[1].y;
+    const ownHalf = passer.team === 'home' ? target.y > FIELD_H / 2 : target.y < FIELD_H / 2;
+    if (ownHalf) return false;
+    const pastDefense = passer.team === 'home' ? target.y < offsideLineY : target.y > offsideLineY;
+    const pastBall = passer.team === 'home' ? target.y < ball.y : target.y > ball.y;
+    return pastDefense && pastBall;
+  }
+
   function doKick() {
-    if (matchOver || goalPause > 0) return;
+    if (matchOver || stopPause > 0) return;
     if (!ball.owner || ball.owner !== controlled) return;
     const p = controlled;
+    const bonus = !!ball.freeKickBonus;
+    ball.freeKickBonus = false;
     const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
     const nearGoal = p.team === 'home' ? p.y < 260 : p.y > FIELD_H - 260;
     if (nearGoal) {
-      const spread = (Math.random() - 0.5) * 32 + footBias(p.foot);
-      kick(p, 200 + spread, attackingGoalY, SHOOT_POWER);
+      const spread = (Math.random() - 0.5) * (bonus ? 14 : 32) + footBias(p.foot);
+      kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * (bonus ? 1.15 : 1));
       return;
     }
     const pass = pickPassTarget(p);
-    if (pass) kick(p, pass.target.x, pass.target.y, pass.power);
-    else kick(p, 200, attackingGoalY, SHOOT_POWER);
+    if (pass) {
+      if (isPassOffside(p, pass.target)) {
+        const otherTeam = p.team === 'home' ? 'away' : 'home';
+        awardFreeKick(otherTeam, { x: pass.target.x, y: pass.target.y });
+        stopPause = STOPPAGE_MS;
+        showStoppage('IMPEDIMENTO!', 'Tiro livre para o adversário');
+        return;
+      }
+      kick(p, pass.target.x, pass.target.y, pass.power);
+    } else kick(p, 200, attackingGoalY, SHOOT_POWER);
   }
 
   // ---------- AI / control selection ----------
@@ -517,6 +553,11 @@
   }
 
   function updatePlayer(p, dt) {
+    if (p.staggerMs > 0) {
+      p.staggerMs -= dt * 1000;
+      p.vx = 0; p.vy = 0;
+      return;
+    }
     if (p === controlled) {
       const v = inputVector();
       p.vx = v.x * USER_SPEED;
@@ -647,7 +688,13 @@
       if (!ball.owner) {
         ball.owner = pickupCandidate;
       } else if (ball.owner !== pickupCandidate && ball.owner.team !== pickupCandidate.team) {
-        if (Math.random() < 0.06) ball.owner = pickupCandidate;
+        const roll = Math.random();
+        if (roll < FOUL_CHANCE) {
+          commitFoul(pickupCandidate, ball.owner);
+          return;
+        } else if (roll < FOUL_CHANCE + STEAL_CHANCE) {
+          ball.owner = pickupCandidate;
+        }
       }
     }
     if (ball.kickCooldown <= 0) ball.kickerImmune = null;
@@ -658,7 +705,82 @@
     updateScoreUI();
     showGoal(scoringTeam);
     resetPositions(true);
-    goalPause = 1400;
+    stopPause = 1400;
+  }
+
+  function displayName(p) { return p.name || ('#' + p.number); }
+
+  function bookPlayer(p, wantsRed) {
+    if (wantsRed) {
+      p.redCard = true;
+      sendOff(p);
+      return 'red';
+    }
+    if ((p.yellowCards || 0) >= 1) {
+      p.redCard = true;
+      sendOff(p);
+      return 'red2';
+    }
+    p.yellowCards = 1;
+    return 'yellow';
+  }
+
+  function sendOff(p) {
+    const idx = players.indexOf(p);
+    if (idx >= 0) players.splice(idx, 1);
+    if (controlled === p) controlled = null;
+    if (ball.owner === p) ball.owner = null;
+  }
+
+  function awardFreeKick(team, spot) {
+    ball.x = spot.x; ball.y = spot.y;
+    ball.vx = 0; ball.vy = 0;
+    ball.owner = null; ball.kickerImmune = null; ball.kickCooldown = 0;
+    ball.freeKickBonus = false;
+    clampBall();
+
+    let teamPlayers = players.filter(p => p.team === team && p.role !== 'GK' && p.staggerMs <= 0);
+    if (!teamPlayers.length) teamPlayers = players.filter(p => p.team === team && p.role !== 'GK');
+    if (!teamPlayers.length) return;
+    const goalY = team === 'home' ? 8 : FIELD_H - 8;
+    const distToGoal = Math.abs(spot.y - goalY);
+
+    let taker = null;
+    if (distToGoal < CLOSE_FK_RANGE) taker = teamPlayers.find(p => p.traits.includes('batedor_perto'));
+    else if (distToGoal < LONG_FK_RANGE) taker = teamPlayers.find(p => p.traits.includes('batedor_longe'));
+    if (!taker) taker = nearestTo(teamPlayers, spot) || teamPlayers[0];
+
+    const forward = team === 'home' ? -1 : 1;
+    taker.x = Math.max(CLAMP_X_MIN, Math.min(CLAMP_X_MAX, spot.x));
+    taker.y = Math.max(CLAMP_Y_MIN, Math.min(CLAMP_Y_MAX, spot.y + forward * 6));
+    taker.vx = 0; taker.vy = 0;
+    taker.facing = { x: 0, y: forward };
+    ball.owner = taker;
+    ball.freeKickBonus = distToGoal < LONG_FK_RANGE &&
+      (taker.traits.includes('batedor_perto') || taker.traits.includes('batedor_longe'));
+  }
+
+  function commitFoul(defender, attackerWithBall) {
+    const hard = Math.random() < HARD_FOUL_SHARE;
+    const roll = Math.random();
+    let cardResult = null;
+    if (hard) {
+      if (roll < RED_CHANCE_HARD) cardResult = bookPlayer(defender, true);
+      else if (roll < RED_CHANCE_HARD + YELLOW_CHANCE_HARD) cardResult = bookPlayer(defender, false);
+    } else if (roll < YELLOW_CHANCE_NORMAL) {
+      cardResult = bookPlayer(defender, false);
+    }
+    if (hard) attackerWithBall.staggerMs = STAGGER_MS;
+
+    let sub = hard ? 'Falta dura' : 'Falta';
+    if (cardResult === 'yellow') sub += ' — cartão amarelo p/ ' + displayName(defender);
+    else if (cardResult === 'red') sub += ' — cartão vermelho p/ ' + displayName(defender);
+    else if (cardResult === 'red2') sub += ' — 2º amarelo, vermelho p/ ' + displayName(defender);
+
+    const spot = { x: ball.x, y: ball.y };
+    awardFreeKick(attackerWithBall.team, spot);
+    stopPause = STOPPAGE_MS;
+    showStoppage(hard ? 'FALTA DURA!' : 'FALTA!', sub);
   }
 
   // ---------- UI ----------
@@ -672,8 +794,11 @@
     return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
   }
   function showGoal(team) {
-    overlayTitle.textContent = 'GOL!';
-    overlaySub.textContent = team === 'home' ? 'Bandeirantes marcou!' : 'O adversário marcou.';
+    showStoppage('GOL!', team === 'home' ? 'Bandeirantes marcou!' : 'O adversário marcou.');
+  }
+  function showStoppage(title, sub) {
+    overlayTitle.textContent = title;
+    overlaySub.textContent = sub || '';
     overlayRestart.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
@@ -770,6 +895,14 @@
       ctx.stroke();
     }
 
+    if (p.yellowCards >= 1) {
+      ctx.fillStyle = '#f5d33c';
+      ctx.strokeStyle = '#7a5b00';
+      ctx.lineWidth = 1;
+      ctx.fillRect(p.x - PLAYER_R - 7, p.y - PLAYER_R - 1, 5, 7);
+      ctx.strokeRect(p.x - PLAYER_R - 7, p.y - PLAYER_R - 1, 5, 7);
+    }
+
     if (ball.owner === p) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, PLAYER_R + 4, 0, Math.PI * 2);
@@ -809,9 +942,9 @@
 
     try {
       if (!paused && !matchOver) {
-        if (goalPause > 0) {
-          goalPause -= dt * 1000;
-          if (goalPause <= 0) hideOverlay();
+        if (stopPause > 0) {
+          stopPause -= dt * 1000;
+          if (stopPause <= 0) hideOverlay();
         } else if (breakKind) {
           breakTimer -= dt * 1000;
           if (breakTimer <= 0) {

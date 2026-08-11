@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'wsp_squad_v1';
+  const STORAGE_KEY = 'wsp_squad_v2'; // bumped: v2 adds age/height/nationality/avatar
 
   const POSITIONS = {
     goleiro: { label: 'Goleiro', bucket: 'GK' },
@@ -40,6 +40,81 @@
     { key: 'ambidestro', label: 'Ambidestro', weight: 10 },
     { key: 'pe_invertido', label: 'Pé Invertido', weight: 5 },
   ];
+
+  const NATIONALITIES = [
+    { key: 'BR', label: 'Brasil', flag: '🇧🇷', weight: 75 },
+    { key: 'AR', label: 'Argentina', flag: '🇦🇷', weight: 6 },
+    { key: 'UY', label: 'Uruguai', flag: '🇺🇾', weight: 4 },
+    { key: 'PY', label: 'Paraguai', flag: '🇵🇾', weight: 3 },
+    { key: 'CO', label: 'Colômbia', flag: '🇨🇴', weight: 3 },
+    { key: 'PT', label: 'Portugal', flag: '🇵🇹', weight: 3 },
+    { key: 'ES', label: 'Espanha', flag: '🇪🇸', weight: 2 },
+    { key: 'NG', label: 'Nigéria', flag: '🇳🇬', weight: 2 },
+    { key: 'FR', label: 'França', flag: '🇫🇷', weight: 2 },
+  ];
+
+  const AGE_BUCKETS = [
+    { range: [17, 20], weight: 15 },
+    { range: [21, 23], weight: 25 },
+    { range: [24, 29], weight: 35 },
+    { range: [30, 33], weight: 18 },
+    { range: [34, 38], weight: 7 },
+  ];
+
+  const HEIGHT_RANGE = { GK: [183, 198], DEF: [178, 194], MID: [168, 186], ATT: [168, 188] };
+
+  const CAREER_STAGES = {
+    promessa: { label: 'Promessa' },
+    ascensao: { label: 'Em Ascensão' },
+    auge: { label: 'Auge' },
+    experiente: { label: 'Experiente' },
+    declinio: { label: 'Declínio' },
+  };
+
+  function careerStageFor(age) {
+    if (age <= 20) return 'promessa';
+    if (age <= 23) return 'ascensao';
+    if (age <= 30) return 'auge';
+    if (age <= 33) return 'experiente';
+    return 'declinio';
+  }
+
+  const SKIN_TONES = ['#f2c9a1', '#e0ac69', '#c68642', '#8d5524', '#5a3825'];
+  const HAIR_COLORS = ['#1a1a1a', '#3b2314', '#7a4a1e', '#b5651d', '#e8c15a'];
+  const HAIR_STYLES = ['curto', 'moicano', 'cacheado'];
+
+  function generateAvatar(age) {
+    const older = age > 32;
+    const bald = Math.random() < (older ? 0.3 : 0.06);
+    const grey = !bald && Math.random() < (older ? 0.4 : 0.03);
+    return {
+      skin: pick(SKIN_TONES),
+      hairColor: grey ? '#c9c9c9' : pick(HAIR_COLORS),
+      hairStyle: pick(HAIR_STYLES),
+      bald,
+    };
+  }
+
+  function randomAge() {
+    const bucket = weightedPickObj(AGE_BUCKETS);
+    const [min, max] = bucket.range;
+    return min + Math.floor(Math.random() * (max - min + 1));
+  }
+
+  function randomHeight(bucket) {
+    const [min, max] = HEIGHT_RANGE[bucket];
+    return min + Math.floor(Math.random() * (max - min + 1));
+  }
+
+  function weightedPickObj(list) {
+    const total = list.reduce((s, x) => s + x.weight, 0);
+    let r = Math.random() * total;
+    for (const x of list) {
+      if (r < x.weight) return x;
+      r -= x.weight;
+    }
+    return list[0];
+  }
 
   const FIRST_NAMES = [
     'Léo', 'Gabriel', 'Lucas', 'Matheus', 'Rafael', 'Bruno', 'Diego', 'Thiago',
@@ -112,6 +187,8 @@
         }
       }
 
+      const age = randomAge();
+
       return {
         id: 'p' + num + '_' + Date.now().toString(36),
         number: num++,
@@ -120,6 +197,10 @@
         bucket,
         foot,
         traits,
+        age,
+        height: randomHeight(bucket),
+        nationality: weightedPickObj(NATIONALITIES).key,
+        avatar: generateAvatar(age),
       };
     });
 
@@ -140,5 +221,8 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(squad)); } catch (e) { /* storage unavailable */ }
   }
 
-  window.WSPSquad = { POSITIONS, TRAITS, FEET, generateSquad, loadSquad, saveSquad };
+  window.WSPSquad = {
+    POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
+    careerStageFor, generateSquad, loadSquad, saveSquad,
+  };
 })();
