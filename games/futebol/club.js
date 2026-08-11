@@ -25,12 +25,14 @@
     camisa_frente: { label: 'Camisa (Frente)', icon: '👕', min: 150000, max: 400000 },
     lateral_campo: { label: 'Lateral de Campo', icon: '🚩', min: 20000, max: 60000 },
     isotonicos: { label: 'Fornecedor de Isotônicos', icon: '🥤', min: 15000, max: 40000 },
+    material_esportivo: { label: 'Material Esportivo', icon: '👟', min: 100000, max: 300000 },
   };
 
   const SPONSOR_NAMES = {
     camisa_frente: ['TechBank', 'Cerveja Serra Alta', 'Voa Linhas Aéreas', 'Construtora Horizonte', 'SegurPrev Seguros', 'Grupo Atlas'],
     lateral_campo: ['Auto Peças Rael', 'Mercado Bom Preço', 'Farmácia Vitalis', 'Posto Estrada Nova', 'Imobiliária Cedro'],
     isotonicos: ['HidraSport', 'PotencIon', 'AguaViva Esportiva', 'RecarregaMax', 'Ion Total'],
+    material_esportivo: ['Tope', 'Ardidas', 'Pênallti', 'Fitas', 'Kappas', 'Tumdro', 'Lêcoque', 'Strike', 'Nova Ballada'],
   };
 
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
