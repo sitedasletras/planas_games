@@ -81,10 +81,11 @@ html, body {
   background: #ffd54a;
   border: none;
   border-radius: 6px;
-  width: 32px;
-  height: 32px;
-  font-size: 1rem;
+  width: 28px;
+  height: 28px;
+  font-size: 0.85rem;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 canvas {
@@ -218,6 +219,60 @@ canvas {
   font-size: 0.95rem;
   cursor: pointer;
   text-align: left;
+}
+
+.instructions-card {
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.instructions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+  min-width: 260px;
+}
+
+.instr-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #1e3a2a;
+  padding: 5px 6px;
+  border-radius: 6px;
+}
+
+.instr-row .num {
+  font-weight: bold;
+  width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.instr-btns {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.instr-btn {
+  flex: 1;
+  background: #0e1c15;
+  color: #ccc;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 5px 2px;
+  font-size: 0.62rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.instr-btn.active {
+  background: #ffd54a;
+  color: #1c1c1c;
+  border-color: #fff;
 }
 
 .tactic-option.active {

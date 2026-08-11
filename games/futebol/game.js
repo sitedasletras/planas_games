@@ -20,6 +20,14 @@
   const KICK_COOLDOWN_MS = 300;
   const MATCH_SECONDS = 120;
 
+  const INSTRUCTIONS = [
+    { key: 'zona', label: 'Zona' },
+    { key: 'individual', label: 'Marc.' },
+    { key: 'ataque', label: 'Atk+' },
+    { key: 'defesa', label: 'Def+' },
+    { key: 'acompanhar', label: 'Acomp' },
+  ];
+
   // ---------- Tactics ----------
   // d = distance from own goal line (0 = own goal, FIELD_H = opponent's goal)
   // x = lateral position (0-400). Every tactic has exactly 10 outfield slots.
@@ -90,6 +98,10 @@
   const tacticsOverlay = document.getElementById('tactics-overlay');
   const tacticsList = document.getElementById('tactics-list');
   const tacticsClose = document.getElementById('tactics-close');
+  const btnInstructions = document.getElementById('btn-instructions');
+  const instructionsOverlay = document.getElementById('instructions-overlay');
+  const instructionsList = document.getElementById('instructions-list');
+  const instructionsClose = document.getElementById('instructions-close');
   const joystickZone = document.getElementById('joystick-zone');
   const joystickKnob = document.getElementById('joystick-knob');
   const kickBtn = document.getElementById('kick-btn');
@@ -113,6 +125,7 @@
       team, role, number, x, y, vx: 0, vy: 0,
       facing: { x: 0, y: team === 'home' ? -1 : 1 },
       baseX: x, baseY: y,
+      instruction: 'zona', markTarget: null,
     };
   }
 
@@ -132,7 +145,12 @@
   }
 
   function resetPositions() {
+    const prevInstructions = players.map(p => ({ team: p.team, number: p.number, instruction: p.instruction }));
     players = [...buildTeam('home', homeTactic), ...buildTeam('away', awayTactic)];
+    for (const p of players) {
+      const prev = prevInstructions.find(x => x.team === p.team && x.number === p.number);
+      if (prev) p.instruction = prev.instruction;
+    }
     ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0 };
   }
 
@@ -212,7 +230,14 @@
   });
   overlayRestart.addEventListener('click', () => resetMatch());
 
-  let pausedByTactics = false;
+  let pausedByMenu = false;
+  function pauseForMenu() {
+    if (!paused) { paused = true; pausedByMenu = true; btnPause.textContent = '▶'; }
+  }
+  function resumeFromMenu() {
+    if (pausedByMenu) { paused = false; pausedByMenu = false; btnPause.textContent = '⏸'; }
+  }
+
   function renderTacticsList() {
     tacticsList.innerHTML = '';
     TACTIC_KEYS.forEach((key) => {
@@ -227,16 +252,55 @@
     });
   }
   function openTacticsMenu() {
-    if (!paused) { paused = true; pausedByTactics = true; btnPause.textContent = '▶'; }
+    pauseForMenu();
     renderTacticsList();
     tacticsOverlay.classList.remove('hidden');
   }
   function closeTacticsMenu() {
     tacticsOverlay.classList.add('hidden');
-    if (pausedByTactics) { paused = false; pausedByTactics = false; btnPause.textContent = '⏸'; }
+    resumeFromMenu();
   }
   btnTactics.addEventListener('click', openTacticsMenu);
   tacticsClose.addEventListener('click', closeTacticsMenu);
+
+  function renderInstructionsList() {
+    instructionsList.innerHTML = '';
+    const outfield = players.filter(p => p.team === 'home' && p.role !== 'GK');
+    outfield.forEach((p) => {
+      const row = document.createElement('div');
+      row.className = 'instr-row';
+      const num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = '#' + p.number;
+      row.appendChild(num);
+      const btnWrap = document.createElement('div');
+      btnWrap.className = 'instr-btns';
+      INSTRUCTIONS.forEach((opt) => {
+        const b = document.createElement('button');
+        b.className = 'instr-btn' + ((p.instruction || 'zona') === opt.key ? ' active' : '');
+        b.textContent = opt.label;
+        b.addEventListener('click', () => {
+          p.instruction = opt.key;
+          if (opt.key !== 'individual') p.markTarget = null;
+          renderInstructionsList();
+        });
+        btnWrap.appendChild(b);
+      });
+      row.appendChild(btnWrap);
+      instructionsList.appendChild(row);
+    });
+  }
+  function openInstructionsMenu() {
+    pauseForMenu();
+    renderInstructionsList();
+    instructionsOverlay.classList.remove('hidden');
+  }
+  function closeInstructionsMenu() {
+    instructionsOverlay.classList.add('hidden');
+    resumeFromMenu();
+  }
+  btnInstructions.addEventListener('click', openInstructionsMenu);
+  instructionsClose.addEventListener('click', closeInstructionsMenu);
 
   function inputVector() {
     let x = joyVec.x, y = joyVec.y;
@@ -360,9 +424,29 @@
         p.vy = (dy / len) * CHASER_SPEED;
         p.facing = { x: dx / len, y: dy / len };
       } else {
-        const drift = TACTICS[p.team === 'home' ? homeTactic : awayTactic].drift;
-        const tx = p.baseX + (ball.x - 200) * drift;
-        const ty = p.baseY + (ball.y - p.baseY) * 0.15;
+        const instr = p.instruction || 'zona';
+        let tx, ty;
+        if (instr === 'individual') {
+          if (!p.markTarget) {
+            p.markTarget = nearestTo(opponentsOf(p.team).filter(o => o.role !== 'GK'), p);
+          }
+          if (p.markTarget) {
+            const goalSide = p.team === 'home' ? 12 : -12;
+            tx = p.markTarget.x;
+            ty = p.markTarget.y + goalSide;
+          } else {
+            tx = p.baseX; ty = p.baseY;
+          }
+        } else {
+          const baseDrift = TACTICS[p.team === 'home' ? homeTactic : awayTactic].drift;
+          const drift = instr === 'acompanhar' ? Math.min(0.65, baseDrift + 0.3)
+            : instr === 'defesa' ? Math.max(0.1, baseDrift - 0.15)
+            : baseDrift;
+          const forward = p.team === 'home' ? -1 : 1;
+          const yBias = instr === 'ataque' ? forward * 55 : instr === 'defesa' ? -forward * 55 : 0;
+          tx = p.baseX + (ball.x - 200) * drift;
+          ty = p.baseY + (ball.y - p.baseY) * 0.15 + yBias;
+        }
         const dx = tx - p.x, dy = ty - p.y;
         const len = Math.hypot(dx, dy) || 1;
         const speed = Math.min(TEAMMATE_SPEED, len * 4);
