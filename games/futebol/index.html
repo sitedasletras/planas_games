@@ -19,6 +19,7 @@
       </div>
       <div class="timer" id="timer">02:00</div>
       <div class="controls-top">
+        <button id="btn-tactics" title="Tática">📋</button>
         <button id="btn-speed" title="Acelerar">⏩</button>
         <button id="btn-pause" title="Pausar">⏸</button>
       </div>
@@ -40,6 +41,14 @@
         <div class="overlay-title" id="overlay-title">GOL!</div>
         <div class="overlay-sub" id="overlay-sub"></div>
         <button class="overlay-btn hidden" id="overlay-restart">Jogar novamente</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="tactics-overlay">
+      <div class="overlay-card">
+        <div class="overlay-title" style="font-size:1.3rem;">Escolha a tática</div>
+        <div class="tactics-list" id="tactics-list"></div>
+        <button class="overlay-btn" id="tactics-close">Fechar</button>
       </div>
     </div>
   </div>

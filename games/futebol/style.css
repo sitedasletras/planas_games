@@ -199,3 +199,28 @@ canvas {
 .overlay-btn.hidden {
   display: none;
 }
+
+.tactics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+  min-width: 220px;
+}
+
+.tactic-option {
+  background: #1e3a2a;
+  border: 2px solid transparent;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tactic-option.active {
+  border-color: #ffd54a;
+  background: #2f9e44;
+}

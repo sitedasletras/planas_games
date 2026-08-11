@@ -20,6 +20,59 @@
   const KICK_COOLDOWN_MS = 300;
   const MATCH_SECONDS = 120;
 
+  // ---------- Tactics ----------
+  // d = distance from own goal line (0 = own goal, FIELD_H = opponent's goal)
+  // x = lateral position (0-400). Every tactic has exactly 10 outfield slots.
+  const TACTICS = {
+    equilibrado: {
+      label: 'Equilibrado',
+      drift: 0.3,
+      slots: [
+        { d: 150, x: 70 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 330 },
+        { d: 340, x: 110 }, { d: 340, x: 200 }, { d: 340, x: 290 },
+        { d: 530, x: 90 }, { d: 530, x: 200 }, { d: 530, x: 310 },
+      ],
+    },
+    ataque: {
+      label: 'Ataque',
+      drift: 0.35,
+      slots: [
+        { d: 170, x: 110 }, { d: 170, x: 200 }, { d: 170, x: 290 },
+        { d: 340, x: 40 }, { d: 340, x: 360 },
+        { d: 420, x: 200 },
+        { d: 520, x: 60 }, { d: 520, x: 340 },
+        { d: 560, x: 150 }, { d: 560, x: 250 },
+      ],
+    },
+    ferrolho: {
+      label: 'Ferrolho',
+      drift: 0.15,
+      slots: [
+        { d: 120, x: 40 }, { d: 120, x: 110 }, { d: 120, x: 180 }, { d: 120, x: 220 }, { d: 120, x: 290 }, { d: 120, x: 360 },
+        { d: 480, x: 100 }, { d: 480, x: 170 }, { d: 480, x: 230 }, { d: 480, x: 300 },
+      ],
+    },
+    lateral: {
+      label: 'Pelas Laterais',
+      drift: 0.3,
+      slots: [
+        { d: 150, x: 50 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 350 },
+        { d: 330, x: 130 }, { d: 330, x: 200 }, { d: 330, x: 270 },
+        { d: 520, x: 50 }, { d: 520, x: 200 }, { d: 520, x: 350 },
+      ],
+    },
+    lancamentos: {
+      label: 'Bola Longa',
+      drift: 0.3,
+      slots: [
+        { d: 150, x: 70 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 330 },
+        { d: 340, x: 110 }, { d: 340, x: 200 }, { d: 340, x: 290 },
+        { d: 530, x: 90 }, { d: 530, x: 200 }, { d: 530, x: 310 },
+      ],
+    },
+  };
+  const TACTIC_KEYS = Object.keys(TACTICS);
+
   // ---------- DOM ----------
   const canvas = document.getElementById('field');
   const ctx = canvas.getContext('2d');
@@ -28,10 +81,14 @@
   const timerEl = document.getElementById('timer');
   const btnPause = document.getElementById('btn-pause');
   const btnSpeed = document.getElementById('btn-speed');
+  const btnTactics = document.getElementById('btn-tactics');
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlay-title');
   const overlaySub = document.getElementById('overlay-sub');
   const overlayRestart = document.getElementById('overlay-restart');
+  const tacticsOverlay = document.getElementById('tactics-overlay');
+  const tacticsList = document.getElementById('tactics-list');
+  const tacticsClose = document.getElementById('tactics-close');
   const joystickZone = document.getElementById('joystick-zone');
   const joystickKnob = document.getElementById('joystick-knob');
   const kickBtn = document.getElementById('kick-btn');
@@ -47,6 +104,8 @@
   let goalPause = 0; // ms remaining while celebrating a goal
   let controlled = null;
   let lastFrame = null;
+  let homeTactic = 'equilibrado';
+  let awayTactic = 'equilibrado';
 
   function makePlayer(team, role, number, x, y) {
     return {
@@ -56,25 +115,41 @@
     };
   }
 
+  function slotToXY(team, slot) {
+    return { x: slot.x, y: team === 'home' ? FIELD_H - slot.d : slot.d };
+  }
+
+  function buildTeam(team, tacticKey) {
+    const tactic = TACTICS[tacticKey];
+    const gkY = team === 'home' ? FIELD_H - 36 : 36;
+    const list = [makePlayer(team, 'GK', 1, 200, gkY)];
+    tactic.slots.forEach((slot, i) => {
+      const { x, y } = slotToXY(team, slot);
+      list.push(makePlayer(team, 'OUT', i + 2, x, y));
+    });
+    return list;
+  }
+
   function resetPositions() {
-    players = [
-      // home (bottom, black/white, attacks upward toward y=0)
-      makePlayer('home', 'GK', 1, 200, 675),
-      makePlayer('home', 'DEF', 2, 130, 560),
-      makePlayer('home', 'DEF', 3, 270, 560),
-      makePlayer('home', 'ATT', 9, 150, 420),
-      makePlayer('home', 'ATT', 10, 250, 420),
-      // away (top, red, attacks downward toward y=FIELD_H)
-      makePlayer('away', 'GK', 1, 200, 36),
-      makePlayer('away', 'DEF', 4, 130, 150),
-      makePlayer('away', 'DEF', 5, 270, 150),
-      makePlayer('away', 'ATT', 7, 150, 290),
-      makePlayer('away', 'ATT', 11, 250, 290),
-    ];
+    players = [...buildTeam('home', homeTactic), ...buildTeam('away', awayTactic)];
     ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0 };
   }
 
+  function applyTactic(team, key) {
+    if (!TACTICS[key]) return;
+    if (team === 'home') homeTactic = key; else awayTactic = key;
+    const tactic = TACTICS[key];
+    const outfield = players.filter(p => p.team === team && p.role !== 'GK');
+    outfield.forEach((p, i) => {
+      const slot = tactic.slots[i];
+      if (!slot) return;
+      const { x, y } = slotToXY(team, slot);
+      p.baseX = x; p.baseY = y;
+    });
+  }
+
   function resetMatch() {
+    awayTactic = TACTIC_KEYS[Math.floor(Math.random() * TACTIC_KEYS.length)];
     resetPositions();
     score = { home: 0, away: 0 };
     timeLeft = MATCH_SECONDS;
@@ -136,6 +211,32 @@
   });
   overlayRestart.addEventListener('click', () => resetMatch());
 
+  let pausedByTactics = false;
+  function renderTacticsList() {
+    tacticsList.innerHTML = '';
+    TACTIC_KEYS.forEach((key) => {
+      const btn = document.createElement('button');
+      btn.className = 'tactic-option' + (key === homeTactic ? ' active' : '');
+      btn.textContent = TACTICS[key].label;
+      btn.addEventListener('click', () => {
+        applyTactic('home', key);
+        closeTacticsMenu();
+      });
+      tacticsList.appendChild(btn);
+    });
+  }
+  function openTacticsMenu() {
+    if (!paused) { paused = true; pausedByTactics = true; btnPause.textContent = '▶'; }
+    renderTacticsList();
+    tacticsOverlay.classList.remove('hidden');
+  }
+  function closeTacticsMenu() {
+    tacticsOverlay.classList.add('hidden');
+    if (pausedByTactics) { paused = false; pausedByTactics = false; btnPause.textContent = '⏸'; }
+  }
+  btnTactics.addEventListener('click', openTacticsMenu);
+  tacticsClose.addEventListener('click', closeTacticsMenu);
+
   function inputVector() {
     let x = joyVec.x, y = joyVec.y;
     if (keys.has('arrowleft') || keys.has('a')) x -= 1;
@@ -177,6 +278,36 @@
     ball.y = Math.max(BALL_R, Math.min(FIELD_H - BALL_R, ball.y));
   }
 
+  function pickPassTarget(p) {
+    const tacticKey = p.team === 'home' ? homeTactic : awayTactic;
+    const mates = teammates(p.team).filter(m => m !== p && m.role !== 'GK');
+    if (!mates.length) return null;
+
+    if (tacticKey === 'lancamentos') {
+      // hoof it long, straight to whoever is furthest forward
+      let target = mates[0];
+      for (const m of mates) {
+        if (p.team === 'home' ? m.y < target.y : m.y > target.y) target = m;
+      }
+      return { target, power: PASS_POWER * 1.35 };
+    }
+    if (tacticKey === 'lateral') {
+      // favor the widest advanced option, hugging the touchline
+      const advanced = mates.filter(m => p.team === 'home' ? m.y < p.y + 20 : m.y > p.y - 20);
+      const pool = advanced.length ? advanced : mates;
+      let target = pool[0];
+      for (const m of pool) {
+        if (Math.abs(m.x - 200) > Math.abs(target.x - 200)) target = m;
+      }
+      return { target, power: PASS_POWER };
+    }
+    let target = mates[0];
+    for (const m of mates) {
+      if (p.team === 'home' ? m.y < target.y : m.y > target.y) target = m;
+    }
+    return { target, power: PASS_POWER };
+  }
+
   function doKick() {
     if (matchOver || goalPause > 0) return;
     if (!ball.owner || ball.owner !== controlled) return;
@@ -186,15 +317,11 @@
     if (nearGoal) {
       const spread = (Math.random() - 0.5) * 40;
       kick(p, 200 + spread, attackingGoalY, SHOOT_POWER);
-    } else {
-      const mates = teammates(p.team).filter(m => m !== p && m.role !== 'GK');
-      let target = mates[0];
-      for (const m of mates) {
-        if (p.team === 'home' ? m.y < target.y : m.y > target.y) target = m;
-      }
-      if (target) kick(p, target.baseX + (target.x - target.baseX), target.y, PASS_POWER);
-      else kick(p, 200, attackingGoalY, SHOOT_POWER);
+      return;
     }
+    const pass = pickPassTarget(p);
+    if (pass) kick(p, pass.target.x, pass.target.y, pass.power);
+    else kick(p, 200, attackingGoalY, SHOOT_POWER);
   }
 
   // ---------- AI / control selection ----------
@@ -232,7 +359,8 @@
         p.vy = (dy / len) * CHASER_SPEED;
         p.facing = { x: dx / len, y: dy / len };
       } else {
-        const tx = p.baseX + (ball.x - 200) * 0.3;
+        const drift = TACTICS[p.team === 'home' ? homeTactic : awayTactic].drift;
+        const tx = p.baseX + (ball.x - 200) * drift;
         const ty = p.baseY + (ball.y - p.baseY) * 0.15;
         const dx = tx - p.x, dy = ty - p.y;
         const len = Math.hypot(dx, dy) || 1;
