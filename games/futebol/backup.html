@@ -31,8 +31,24 @@
       <button class="backup-btn" id="import-btn">Importar</button>
       <div class="import-status" id="import-status"></div>
     </div>
+
+    <div class="backup-section">
+      <h2>☁️ Nuvem</h2>
+      <p class="hint">Salve na nuvem e use o código em outro aparelho — sem precisar de login ou senha. Guarde o código em lugar seguro, quem tiver ele acessa esse save.</p>
+      <button class="backup-btn" id="cloud-save-btn">Salvar na nuvem</button>
+      <div class="import-status" id="cloud-save-status"></div>
+
+      <p class="hint" style="margin-top:14px;">Carregar de outro aparelho:</p>
+      <input type="text" id="cloud-code-input" placeholder="Código de sincronização" style="width:100%;padding:8px;background:#0e1c15;color:#cfeede;border:1px solid #345c48;border-radius:8px;margin-bottom:10px;font-family:monospace;text-transform:uppercase;">
+      <button class="backup-btn secondary" id="cloud-load-btn">Carregar da nuvem</button>
+      <div class="import-status" id="cloud-load-status"></div>
+    </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="cloud.js"></script>
   <script src="backup.js"></script>
 </body>
 </html>

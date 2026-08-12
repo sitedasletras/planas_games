@@ -91,4 +91,49 @@
       importStatusEl.textContent = 'Não foi possível importar: código ou arquivo inválido.';
     }
   });
+
+  // ---------- Nuvem (Firebase) ----------
+  const cloudSaveBtn = document.getElementById('cloud-save-btn');
+  const cloudSaveStatusEl = document.getElementById('cloud-save-status');
+  const cloudCodeInputEl = document.getElementById('cloud-code-input');
+  const cloudLoadBtn = document.getElementById('cloud-load-btn');
+  const cloudLoadStatusEl = document.getElementById('cloud-load-status');
+
+  if (window.WSPCloud) {
+    const existingCode = window.WSPCloud.getSyncCode();
+    if (existingCode) cloudCodeInputEl.value = existingCode;
+
+    cloudSaveBtn.addEventListener('click', async () => {
+      cloudSaveBtn.disabled = true;
+      cloudSaveStatusEl.textContent = 'Salvando na nuvem...';
+      try {
+        const code = await window.WSPCloud.saveToCloud();
+        cloudSaveStatusEl.textContent = 'Salvo! Seu código de sincronização é: ' + code;
+        cloudCodeInputEl.value = code;
+      } catch (e) {
+        cloudSaveStatusEl.textContent = 'Não foi possível salvar na nuvem agora. Tente de novo em instantes.';
+      }
+      cloudSaveBtn.disabled = false;
+    });
+
+    cloudLoadBtn.addEventListener('click', async () => {
+      const code = cloudCodeInputEl.value.trim();
+      if (!code) { cloudLoadStatusEl.textContent = 'Digite um código de sincronização primeiro.'; return; }
+      if (!confirm('Isso vai substituir o progresso atual neste aparelho. Continuar?')) return;
+      cloudLoadBtn.disabled = true;
+      cloudLoadStatusEl.textContent = 'Buscando na nuvem...';
+      try {
+        const applied = await window.WSPCloud.loadFromCloud(code);
+        cloudLoadStatusEl.textContent = 'Carregado com sucesso (' + applied.join(', ') + '). Voltando para o início...';
+        setTimeout(() => { window.location.href = 'index.html'; }, 1200);
+      } catch (e) {
+        cloudLoadStatusEl.textContent = e.message || 'Não foi possível carregar esse código.';
+        cloudLoadBtn.disabled = false;
+      }
+    });
+  } else {
+    cloudSaveBtn.disabled = true;
+    cloudLoadBtn.disabled = true;
+    cloudSaveStatusEl.textContent = 'Nuvem indisponível no momento.';
+  }
 })();
