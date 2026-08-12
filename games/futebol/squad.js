@@ -158,6 +158,16 @@
     return Math.round((base * variance) / 100) * 100;
   }
 
+  const STAGE_RATING_MULT = { promessa: 0.82, ascensao: 0.93, auge: 1.08, experiente: 1.0, declinio: 0.88 };
+  const BUCKET_BASE_RATING = { GK: 58, DEF: 56, MID: 58, ATT: 60 };
+
+  function randomRating(bucket, age) {
+    const stage = careerStageFor(age);
+    const base = BUCKET_BASE_RATING[bucket] * STAGE_RATING_MULT[stage];
+    const variance = (Math.random() - 0.5) * 16;
+    return Math.round(Math.max(35, Math.min(99, base + variance)));
+  }
+
   function releaseCost(player) {
     return Math.round(player.salary * 2.5 / 100) * 100;
   }
@@ -204,6 +214,7 @@
       nationality: weightedPickObj(NATIONALITIES).key,
       avatar: generateAvatar(age),
       salary: randomSalary(bucket, age),
+      rating: randomRating(bucket, age),
     };
   }
 
@@ -293,6 +304,7 @@
         parsed.players.forEach((p) => {
           if (p.salary == null) { p.salary = randomSalary(p.bucket, p.age); changed = true; }
           if (!p.id) { p.id = 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7); changed = true; }
+          if (p.rating == null) { p.rating = randomRating(p.bucket, p.age); changed = true; }
         });
         if (changed) saveSquad(parsed);
         return parsed;

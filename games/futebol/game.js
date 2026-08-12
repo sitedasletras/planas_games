@@ -54,6 +54,13 @@
   const FATIGUE_HALFTIME_RECOVERY = 0.18;
   const INJURY_CHANCE_HARD_FOUL = 0.12;
 
+  // ---------- Qualidade do jogador (rating 35-99) ----------
+  const RATING_SPEED_BASE = 0.85;
+  const RATING_SPEED_SPAN = 0.3; // multiplicador de velocidade vai de 0.85 (rating baixo) a 1.15 (rating alto)
+  function ratingSpeedMult(rating) {
+    return RATING_SPEED_BASE + ((rating || 60) / 100) * RATING_SPEED_SPAN;
+  }
+
   const INSTRUCTIONS = [
     { key: 'zona', label: 'Zona' },
     { key: 'individual', label: 'Marc.' },
@@ -287,6 +294,7 @@
       squadId: (extra && extra.squadId) || null,
       yellowCards: 0, redCard: false, staggerMs: 0,
       fatigue: 0, fatigueNarrated: false,
+      rating: (extra && extra.rating) || 60,
     };
   }
 
@@ -319,6 +327,12 @@
     return { gk, outfield, bench };
   }
 
+  function scaledAwayRating(candidateRating) {
+    if (!seasonOpponent || seasonOpponent.strength == null) return candidateRating;
+    const base = 35 + seasonOpponent.strength * 60;
+    return Math.round(Math.max(35, Math.min(99, candidateRating * 0.4 + base * 0.6)));
+  }
+
   function buildTeam(team, tacticKey) {
     const tactic = TACTICS[tacticKey];
     const gkY = team === 'home' ? FIELD_H - 36 : 36;
@@ -326,12 +340,12 @@
     if (team === 'home' && homeSquad) {
       const { gk, outfield, bench } = selectStarters(homeSquad, tacticKey);
       homeBench = bench;
-      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits, squadId: gk.id } : null;
+      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits, squadId: gk.id, rating: gk.rating } : null;
       const list = [makePlayer('home', 'GK', gk ? gk.number : 1, 200, gkY, gkExtra)];
       tactic.slots.forEach((slot, i) => {
         const { x, y } = slotToXY('home', slot);
         const entry = outfield[i];
-        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id } : null;
+        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id, rating: entry.player.rating } : null;
         list.push(makePlayer('home', 'OUT', entry ? entry.player.number : i + 2, x, y, extra));
       });
       return list;
@@ -344,13 +358,14 @@
       const outfieldCandidates = rest.slice(0, 10);
       awayBench = rest.slice(10, 15).map((p, i) => ({
         id: 'away_bench_' + i, number: 12 + i, name: p.name, foot: p.foot, traits: p.traits, bucket: p.bucket,
+        rating: scaledAwayRating(p.rating),
       }));
-      const gkExtra = gkCandidate ? { name: gkCandidate.name, foot: gkCandidate.foot, traits: gkCandidate.traits } : null;
+      const gkExtra = gkCandidate ? { name: gkCandidate.name, foot: gkCandidate.foot, traits: gkCandidate.traits, rating: scaledAwayRating(gkCandidate.rating) } : null;
       const list = [makePlayer('away', 'GK', 1, 200, gkY, gkExtra)];
       tactic.slots.forEach((slot, i) => {
         const { x, y } = slotToXY('away', slot);
         const c = outfieldCandidates[i];
-        const extra = c ? { name: c.name, foot: c.foot, traits: c.traits } : null;
+        const extra = c ? { name: c.name, foot: c.foot, traits: c.traits, rating: scaledAwayRating(c.rating) } : null;
         list.push(makePlayer('away', 'OUT', i + 2, x, y, extra));
       });
       return list;
@@ -740,7 +755,8 @@
   function attemptShoot(p, bonus) {
     lastShooter = p;
     const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
-    const spread = (Math.random() - 0.5) * (bonus ? 14 : 32) + footBias(p.foot);
+    const accuracyMult = 1.3 - ((p.rating || 60) / 100) * 0.6;
+    const spread = (Math.random() - 0.5) * (bonus ? 14 : 32) * accuracyMult + footBias(p.foot);
     kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * (bonus ? 1.15 : 1));
   }
 
@@ -848,7 +864,10 @@
         p.vy = (dy / len) * speed;
       }
     }
-    if (fatigueMult !== 1) { p.vx *= fatigueMult; p.vy *= fatigueMult; }
+    if (p.role !== 'GK') {
+      const combinedMult = fatigueMult * ratingSpeedMult(p.rating);
+      p.vx *= combinedMult; p.vy *= combinedMult;
+    }
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     clampPlayer(p);
@@ -983,7 +1002,7 @@
   function substitutePlayer(outPlayer, inData) {
     const idx = players.indexOf(outPlayer);
     if (idx < 0) return null;
-    const extra = { name: inData.name, foot: inData.foot, traits: inData.traits || [], squadId: inData.id || null };
+    const extra = { name: inData.name, foot: inData.foot, traits: inData.traits || [], squadId: inData.id || null, rating: inData.rating };
     const newPlayer = makePlayer(outPlayer.team, outPlayer.role, inData.number, outPlayer.x, outPlayer.y, extra);
     newPlayer.baseX = outPlayer.baseX;
     newPlayer.baseY = outPlayer.baseY;
