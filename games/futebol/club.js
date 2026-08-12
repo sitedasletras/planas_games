@@ -6,6 +6,18 @@
   const MAX_LEVEL = 5;
   const BASE_COST = 8000;
   const OTHER_EXPENSES_PER_MATCH = 15000; // direitos de imagem + viagem + despesas gerais, somados
+  const PREMIUM_COST = 50000;
+
+  const CREST_SHAPES = ['circulo', 'escudo', 'diamante'];
+  const CREST_EMBLEMS = ['⚽', '⭐', '🦁', '🦅', '🐺', '⚔️', '🔱', '👑', '🐎', '🔥', '⚡', '🛡️'];
+
+  function defaultCustomization() {
+    return {
+      premiumUnlocked: false,
+      colors: { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a' },
+      crest: { shape: 'escudo', emblem: '⚽' },
+    };
+  }
 
   const DEPARTMENTS = {
     diretor_tecnico: { label: 'Diretor Técnico', icon: '🎯', desc: 'Planeja o futebol do clube a longo prazo' },
@@ -53,7 +65,7 @@
     Object.keys(DEPARTMENTS).forEach((k) => { departments[k] = 0; });
     const sponsors = {};
     Object.keys(SPONSOR_SLOTS).forEach((k) => { sponsors[k] = { current: null, proposal: randomProposal(k) }; });
-    return { budget: STARTING_BUDGET, departments, sponsors };
+    return Object.assign({ budget: STARTING_BUDGET, departments, sponsors }, defaultCustomization());
   }
 
   function loadClub() {
@@ -69,6 +81,10 @@
         Object.keys(SPONSOR_SLOTS).forEach((k) => {
           if (!parsed.sponsors[k]) parsed.sponsors[k] = { current: null, proposal: randomProposal(k) };
         });
+        const defaults = defaultCustomization();
+        if (parsed.premiumUnlocked == null) parsed.premiumUnlocked = defaults.premiumUnlocked;
+        if (!parsed.colors) parsed.colors = defaults.colors;
+        if (!parsed.crest) parsed.crest = defaults.crest;
         return parsed;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -125,9 +141,26 @@
     return { payroll, other: OTHER_EXPENSES_PER_MATCH, total };
   }
 
+  function unlockPremium(club) {
+    if (club.premiumUnlocked) return { ok: false, reason: 'already' };
+    if (club.budget < PREMIUM_COST) return { ok: false, reason: 'money', cost: PREMIUM_COST };
+    club.budget -= PREMIUM_COST;
+    club.premiumUnlocked = true;
+    saveClub(club);
+    return { ok: true, cost: PREMIUM_COST };
+  }
+
+  function saveCustomization(club, { colors, crest }) {
+    if (colors) club.colors = Object.assign({}, club.colors, colors);
+    if (crest) club.crest = Object.assign({}, club.crest, crest);
+    saveClub(club);
+  }
+
   window.WSPClub = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
+    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS,
     upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses,
+    unlockPremium, saveCustomization,
   };
 })();

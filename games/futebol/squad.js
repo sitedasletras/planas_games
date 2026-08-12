@@ -254,6 +254,36 @@
     return removed;
   }
 
+  function renamePlayer(squad, playerId, newName) {
+    const name = (newName || '').trim();
+    if (!name) return { ok: false, reason: 'empty' };
+    const player = squad.players.find((p) => p.id === playerId);
+    if (!player) return { ok: false, reason: 'notfound' };
+    player.name = name.slice(0, 40);
+    saveSquad(squad);
+    return { ok: true };
+  }
+
+  function renumberPlayer(squad, playerId, newNumber) {
+    const n = parseInt(newNumber, 10);
+    if (!Number.isInteger(n) || n < 1 || n > 99) return { ok: false, reason: 'invalid' };
+    const player = squad.players.find((p) => p.id === playerId);
+    if (!player) return { ok: false, reason: 'notfound' };
+    const taken = squad.players.some((p) => p.id !== playerId && p.number === n);
+    if (taken) return { ok: false, reason: 'taken' };
+    player.number = n;
+    saveSquad(squad);
+    return { ok: true };
+  }
+
+  function renameClub(squad, newName) {
+    const name = (newName || '').trim();
+    if (!name) return { ok: false, reason: 'empty' };
+    squad.clubName = name.slice(0, 40);
+    saveSquad(squad);
+    return { ok: true };
+  }
+
   function loadSquad() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -281,5 +311,6 @@
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
     careerStageFor, generateSquad, loadSquad, saveSquad,
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
+    renamePlayer, renumberPlayer, renameClub,
   };
 })();

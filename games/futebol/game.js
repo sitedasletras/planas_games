@@ -896,8 +896,18 @@
     ctx.stroke();
   }
 
+  const homeColors = (homeClub && homeClub.colors) || { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a' };
+  (() => {
+    const tag = document.getElementById('team-tag-home');
+    if (tag && homeClub) {
+      tag.style.background = homeColors.primary;
+      tag.style.borderColor = homeColors.detail;
+      tag.textContent = homeClub.crest.emblem;
+    }
+  })();
+
   function drawPlayer(p) {
-    let fill = p.team === 'home' ? '#1c1c1c' : '#b02c2c';
+    let fill = p.team === 'home' ? homeColors.primary : '#b02c2c';
     if (p.role === 'GK') fill = p.team === 'home' ? '#7a3fa0' : '#a05a2c';
 
     if (p === controlled) {
@@ -911,7 +921,7 @@
     ctx.arc(p.x, p.y, PLAYER_R, 0, Math.PI * 2);
     ctx.fillStyle = fill;
     ctx.fill();
-    ctx.strokeStyle = p.team === 'home' ? '#fff' : '#fff';
+    ctx.strokeStyle = p.team === 'home' && p.role !== 'GK' ? homeColors.secondary : '#fff';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 

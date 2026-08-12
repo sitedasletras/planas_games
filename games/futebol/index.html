@@ -14,7 +14,7 @@
     </div>
 
     <div class="club-card">
-      <div class="club-badge">⚫⚪</div>
+      <div class="club-badge" id="club-badge">⚫⚪</div>
       <div class="club-name" id="club-name">Bandeirantes</div>
     </div>
 
@@ -35,13 +35,25 @@
         <span class="action-icon">🏟️</span>
         <span>Clube</span>
       </a>
+      <a class="action-btn" href="personalizacao.html">
+        <span class="action-icon">🎨</span>
+        <span>Personalização</span>
+      </a>
     </div>
   </div>
 
   <script src="squad.js"></script>
+  <script src="club.js"></script>
   <script>
     if (window.WSPSquad) {
       document.getElementById('club-name').textContent = window.WSPSquad.loadSquad().clubName;
+    }
+    if (window.WSPClub) {
+      const club = window.WSPClub.loadClub();
+      const badge = document.getElementById('club-badge');
+      badge.textContent = club.crest.emblem;
+      badge.style.background = club.colors.primary;
+      badge.style.borderColor = club.colors.detail;
     }
   </script>
 </body>
