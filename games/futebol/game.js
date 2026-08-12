@@ -217,6 +217,9 @@
   const breakTacticsBtn = document.getElementById('break-tactics-btn');
   const breakInstructionsBtn = document.getElementById('break-instructions-btn');
   const breakSubsBtn = document.getElementById('break-subs-btn');
+  const ratingsSectionEl = document.getElementById('ratings-section');
+  const ratingsTeamEl = document.getElementById('ratings-team');
+  const ratingsListEl = document.getElementById('ratings-list');
   const tacticsOverlay = document.getElementById('tactics-overlay');
   const tacticsList = document.getElementById('tactics-list');
   const tacticsClose = document.getElementById('tactics-close');
@@ -271,7 +274,8 @@
   // narração
   let narrationLog = [];
   let lastShooter = null;
-  let pendingPenalty = null; // { team } enquanto uma cobrança de pênalti está em andamento
+  let pendingPenalty = null; // { team, taker, takerName } enquanto uma cobrança de pênalti está em andamento
+  let matchParticipants = []; // todo jogador que entrou em campo na partida, pra nota pós-jogo
 
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
@@ -288,7 +292,7 @@
   }
 
   function makePlayer(team, role, number, x, y, extra) {
-    return {
+    const p = {
       team, role, number, x, y, vx: 0, vy: 0,
       facing: { x: 0, y: team === 'home' ? -1 : 1 },
       baseX: x, baseY: y,
@@ -301,7 +305,10 @@
       yellowCards: 0, redCard: false, staggerMs: 0,
       fatigue: 0, fatigueNarrated: false,
       rating: (extra && extra.rating) || 60,
+      matchGoals: 0,
     };
+    matchParticipants.push(p);
+    return p;
   }
 
   function slotToXY(team, slot) {
@@ -435,6 +442,7 @@
   }
 
   function resetMatch() {
+    matchParticipants = [];
     awayTactic = TACTIC_KEYS[Math.floor(Math.random() * TACTIC_KEYS.length)];
     resetPositions(false);
     score = { home: 0, away: 0 };
@@ -986,6 +994,7 @@
     updateScoreUI();
     if (!viaPenalty) {
       const scorer = lastShooter && lastShooter.team === scoringTeam ? displayName(lastShooter) : null;
+      if (lastShooter && lastShooter.team === scoringTeam) lastShooter.matchGoals++;
       narrate((scorer ? 'GOL de ' + scorer + '! ' : 'GOL! ') + teamLabel(scoringTeam) + ' marca. ' + score.home + ' x ' + score.away + '.');
     }
     lastShooter = null;
@@ -1218,17 +1227,18 @@
     taker.vx = 0; taker.vy = 0;
     taker.facing = { x: 0, y: team === 'home' ? -1 : 1 };
 
-    pendingPenalty = { team, takerName: displayName(taker) };
+    pendingPenalty = { team, taker, takerName: displayName(taker) };
     stopPause = PENALTY_STOPPAGE_MS;
     showStoppage('PÊNALTI!', teamLabel(team) + ' vai cobrar — ' + displayName(taker));
   }
 
   function resolvePenalty() {
-    const { team, takerName } = pendingPenalty;
+    const { team, taker, takerName } = pendingPenalty;
     pendingPenalty = null;
     const scored = Math.random() < PENALTY_GOAL_CHANCE;
     if (scored) {
       narrate('GOL DE PÊNALTI! ' + takerName + ' não desperdiça! ' + teamLabel(team) + ' marca.');
+      taker.matchGoals++;
       onGoal(team, true);
       return;
     }
@@ -1274,9 +1284,61 @@
     overlaySub.textContent = sub || '';
     overlayRestart.classList.add('hidden');
     breakActionsEl.classList.add('hidden');
+    ratingsSectionEl.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
   function hideOverlay() { overlay.classList.add('hidden'); }
+  function computeTeamRating(golsFor, golsAgainst) {
+    const diff = golsFor - golsAgainst;
+    return Math.max(2, Math.min(10, 6 + diff * 0.6));
+  }
+  function computePlayerRating(p) {
+    let rating = 6 + (p.matchGoals || 0) * 1.2;
+    if (p.redCard) rating -= 1.5;
+    else if ((p.yellowCards || 0) >= 1) rating -= 0.4;
+    rating += (Math.random() - 0.5) * 0.6;
+    return Math.max(3, Math.min(10, rating));
+  }
+  function ratingTier(rating) {
+    if (rating >= 7.5) return 'high';
+    if (rating >= 5.5) return 'mid';
+    return 'low';
+  }
+  function renderMatchRatings() {
+    const teamRating = computeTeamRating(score.home, score.away);
+    ratingsTeamEl.innerHTML = '';
+    const teamLabelSpan = document.createElement('span');
+    teamLabelSpan.textContent = 'Nota do time';
+    ratingsTeamEl.appendChild(teamLabelSpan);
+    const teamChip = document.createElement('span');
+    teamChip.className = 'rating-chip ' + ratingTier(teamRating);
+    teamChip.textContent = teamRating.toFixed(1);
+    ratingsTeamEl.appendChild(teamChip);
+
+    ratingsListEl.innerHTML = '';
+    matchParticipants.filter(p => p.team === 'home').forEach((p) => {
+      const rating = computePlayerRating(p);
+      const row = document.createElement('div');
+      row.className = 'rating-row';
+      const num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = '#' + p.number;
+      row.appendChild(num);
+      const nm = document.createElement('span');
+      nm.className = 'nm';
+      let suffix = '';
+      if (p.matchGoals) suffix += ' ' + '⚽'.repeat(Math.min(p.matchGoals, 3));
+      if (p.redCard) suffix += ' 🟥';
+      else if (p.yellowCards) suffix += ' 🟨';
+      nm.textContent = displayName(p) + suffix;
+      row.appendChild(nm);
+      const chip = document.createElement('span');
+      chip.className = 'rating-chip ' + ratingTier(rating);
+      chip.textContent = rating.toFixed(1);
+      row.appendChild(chip);
+      ratingsListEl.appendChild(row);
+    });
+  }
   function showFullTime() {
     overlayTitle.textContent = 'FIM DE JOGO';
     let sub = `${teamLabel('home')} ${score.home} - ${score.away} ${teamLabel('away')}`;
@@ -1291,6 +1353,8 @@
       overlayRestart.textContent = 'Voltar à Temporada';
     }
     overlaySub.textContent = sub;
+    renderMatchRatings();
+    ratingsSectionEl.classList.remove('hidden');
     overlayRestart.classList.remove('hidden');
     breakActionsEl.classList.add('hidden');
     overlay.classList.remove('hidden');
@@ -1302,6 +1366,7 @@
     overlayTitle.textContent = breakKind === 'halftime' ? 'INTERVALO' : 'PARADA TÉCNICA';
     overlayRestart.classList.add('hidden');
     breakActionsEl.classList.remove('hidden');
+    ratingsSectionEl.classList.add('hidden');
     overlay.classList.remove('hidden');
     updateBreakSub();
   }

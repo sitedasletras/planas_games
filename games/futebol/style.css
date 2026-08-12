@@ -236,6 +236,8 @@ canvas {
   padding: 28px 36px;
   text-align: center;
   color: white;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .overlay-title {
@@ -286,6 +288,71 @@ canvas {
   font-size: 0.85rem;
   cursor: pointer;
 }
+
+.ratings-section {
+  min-width: 260px;
+  margin: 10px 0 14px;
+  text-align: left;
+}
+
+.ratings-section.hidden {
+  display: none;
+}
+
+.ratings-team {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e3a2a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.ratings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0e1c15;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+}
+
+.rating-row .num {
+  font-weight: bold;
+  width: 18px;
+  flex-shrink: 0;
+  color: #9fd8b8;
+}
+
+.rating-row .nm {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rating-chip {
+  font-size: 0.68rem;
+  font-weight: bold;
+  padding: 1px 7px;
+  border-radius: 8px;
+  color: #0e1c15;
+  flex-shrink: 0;
+}
+
+.rating-chip.high { background: #6fcf7d; }
+.rating-chip.mid { background: #ffd54a; }
+.rating-chip.low { background: #e57373; }
 
 .tactics-list {
   display: flex;
