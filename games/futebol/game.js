@@ -40,6 +40,7 @@
   const RED_CHANCE_HARD = 0.08;
   const STAGGER_MS = 900;          // hard foul knocks the fouled player down briefly
   const CLOSE_FK_RANGE = 150, LONG_FK_RANGE = 280;
+  const WALL_MIN_DIST = 55; // minimum distance defenders are pushed back on a free kick
   const STOPPAGE_MS = 1100;
 
   const INSTRUCTIONS = [
@@ -768,6 +769,23 @@
     ball.owner = taker;
     ball.freeKickBonus = distToGoal < LONG_FK_RANGE &&
       (taker.traits.includes('batedor_perto') || taker.traits.includes('batedor_longe'));
+
+    pushBackDefenders(team, spot);
+  }
+
+  function pushBackDefenders(attackingTeam, spot) {
+    const defendingTeam = attackingTeam === 'home' ? 'away' : 'home';
+    const defenders = players.filter(p => p.team === defendingTeam && p.role !== 'GK');
+    defenders.forEach((p) => {
+      const dx = p.x - spot.x, dy = p.y - spot.y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (d < WALL_MIN_DIST) {
+        const scale = WALL_MIN_DIST / d;
+        p.x = Math.max(CLAMP_X_MIN, Math.min(CLAMP_X_MAX, spot.x + dx * scale));
+        p.y = Math.max(CLAMP_Y_MIN, Math.min(CLAMP_Y_MAX, spot.y + dy * scale));
+        p.vx = 0; p.vy = 0;
+      }
+    });
   }
 
   function commitFoul(defender, attackerWithBall) {

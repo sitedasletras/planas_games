@@ -1,0 +1,58 @@
+.formation-badge {
+  margin: 12px 14px 0;
+  text-align: center;
+  background: #16281f;
+  border: 1px solid #345c48;
+  color: #ffd54a;
+  font-weight: bold;
+  font-size: 0.85rem;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.player-card.bench {
+  opacity: 0.55;
+}
+
+.starter-tag {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: bold;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.starter-tag.starting {
+  background: #2f9e44;
+  color: white;
+}
+
+.starter-tag.bench {
+  background: #333;
+  color: #999;
+}
+
+.lineup-footer {
+  padding: 16px 14px 28px;
+}
+
+.lineup-footer .action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+  background: linear-gradient(160deg, #2f8f4e, #14401f);
+  border: 2px solid #ffd54a;
+}
+
+.lineup-footer .action-btn:active {
+  transform: scale(0.97);
+}
