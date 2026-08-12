@@ -27,6 +27,19 @@
     return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
   }
 
+  function ratingTier(rating) {
+    if (rating >= 75) return 'high';
+    if (rating >= 55) return 'mid';
+    return 'low';
+  }
+
+  function ratingChip(rating) {
+    const chip = document.createElement('span');
+    chip.className = 'rating-chip ' + ratingTier(rating);
+    chip.textContent = rating;
+    return chip;
+  }
+
   function hairShape(style, color) {
     if (style === 'curto') return `<path d="M2 17 A18 17 0 0 1 38 17 L38 9 A18 13 0 0 0 2 9 Z" fill="${color}"/>`;
     if (style === 'moicano') return `<rect x="16" y="0" width="8" height="15" rx="3" fill="${color}"/>`;
@@ -69,11 +82,15 @@
 
       const info = document.createElement('div');
       info.className = 'player-info';
+      const nameRow = document.createElement('div');
+      nameRow.className = 'name-row';
       const name = document.createElement('div');
       name.className = 'player-name';
       const nat = NAT_BY_KEY[c.nationality];
       name.textContent = c.name + ' ' + (nat ? nat.flag : '');
-      info.appendChild(name);
+      nameRow.appendChild(name);
+      nameRow.appendChild(ratingChip(c.rating));
+      info.appendChild(nameRow);
       const pos = document.createElement('div');
       pos.className = 'player-position';
       pos.textContent = POSITIONS[c.position].label + ' · ' + c.age + ' anos';
@@ -130,11 +147,15 @@
         const info = document.createElement('div');
         info.className = 'player-info';
 
+        const nameRow = document.createElement('div');
+        nameRow.className = 'name-row';
         const name = document.createElement('div');
         name.className = 'player-name';
         const nat = NAT_BY_KEY[p.nationality];
         name.textContent = p.name + ' ' + (nat ? nat.flag : '');
-        info.appendChild(name);
+        nameRow.appendChild(name);
+        nameRow.appendChild(ratingChip(p.rating));
+        info.appendChild(nameRow);
 
         const stageKey = careerStageFor(p.age);
         const pos = document.createElement('div');

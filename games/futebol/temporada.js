@@ -144,6 +144,15 @@
         S.finishLeagueSeason(state);
         const tierChanged = state.tierIndex !== oldTierIndex;
         const seasonEnd = window.WSPClub.payEndOfSeason(club, squad);
+
+        const trainingBonus = Math.min(0.5, ((club.departments.musculacao || 0) + (club.departments.preparador_fisico || 0)) * 0.05);
+        const ageChanges = window.WSPSquad.advanceSeason(squad, trainingBonus);
+        const evolutions = ageChanges.filter((c) => c.type === 'evolucao');
+        const declines = ageChanges.filter((c) => c.type === 'declinio');
+        let agingText = '\nO elenco envelheceu mais uma temporada.';
+        if (evolutions.length) agingText += ` ${evolutions.length} jovem(ns) evoluiu(íram) com o treino.`;
+        if (declines.length) agingText += ` ${declines.length} veterano(s) caiu(íram) de rendimento.`;
+
         showOutcome(
           `Temporada encerrada: ${ordinalPt(outcome.userPos)} lugar no ${tier.label}.\n` +
           (outcome.userPromoted && tierChanged ? '⬆️ Promovido para ' + S.TIERS[state.tierIndex].label + '!'
@@ -151,7 +160,8 @@
             : outcome.userRelegated ? 'Já está na divisão mais baixa — permanece no mesmo nível.'
             : outcome.userPromoted ? 'Já está no topo da pirâmide — permanece no mesmo nível.'
             : 'Permanece no mesmo nível.') +
-          `\nFérias + 13º salário do elenco: -${formatMoney(seasonEnd.total)} (caixa: ${formatMoney(club.budget)})`
+          `\nFérias + 13º salário do elenco: -${formatMoney(seasonEnd.total)} (caixa: ${formatMoney(club.budget)})` +
+          agingText
         );
         ensureCompetitions();
         render();

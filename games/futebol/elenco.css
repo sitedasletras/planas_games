@@ -172,6 +172,25 @@ html, body {
 .badge.foot { color: #ffd54a; }
 .badge.trait { color: #9fd8b8; }
 
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rating-chip {
+  font-size: 0.62rem;
+  font-weight: bold;
+  padding: 1px 6px;
+  border-radius: 8px;
+  color: #0e1c15;
+  flex-shrink: 0;
+}
+
+.rating-chip.high { background: #6fcf7d; }
+.rating-chip.mid { background: #ffd54a; }
+.rating-chip.low { background: #b0b0b0; }
+
 .reroll-btn {
   background: #0e1c15;
   color: #ffd54a;

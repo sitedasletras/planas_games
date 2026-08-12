@@ -319,10 +319,36 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(squad)); } catch (e) { /* storage unavailable */ }
   }
 
+  function advanceSeason(squad, trainingBonus) {
+    const bonus = trainingBonus || 0;
+    const changes = [];
+    squad.players.forEach((p) => {
+      const oldStage = careerStageFor(p.age);
+      p.age += 1;
+      const newStage = careerStageFor(p.age);
+
+      if ((oldStage === 'promessa' || oldStage === 'ascensao') && bonus > 0 && Math.random() < bonus) {
+        const bump = 1 + Math.floor(Math.random() * 3);
+        p.rating = Math.min(99, (p.rating || 60) + bump);
+        changes.push({ id: p.id, name: p.name, type: 'evolucao', rating: p.rating, bump });
+      } else if (newStage === 'declinio' && Math.random() < 0.35) {
+        const drop = 1 + Math.floor(Math.random() * 3);
+        p.rating = Math.max(35, (p.rating || 60) - drop);
+        changes.push({ id: p.id, name: p.name, type: 'declinio', rating: p.rating, drop });
+      }
+
+      if (oldStage !== newStage) {
+        changes.push({ id: p.id, name: p.name, type: 'fase', from: oldStage, to: newStage });
+      }
+    });
+    saveSquad(squad);
+    return changes;
+  }
+
   window.WSPSquad = {
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
     careerStageFor, generateSquad, loadSquad, saveSquad,
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
-    renamePlayer, renumberPlayer, renameClub,
+    renamePlayer, renumberPlayer, renameClub, advanceSeason,
   };
 })();
