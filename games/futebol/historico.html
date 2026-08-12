@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Histórico</title>
+<link rel="stylesheet" href="temporada.css">
+</head>
+<body>
+  <div class="temporada-wrap">
+    <div class="temporada-topbar">
+      <a class="back-btn" href="index.html">←</a>
+      <h1>Histórico</h1>
+    </div>
+
+    <div class="section-title">Troféus</div>
+    <div class="trophy-row" id="trophy-row"></div>
+
+    <div class="section-title">Retrospecto geral</div>
+    <div class="comp-card">
+      <div class="wdl-bar" id="wdl-bar"></div>
+      <div class="wdl-labels">
+        <span><b id="wins-val">0</b> Vitórias</span>
+        <span><b id="draws-val">0</b> Empates</span>
+        <span><b id="losses-val">0</b> Derrotas</span>
+      </div>
+    </div>
+
+    <div class="section-title">Recordes</div>
+    <div class="record-list" id="record-list"></div>
+  </div>
+
+  <script src="squad.js"></script>
+  <script src="club.js"></script>
+  <script src="season.js"></script>
+  <script src="historico.js"></script>
+</body>
+</html>

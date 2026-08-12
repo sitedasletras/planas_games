@@ -339,3 +339,93 @@ table.standings td.pts {
 .confronto-actions {
   margin: 18px 14px 0;
 }
+
+.trophy-row {
+  display: flex;
+  gap: 10px;
+  margin: 0 14px;
+}
+
+.trophy-item {
+  flex: 1;
+  background: #16281f;
+  border-radius: 12px;
+  padding: 14px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.trophy-icon {
+  font-size: 1.6rem;
+}
+
+.trophy-count {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #ffd54a;
+}
+
+.trophy-label {
+  font-size: 0.7rem;
+  color: #9fd8b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wdl-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0e1c15;
+}
+
+.wdl-seg.win { background: #2f9e44; }
+.wdl-seg.draw { background: #a68a2a; }
+.wdl-seg.loss { background: #b02c2c; }
+
+.wdl-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: #cfeede;
+}
+
+.wdl-labels b {
+  color: white;
+  font-size: 0.85rem;
+}
+
+.record-list {
+  margin: 0 14px;
+  background: #16281f;
+  border-radius: 12px;
+  padding: 4px 12px;
+}
+
+.record-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #223a2e;
+  font-size: 0.8rem;
+}
+
+.record-row:last-child {
+  border-bottom: none;
+}
+
+.record-label {
+  color: #9fd8b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.record-value {
+  font-weight: bold;
+  text-align: right;
+}

@@ -193,6 +193,13 @@
       }
       m.golsHome = golsHome; m.golsAway = golsAway; m.played = true;
       applyResult(league, m.home, m.away, golsHome, golsAway);
+      if (m.home === 'user' || m.away === 'user') {
+        const isHome = m.home === 'user';
+        const golsFor = isHome ? golsHome : golsAway;
+        const golsAgainst = isHome ? golsAway : golsHome;
+        const opponent = teamById(league, isHome ? m.away : m.home);
+        recordUserMatch(state, golsFor, golsAgainst, opponent ? opponent.name : '???', TIERS[state.tierIndex].label);
+      }
     });
     league.round++;
     return { ok: true, round };
@@ -292,7 +299,7 @@
 
   function groupIsOver(g) { return g.round >= g.fixtures.length; }
 
-  function playGroupRound(copa, groupIndex, userResult) {
+  function playGroupRound(copa, groupIndex, userResult, state) {
     const g = copa.groups[groupIndex];
     if (groupIsOver(g)) return { ok: false };
     const round = g.fixtures[g.round];
@@ -313,6 +320,13 @@
       }
       m.golsHome = golsHome; m.golsAway = golsAway; m.played = true;
       applyResult({ standings: g.standings }, m.home, m.away, golsHome, golsAway);
+      if ((m.home === 'user' || m.away === 'user') && state) {
+        const isHome = m.home === 'user';
+        const golsFor = isHome ? golsHome : golsAway;
+        const golsAgainst = isHome ? golsAway : golsHome;
+        const opponent = copaTeamById(copa, isHome ? m.away : m.home);
+        recordUserMatch(state, golsFor, golsAgainst, opponent ? opponent.name : '???', COPA_TIERS[state.copaTierIndex].label);
+      }
     });
     g.round++;
     return { ok: true };
@@ -327,11 +341,11 @@
 
   function allGroupsOver(copa) { return copa.groups.every(groupIsOver); }
 
-  function playAllGroupsRound(copa, userResult) {
+  function playAllGroupsRound(copa, userResult, state) {
     copa.groups.forEach((g, i) => {
       if (groupIsOver(g)) return;
       const isUserGroup = g.members.some((m) => m.id === 'user');
-      playGroupRound(copa, i, isUserGroup ? userResult : null);
+      playGroupRound(copa, i, isUserGroup ? userResult : null, state);
     });
   }
 
@@ -372,7 +386,7 @@
       && g.members.some((m) => m.id === teamB.id));
   }
 
-  function playPlayoff(copa, userResult) {
+  function playPlayoff(copa, userResult, state) {
     copa.playoff.pairs.forEach((p) => {
       if (p.played) return;
       let golsA, golsB;
@@ -393,6 +407,13 @@
       p.golsA = golsA; p.golsB = golsB; p.played = true;
       p.winner = golsA > golsB ? p.a : p.b;
       if ((p.a === 'user' || p.b === 'user') && p.winner !== 'user') copa.userEliminated = true;
+      if ((p.a === 'user' || p.b === 'user') && state) {
+        const isA = p.a === 'user';
+        const golsFor = isA ? golsA : golsB;
+        const golsAgainst = isA ? golsB : golsA;
+        const opponent = copaTeamById(copa, isA ? p.b : p.a);
+        recordUserMatch(state, golsFor, golsAgainst, opponent ? opponent.name : '???', COPA_TIERS[state.copaTierIndex].label);
+      }
     });
     if (copa.playoff.pairs.every((p) => p.played)) {
       const winners = copa.playoff.pairs.map((p) => p.winner);
@@ -410,7 +431,7 @@
     return matches;
   }
 
-  function playKnockoutStage(copa, stageKey, userResult) {
+  function playKnockoutStage(copa, stageKey, userResult, state) {
     const stage = copa[stageKey];
     stage.matches.forEach((m) => {
       if (m.played) return;
@@ -432,6 +453,13 @@
       m.golsHome = golsHome; m.golsAway = golsAway; m.played = true;
       m.winner = golsHome > golsAway ? m.home : m.away;
       if ((m.home === 'user' || m.away === 'user') && m.winner !== 'user') copa.userEliminated = true;
+      if ((m.home === 'user' || m.away === 'user') && state) {
+        const isHome = m.home === 'user';
+        const golsFor = isHome ? golsHome : golsAway;
+        const golsAgainst = isHome ? golsAway : golsHome;
+        const opponent = copaTeamById(copa, isHome ? m.away : m.home);
+        recordUserMatch(state, golsFor, golsAgainst, opponent ? opponent.name : '???', COPA_TIERS[state.copaTierIndex].label);
+      }
     });
     if (!stage.matches.every((m) => m.played)) return;
 
@@ -474,6 +502,34 @@
     return !copa.userEliminated;
   }
 
+  // ---------- Estatísticas de carreira do clube ----------
+  function freshCareerStats() {
+    return {
+      wins: 0, draws: 0, losses: 0,
+      goalsFor: 0, goalsAgainst: 0,
+      matchesPlayed: 0,
+      biggestWin: null, // { golsFor, golsAgainst, opponent, competition }
+      trophiesLiga: 0, trophiesCopa: 0,
+    };
+  }
+
+  function recordUserMatch(state, golsFor, golsAgainst, opponentName, competitionLabel) {
+    if (!state) return;
+    if (!state.careerStats) state.careerStats = freshCareerStats();
+    const cs = state.careerStats;
+    cs.matchesPlayed++;
+    cs.goalsFor += golsFor;
+    cs.goalsAgainst += golsAgainst;
+    if (golsFor > golsAgainst) cs.wins++;
+    else if (golsFor < golsAgainst) cs.losses++;
+    else cs.draws++;
+    if (golsFor > golsAgainst) {
+      const diff = golsFor - golsAgainst;
+      const prevDiff = cs.biggestWin ? cs.biggestWin.golsFor - cs.biggestWin.golsAgainst : -1;
+      if (diff > prevDiff) cs.biggestWin = { golsFor, golsAgainst, opponent: opponentName, competition: competitionLabel };
+    }
+  }
+
   // ---------- Persistência ----------
   function freshState() {
     return {
@@ -483,13 +539,18 @@
       copa: null,
       copaTierIndex: 0,
       history: [],
+      careerStats: freshCareerStats(),
     };
   }
 
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (!parsed.careerStats) parsed.careerStats = freshCareerStats();
+        return parsed;
+      }
     } catch (e) { /* ignore corrupt storage */ }
     return freshState();
   }
@@ -535,6 +596,11 @@
       type: 'liga',
     });
 
+    if (outcome.userPos === 1) {
+      if (!state.careerStats) state.careerStats = freshCareerStats();
+      state.careerStats.trophiesLiga++;
+    }
+
     state.tierIndex = newTierIndex;
     state.seasonIndex++;
     state.league = null;
@@ -559,6 +625,11 @@
       type: 'copa',
     });
 
+    if (copa.champion === 'user') {
+      if (!state.careerStats) state.careerStats = freshCareerStats();
+      state.careerStats.trophiesCopa++;
+    }
+
     state.copaTierIndex = newCopaTierIndex;
     state.copa = null;
     saveState(state);
@@ -574,5 +645,6 @@
     playGroupRound, playAllGroupsRound, allGroupsOver, groupStandingsSorted, advanceFromGroups,
     playPlayoff, playKnockoutStage, copaUserFixture, userStillIn, finishCopaSeason,
     copaTeamById, estimateSquadStrength,
+    freshCareerStats, recordUserMatch,
   };
 })();

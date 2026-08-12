@@ -38,12 +38,12 @@
     } else if (pending.type === 'copa' && state.copa) {
       const copa = state.copa;
       if (pending.part === 'grupos') {
-        S.playAllGroupsRound(copa, result);
+        S.playAllGroupsRound(copa, result, state);
         if (copa.stage === 'grupos' && S.allGroupsOver(copa)) S.advanceFromGroups(copa);
       } else if (pending.part === 'playoff') {
-        S.playPlayoff(copa, result);
+        S.playPlayoff(copa, result, state);
       } else {
-        S.playKnockoutStage(copa, pending.part, result);
+        S.playKnockoutStage(copa, pending.part, result, state);
       }
     }
     S.saveState(state);
@@ -283,12 +283,12 @@
 
   function advanceCopaStage(copa, userResult) {
     if (copa.stage === 'grupos') {
-      S.playAllGroupsRound(copa, userResult);
+      S.playAllGroupsRound(copa, userResult, state);
       if (copa.stage === 'grupos' && S.allGroupsOver(copa)) S.advanceFromGroups(copa);
     } else if (copa.stage === 'playoff') {
-      S.playPlayoff(copa, userResult);
+      S.playPlayoff(copa, userResult, state);
     } else if (copa.stage !== 'concluida') {
-      S.playKnockoutStage(copa, copa.stage, userResult);
+      S.playKnockoutStage(copa, copa.stage, userResult, state);
     }
     S.saveState(state);
   }
