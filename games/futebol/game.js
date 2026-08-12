@@ -56,28 +56,6 @@
   // d = distance from own goal line (0 = own goal, FIELD_H = opponent's goal)
   // x = lateral position (0-400). Every tactic has exactly 10 outfield slots.
   const TACTICS = {
-    equilibrado: {
-      label: 'Equilibrado',
-      drift: 0.3,
-      formation: [4, 3, 3],
-      slots: [
-        { d: 150, x: 70 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 330 },
-        { d: 340, x: 110 }, { d: 340, x: 200 }, { d: 340, x: 290 },
-        { d: 530, x: 90 }, { d: 530, x: 200 }, { d: 530, x: 310 },
-      ],
-    },
-    abafa: {
-      label: 'Abafa (3-2-5)',
-      drift: 0.4,
-      formation: [3, 2, 5],
-      slots: [
-        { d: 170, x: 110 }, { d: 170, x: 200 }, { d: 170, x: 290 },
-        { d: 320, x: 150 }, { d: 320, x: 250 },
-        { d: 480, x: 200 },
-        { d: 500, x: 50 }, { d: 500, x: 350 },
-        { d: 560, x: 150 }, { d: 560, x: 250 },
-      ],
-    },
     ferrolho: {
       label: 'Ferrolho (6-3-1)',
       drift: 0.15,
@@ -88,24 +66,98 @@
         { d: 460, x: 200 },
       ],
     },
-    lateral: {
-      label: 'Pelas Laterais',
-      drift: 0.3,
-      formation: [4, 3, 3],
+    cincoTresDois: {
+      label: '5-3-2',
+      drift: 0.25,
+      formation: [5, 3, 2],
       slots: [
-        { d: 150, x: 50 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 350 },
-        { d: 330, x: 130 }, { d: 330, x: 200 }, { d: 330, x: 270 },
-        { d: 520, x: 50 }, { d: 520, x: 200 }, { d: 520, x: 350 },
+        { d: 150, x: 40 }, { d: 150, x: 120 }, { d: 150, x: 200 }, { d: 150, x: 280 }, { d: 150, x: 360 },
+        { d: 330, x: 90 }, { d: 330, x: 200 }, { d: 330, x: 310 },
+        { d: 520, x: 110 }, { d: 520, x: 290 },
       ],
     },
-    lancamentos: {
-      label: 'Bola Longa',
+    quatroTresTres: {
+      label: '4-3-3',
       drift: 0.3,
       formation: [4, 3, 3],
       slots: [
         { d: 150, x: 70 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 330 },
         { d: 340, x: 110 }, { d: 340, x: 200 }, { d: 340, x: 290 },
         { d: 530, x: 90 }, { d: 530, x: 200 }, { d: 530, x: 310 },
+      ],
+    },
+    tresCincoDois: {
+      label: '3-5-2',
+      drift: 0.35,
+      formation: [3, 5, 2],
+      slots: [
+        { d: 160, x: 110 }, { d: 160, x: 200 }, { d: 160, x: 290 },
+        { d: 330, x: 40 }, { d: 330, x: 120 }, { d: 330, x: 200 }, { d: 330, x: 280 }, { d: 330, x: 360 },
+        { d: 520, x: 110 }, { d: 520, x: 290 },
+      ],
+    },
+    abafa: {
+      label: 'Abafa (3-3-4)',
+      drift: 0.45,
+      formation: [3, 3, 4],
+      slots: [
+        { d: 170, x: 110 }, { d: 170, x: 200 }, { d: 170, x: 290 },
+        { d: 320, x: 90 }, { d: 320, x: 200 }, { d: 320, x: 310 },
+        { d: 500, x: 40 }, { d: 500, x: 360 }, { d: 540, x: 150 }, { d: 540, x: 250 },
+      ],
+    },
+    quatroDoisQuatro: {
+      label: '4-2-4',
+      drift: 0.4,
+      formation: [4, 2, 4],
+      slots: [
+        { d: 150, x: 50 }, { d: 150, x: 150 }, { d: 150, x: 250 }, { d: 150, x: 350 },
+        { d: 290, x: 140 }, { d: 290, x: 260 },
+        { d: 520, x: 40 }, { d: 520, x: 147 }, { d: 520, x: 253 }, { d: 520, x: 360 },
+      ],
+    },
+    tresQuatroTres: {
+      label: '3-4-3',
+      drift: 0.35,
+      formation: [3, 4, 3],
+      slots: [
+        { d: 160, x: 110 }, { d: 160, x: 200 }, { d: 160, x: 290 },
+        { d: 330, x: 60 }, { d: 330, x: 153 }, { d: 330, x: 247 }, { d: 330, x: 340 },
+        { d: 520, x: 90 }, { d: 520, x: 200 }, { d: 520, x: 310 },
+      ],
+    },
+    quatroUmQuatroUm: {
+      label: '4-1-4-1',
+      drift: 0.25,
+      formation: [4, 5, 1],
+      slots: [
+        { d: 140, x: 50 }, { d: 140, x: 150 }, { d: 140, x: 250 }, { d: 140, x: 350 },
+        { d: 250, x: 200 },
+        { d: 360, x: 60 }, { d: 360, x: 153 }, { d: 360, x: 247 }, { d: 360, x: 340 },
+        { d: 530, x: 200 },
+      ],
+    },
+    losango: {
+      label: '4-1-2-1-2 (Losango)',
+      drift: 0.3,
+      formation: [4, 4, 2],
+      slots: [
+        { d: 140, x: 50 }, { d: 140, x: 150 }, { d: 140, x: 250 }, { d: 140, x: 350 },
+        { d: 240, x: 200 },
+        { d: 320, x: 140 }, { d: 320, x: 260 },
+        { d: 410, x: 200 },
+        { d: 520, x: 110 }, { d: 520, x: 290 },
+      ],
+    },
+    quadrado: {
+      label: '4-2-2-2 (Quadrado)',
+      drift: 0.35,
+      formation: [4, 4, 2],
+      slots: [
+        { d: 140, x: 50 }, { d: 140, x: 150 }, { d: 140, x: 250 }, { d: 140, x: 350 },
+        { d: 260, x: 140 }, { d: 260, x: 260 },
+        { d: 400, x: 110 }, { d: 400, x: 290 },
+        { d: 530, x: 150 }, { d: 530, x: 250 },
       ],
     },
   };
@@ -162,8 +214,8 @@
   let stopPause = 0; // ms remaining while play is stopped (goal/falta/cartão/impedimento)
   let controlled = null;
   let lastFrame = null;
-  let homeTactic = 'equilibrado';
-  let awayTactic = 'equilibrado';
+  let homeTactic = 'quatroTresTres';
+  let awayTactic = 'quatroTresTres';
 
   // clock state
   let half = 1;
@@ -567,28 +619,9 @@
   }
 
   function pickPassTarget(p) {
-    const tacticKey = p.team === 'home' ? homeTactic : awayTactic;
     const mates = teammates(p.team).filter(m => m !== p && m.role !== 'GK');
     if (!mates.length) return null;
 
-    if (tacticKey === 'lancamentos') {
-      // hoof it long, straight to whoever is furthest forward
-      let target = mates[0];
-      for (const m of mates) {
-        if (p.team === 'home' ? m.y < target.y : m.y > target.y) target = m;
-      }
-      return { target, power: PASS_POWER * 1.35 };
-    }
-    if (tacticKey === 'lateral') {
-      // favor the widest advanced option, hugging the touchline
-      const advanced = mates.filter(m => p.team === 'home' ? m.y < p.y + 20 : m.y > p.y - 20);
-      const pool = advanced.length ? advanced : mates;
-      let target = pool[0];
-      for (const m of pool) {
-        if (Math.abs(m.x - 200) > Math.abs(target.x - 200)) target = m;
-      }
-      return { target, power: PASS_POWER };
-    }
     let target = mates[0];
     for (const m of mates) {
       if (p.team === 'home' ? m.y < target.y : m.y > target.y) target = m;
