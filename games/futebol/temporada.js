@@ -49,9 +49,13 @@
     S.saveState(state);
   }
 
-  function goPlay(type, part) {
+  function goPlay(type, part, opponent) {
     try {
-      localStorage.setItem('wsp_season_pending', JSON.stringify({ type, part }));
+      localStorage.setItem('wsp_season_pending', JSON.stringify({
+        type, part,
+        opponentName: opponent ? opponent.name : null,
+        opponentStrength: opponent ? opponent.strength : null,
+      }));
     } catch (e) { /* storage unavailable */ }
     window.location.href = 'match.html?season=1';
   }
@@ -113,10 +117,12 @@
     if (!S.isLeagueOver(league)) {
       const fixture = S.currentUserFixture(league);
       if (fixture) {
+        const oppId = fixture.home === 'user' ? fixture.away : fixture.home;
+        const opponent = league.teams.find((t) => t.id === oppId);
         const playBtn = document.createElement('button');
         playBtn.className = 'comp-btn';
         playBtn.textContent = 'Jogar minha partida';
-        playBtn.addEventListener('click', () => goPlay('liga'));
+        playBtn.addEventListener('click', () => goPlay('liga', null, opponent));
         actions.appendChild(playBtn);
       }
       const simBtn = document.createElement('button');
@@ -247,10 +253,12 @@
     } else {
       const fixture = S.copaUserFixture(copa);
       if (fixture) {
+        const oppId = fixture.home === 'user' ? fixture.away : fixture.home;
+        const opponent = pool.find((t) => t.id === oppId);
         const playBtn = document.createElement('button');
         playBtn.className = 'comp-btn';
         playBtn.textContent = 'Jogar minha partida';
-        playBtn.addEventListener('click', () => goPlay('copa', copa.stage));
+        playBtn.addEventListener('click', () => goPlay('copa', copa.stage, opponent));
         actions.appendChild(playBtn);
       }
       const simBtn = document.createElement('button');

@@ -47,6 +47,13 @@
   const PENALTY_GOAL_CHANCE = 0.76;
   const PENALTY_STOPPAGE_MS = 1800;
 
+  // ---------- Fadiga / lesão ----------
+  const FATIGUE_RATE_PER_SEC = 0.0032;
+  const FATIGUE_SPEED_PENALTY = 0.3;
+  const FATIGUE_NARRATE_THRESHOLD = 0.75;
+  const FATIGUE_HALFTIME_RECOVERY = 0.18;
+  const INJURY_CHANCE_HARD_FOUL = 0.12;
+
   const INSTRUCTIONS = [
     { key: 'zona', label: 'Zona' },
     { key: 'individual', label: 'Marc.' },
@@ -177,6 +184,13 @@
 
   // ---------- Season integration ----------
   const seasonMode = new URLSearchParams(window.location.search).get('season') === '1';
+  let seasonOpponent = null; // { name, strength } quando a partida vem da temporada
+  if (seasonMode) {
+    try {
+      const pending = JSON.parse(localStorage.getItem('wsp_season_pending') || 'null');
+      if (pending && pending.opponentName) seasonOpponent = { name: pending.opponentName, strength: pending.opponentStrength };
+    } catch (e) { /* ignore corrupt storage */ }
+  }
 
   // ---------- DOM ----------
   const canvas = document.getElementById('field');
@@ -249,6 +263,17 @@
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
 
+  // ---------- Efeitos dos departamentos do clube ----------
+  const FATIGUE_DEPTS = ['preparador_fisico', 'massagista', 'musculacao'];
+  const INJURY_DEPTS = ['medico', 'fisioterapia', 'ortopedista'];
+  function deptLevel(key) {
+    return (homeClub && homeClub.departments) ? (homeClub.departments[key] || 0) : 0;
+  }
+  function deptReduction(keys, perLevel, cap) {
+    const total = keys.reduce((s, k) => s + deptLevel(k), 0);
+    return Math.min(cap, total * perLevel);
+  }
+
   function makePlayer(team, role, number, x, y, extra) {
     return {
       team, role, number, x, y, vx: 0, vy: 0,
@@ -261,6 +286,7 @@
       improvised: !!(extra && extra.improvised),
       squadId: (extra && extra.squadId) || null,
       yellowCards: 0, redCard: false, staggerMs: 0,
+      fatigue: 0, fatigueNarrated: false,
     };
   }
 
@@ -293,18 +319,6 @@
     return { gk, outfield, bench };
   }
 
-  function makeAwayBench() {
-    const bucketChoices = ['DEF', 'MID', 'ATT'];
-    const bench = [];
-    for (let i = 0; i < 5; i++) {
-      bench.push({
-        id: 'away_bench_' + i, number: 12 + i, name: null, foot: 'destro', traits: [],
-        bucket: bucketChoices[Math.floor(Math.random() * bucketChoices.length)],
-      });
-    }
-    return bench;
-  }
-
   function buildTeam(team, tacticKey) {
     const tactic = TACTICS[tacticKey];
     const gkY = team === 'home' ? FIELD_H - 36 : 36;
@@ -323,8 +337,26 @@
       return list;
     }
 
-    if (team === 'away') awayBench = makeAwayBench();
+    if (team === 'away') {
+      const pool = window.WSPSquad ? window.WSPSquad.generateCandidates(18) : [];
+      const gkCandidate = pool.find(p => p.bucket === 'GK');
+      const rest = pool.filter(p => p !== gkCandidate);
+      const outfieldCandidates = rest.slice(0, 10);
+      awayBench = rest.slice(10, 15).map((p, i) => ({
+        id: 'away_bench_' + i, number: 12 + i, name: p.name, foot: p.foot, traits: p.traits, bucket: p.bucket,
+      }));
+      const gkExtra = gkCandidate ? { name: gkCandidate.name, foot: gkCandidate.foot, traits: gkCandidate.traits } : null;
+      const list = [makePlayer('away', 'GK', 1, 200, gkY, gkExtra)];
+      tactic.slots.forEach((slot, i) => {
+        const { x, y } = slotToXY('away', slot);
+        const c = outfieldCandidates[i];
+        const extra = c ? { name: c.name, foot: c.foot, traits: c.traits } : null;
+        list.push(makePlayer('away', 'OUT', i + 2, x, y, extra));
+      });
+      return list;
+    }
 
+    // reserva: time da casa sem elenco carregado (script squad.js indisponível)
     const list = [makePlayer(team, 'GK', 1, 200, gkY)];
     tactic.slots.forEach((slot, i) => {
       const { x, y } = slotToXY(team, slot);
@@ -410,6 +442,13 @@
     techTimeoutDone = false;
     breakKind = null;
     hideOverlay();
+    const recovery = Math.min(0.4, FATIGUE_HALFTIME_RECOVERY + deptLevel('hidromassagem') * 0.03);
+    players.forEach((p) => {
+      if (p.team === 'home') {
+        p.fatigue = Math.max(0, p.fatigue - recovery);
+        if (p.fatigue < FATIGUE_NARRATE_THRESHOLD) p.fatigueNarrated = false;
+      }
+    });
     resetPositions(true);
     halfLabelEl.textContent = '2T';
     timerEl.textContent = formatClock(0);
@@ -711,7 +750,7 @@
       narrate('Impedimento! Tiro livre para ' + teamLabel(otherTeam) + '.');
       awardFreeKick(otherTeam, { x: pass.target.x, y: pass.target.y });
       stopPause = STOPPAGE_MS;
-      showStoppage('IMPEDIMENTO!', 'Tiro livre para o adversário');
+      showStoppage('IMPEDIMENTO!', 'Tiro livre para ' + teamLabel(otherTeam));
       return;
     }
     kick(p, pass.target.x, pass.target.y, pass.power);
@@ -745,6 +784,16 @@
       p.staggerMs -= dt * 1000;
       p.vx = 0; p.vy = 0;
       return;
+    }
+    let fatigueMult = 1;
+    if (p.role !== 'GK') {
+      const reduction = p.team === 'home' ? deptReduction(FATIGUE_DEPTS, 0.04, 0.5) : 0;
+      p.fatigue = Math.min(1, p.fatigue + dt * FATIGUE_RATE_PER_SEC * (1 - reduction));
+      if (p.team === 'home' && !p.fatigueNarrated && p.fatigue >= FATIGUE_NARRATE_THRESHOLD) {
+        p.fatigueNarrated = true;
+        narrate(displayName(p) + ' está visivelmente cansado.');
+      }
+      fatigueMult = 1 - p.fatigue * FATIGUE_SPEED_PENALTY;
     }
     if (p === controlled) {
       const v = inputVector();
@@ -799,6 +848,7 @@
         p.vy = (dy / len) * speed;
       }
     }
+    if (fatigueMult !== 1) { p.vx *= fatigueMult; p.vy *= fatigueMult; }
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     clampPlayer(p);
@@ -1016,6 +1066,26 @@
     return attackingTeam === 'home' ? spot.y <= 100 : spot.y >= FIELD_H - 100;
   }
 
+  function forceInjurySub(p) {
+    narrate('Lesão! ' + displayName(p) + ' sente dores e não aguenta continuar.');
+    if (p.team === 'home' && homeSubsUsed < MAX_SUBS && homeBench.length) {
+      makeHomeSubstitution(p, homeBench[0]);
+    } else if (p.team === 'away' && awaySubsUsed < MAX_SUBS && awayBench.length) {
+      const benchPlayer = awayBench.shift();
+      const result = substitutePlayer(p, benchPlayer);
+      if (result) awaySubsUsed++;
+    } else {
+      sendOff(p);
+      narrate(teamLabel(p.team) + ' fica com um a menos em campo após a lesão.');
+    }
+  }
+
+  function checkInjury(hard, victim) {
+    if (!hard) return;
+    const reduction = victim.team === 'home' ? deptReduction(INJURY_DEPTS, 0.06, 0.65) : 0;
+    if (Math.random() < INJURY_CHANCE_HARD_FOUL * (1 - reduction)) forceInjurySub(victim);
+  }
+
   function commitFoul(defender, attackerWithBall) {
     const spot = { x: ball.x, y: ball.y };
     if (isInPenaltyBox(spot, attackerWithBall.team)) {
@@ -1042,6 +1112,7 @@
     narrate((hard ? 'Falta dura de ' : 'Falta de ') + displayName(defender) + ' em ' + displayName(attackerWithBall) + '.' +
       (cardResult ? ' ' + (cardResult === 'yellow' ? 'Cartão amarelo' : cardResult === 'red' ? 'Cartão vermelho' : '2º amarelo, vermelho!') + ' p/ ' + displayName(defender) + '.' : ''));
 
+    checkInjury(hard, attackerWithBall);
     awardFreeKick(attackerWithBall.team, spot);
     stopPause = STOPPAGE_MS;
     showStoppage(hard ? 'FALTA DURA!' : 'FALTA!', sub);
@@ -1075,12 +1146,15 @@
       cardResult = bookPlayer(defender, false);
     }
 
+    if (hard) attackerWithBall.staggerMs = STAGGER_MS;
+
     let cardNote = '';
     if (cardResult === 'yellow') cardNote = ' Cartão amarelo p/ ' + displayName(defender) + '.';
     else if (cardResult === 'red') cardNote = ' Cartão vermelho p/ ' + displayName(defender) + '!';
     else if (cardResult === 'red2') cardNote = ' 2º amarelo, vermelho p/ ' + displayName(defender) + '!';
 
     narrate('PÊNALTI CONFIRMADO' + (benefitsHome ? '! A torcida vibra!' : ' contra o ' + teamLabel('home') + '...') + cardNote);
+    checkInjury(hard, attackerWithBall);
     awardPenalty(attackerWithBall.team);
   }
 
@@ -1132,7 +1206,8 @@
 
   // ---------- Narração ----------
   function teamLabel(team) {
-    return team === 'home' ? (homeSquad ? homeSquad.clubName : 'Bandeirantes') : 'Adversário';
+    if (team === 'home') return homeSquad ? homeSquad.clubName : 'Bandeirantes';
+    return seasonOpponent ? seasonOpponent.name : 'Adversário';
   }
   function narrate(text) {
     const minute = Math.floor(displaySeconds / 60);
@@ -1154,7 +1229,7 @@
     return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
   }
   function showGoal(team) {
-    showStoppage('GOL!', team === 'home' ? 'Bandeirantes marcou!' : 'O adversário marcou.');
+    showStoppage('GOL!', teamLabel(team) + ' marcou!');
   }
   function showStoppage(title, sub) {
     overlayTitle.textContent = title;
@@ -1165,7 +1240,7 @@
   function hideOverlay() { overlay.classList.add('hidden'); }
   function showFullTime() {
     overlayTitle.textContent = 'FIM DE JOGO';
-    let sub = `Bandeirantes ${score.home} - ${score.away} Adversário`;
+    let sub = `${teamLabel('home')} ${score.home} - ${score.away} ${teamLabel('away')}`;
     if (homeClub && window.WSPClub) {
       const expenses = window.WSPClub.payMatchExpenses(homeClub, homeSquad);
       sub += `\nDespesas da partida: -${formatMoneyBRL(expenses.total)} (caixa: ${formatMoneyBRL(homeClub.budget)})`;
