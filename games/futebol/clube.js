@@ -126,29 +126,37 @@
         : '<span class="none">Nenhum patrocinador ainda</span>';
       info.appendChild(current);
 
-      const proposalRow = document.createElement('div');
-      proposalRow.className = 'sponsor-proposal';
+      if (slot.current) {
+        const locked = document.createElement('div');
+        locked.className = 'sponsor-locked';
+        locked.textContent = '🔒 Contrato fechado até a próxima temporada';
+        info.appendChild(locked);
+      } else {
+        const proposalRow = document.createElement('div');
+        proposalRow.className = 'sponsor-proposal';
 
-      const btn = document.createElement('button');
-      btn.className = 'upgrade-btn';
-      btn.textContent = 'Aceitar ' + slot.proposal.name + ' — ' + formatMoney(slot.proposal.value);
-      btn.addEventListener('click', () => {
-        acceptSponsor(club, key);
-        render();
-      });
-      proposalRow.appendChild(btn);
+        const btn = document.createElement('button');
+        btn.className = 'upgrade-btn';
+        btn.textContent = 'Aceitar ' + slot.proposal.name + ' — ' + formatMoney(slot.proposal.value);
+        btn.addEventListener('click', () => {
+          acceptSponsor(club, key);
+          render();
+        });
+        proposalRow.appendChild(btn);
 
-      const reroll = document.createElement('button');
-      reroll.className = 'reroll-btn';
-      reroll.textContent = '🔄';
-      reroll.title = 'Ver outra proposta';
-      reroll.addEventListener('click', () => {
-        rerollSponsor(club, key);
-        render();
-      });
-      proposalRow.appendChild(reroll);
+        const reroll = document.createElement('button');
+        reroll.className = 'reroll-btn';
+        reroll.textContent = '🔄';
+        reroll.title = 'Ver outra proposta';
+        reroll.addEventListener('click', () => {
+          rerollSponsor(club, key);
+          render();
+        });
+        proposalRow.appendChild(reroll);
 
-      info.appendChild(proposalRow);
+        info.appendChild(proposalRow);
+      }
+
       card.appendChild(info);
       sponsorListEl.appendChild(card);
     });

@@ -543,17 +543,16 @@
   }
 
   // ---------- AI / control selection ----------
-  function pickControlled() {
-    const field = players.filter(p => p.team === 'home' && p.role !== 'GK');
-    let best = field[0], bestD = dist(field[0], ball);
-    for (const p of field) {
+  function pickControlled(homeOutfield) {
+    let best = homeOutfield[0], bestD = dist(homeOutfield[0], ball);
+    for (const p of homeOutfield) {
       const d = dist(p, ball);
       if (d < bestD) { best = p; bestD = d; }
     }
     controlled = best;
   }
 
-  function updatePlayer(p, dt) {
+  function updatePlayer(p, dt, teamOutfield, oppOutfield) {
     if (p.staggerMs > 0) {
       p.staggerMs -= dt * 1000;
       p.vx = 0; p.vy = 0;
@@ -572,8 +571,7 @@
       p.vx = (dx / len) * GK_SPEED * Math.min(1, Math.abs(dx) / 10);
       p.vy = (dy / len) * GK_SPEED * Math.min(1, Math.abs(dy) / 10);
     } else {
-      const opp = opponentsOf(p.team);
-      const chaser = nearestTo(opp.length ? teammates(p.team).filter(t => t.role !== 'GK') : [], ball);
+      const chaser = nearestTo(teamOutfield, ball);
       const isChaser = chaser === p;
       const fitFactor = p.improvised ? 0.9 : 1; // out-of-position players are a bit less sharp
       if (isChaser) {
@@ -587,7 +585,7 @@
         let tx, ty;
         if (instr === 'individual') {
           if (!p.markTarget) {
-            p.markTarget = nearestTo(opponentsOf(p.team).filter(o => o.role !== 'GK'), p);
+            p.markTarget = nearestTo(oppOutfield, p);
           }
           if (p.markTarget) {
             const goalSide = p.team === 'home' ? 12 : -12;
@@ -967,8 +965,17 @@
             updateBreakSub();
           }
         } else {
-          pickControlled();
-          for (const p of players) updatePlayer(p, dt);
+          const homeOutfield = [], awayOutfield = [];
+          for (const p of players) {
+            if (p.role === 'GK') continue;
+            (p.team === 'home' ? homeOutfield : awayOutfield).push(p);
+          }
+          pickControlled(homeOutfield);
+          for (const p of players) {
+            const teamOutfield = p.team === 'home' ? homeOutfield : awayOutfield;
+            const oppOutfield = p.team === 'home' ? awayOutfield : homeOutfield;
+            updatePlayer(p, dt, teamOutfield, oppOutfield);
+          }
           awayAIAct();
           updateBall(dt);
 
