@@ -34,6 +34,42 @@ html, body {
 .elenco-topbar h1 {
   font-size: 1.15rem;
   color: #ffd54a;
+  flex: 1;
+}
+
+.budget-pill {
+  background: #0e1c15;
+  color: #ffd54a;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.market-card {
+  margin: 12px 14px 0;
+  background: #16281f;
+  border: 1px solid #345c48;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.market-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #9fd8b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.market-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .elenco-sections {
@@ -135,3 +171,58 @@ html, body {
 
 .badge.foot { color: #ffd54a; }
 .badge.trait { color: #9fd8b8; }
+
+.reroll-btn {
+  background: #0e1c15;
+  color: #ffd54a;
+  border: 1px solid #345c48;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.market-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0e1c15;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.market-player .player-info {
+  flex: 1;
+}
+
+.sign-btn {
+  background: #2f9e44;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sign-btn:disabled {
+  background: #333;
+  color: #777;
+  cursor: not-allowed;
+}
+
+.player-actions {
+  margin-top: 6px;
+}
+
+.dismiss-btn {
+  background: #4a1f1f;
+  color: #f5a5a5;
+  border: 1px solid #7a3030;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  cursor: pointer;
+}

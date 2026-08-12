@@ -5,6 +5,7 @@
   const STARTING_BUDGET = 500000;
   const MAX_LEVEL = 5;
   const BASE_COST = 8000;
+  const OTHER_EXPENSES_PER_MATCH = 15000; // direitos de imagem + viagem + despesas gerais, somados
 
   const DEPARTMENTS = {
     diretor_tecnico: { label: 'Diretor Técnico', icon: '🎯', desc: 'Planeja o futebol do clube a longo prazo' },
@@ -105,9 +106,28 @@
     saveClub(club);
   }
 
+  function dismissDepartment(club, key) {
+    const level = club.departments[key] || 0;
+    if (level <= 0) return { ok: false, reason: 'none' };
+    const cost = Math.round(upgradeCost(level - 1) * 0.6);
+    if (club.budget < cost) return { ok: false, reason: 'money', cost };
+    club.budget -= cost;
+    club.departments[key] = 0;
+    saveClub(club);
+    return { ok: true, cost };
+  }
+
+  function payMatchExpenses(club, squad) {
+    const payroll = squad ? squad.players.reduce((s, p) => s + (p.salary || 0), 0) : 0;
+    const total = payroll + OTHER_EXPENSES_PER_MATCH;
+    club.budget -= total;
+    saveClub(club);
+    return { payroll, other: OTHER_EXPENSES_PER_MATCH, total };
+  }
+
   window.WSPClub = {
-    DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS,
+    DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
     upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
-    acceptSponsor, rerollSponsor,
+    acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses,
   };
 })();

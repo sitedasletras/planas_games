@@ -148,69 +148,125 @@
 
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+  const STAGE_SALARY_MULT = { promessa: 0.6, ascensao: 0.85, auge: 1.3, experiente: 1.0, declinio: 0.7 };
+  const BUCKET_BASE_SALARY = { GK: 12000, DEF: 11000, MID: 13000, ATT: 15000 };
+
+  function randomSalary(bucket, age) {
+    const stage = careerStageFor(age);
+    const base = BUCKET_BASE_SALARY[bucket] * STAGE_SALARY_MULT[stage];
+    const variance = 0.8 + Math.random() * 0.5;
+    return Math.round((base * variance) / 100) * 100;
+  }
+
+  function releaseCost(player) {
+    return Math.round(player.salary * 2.5 / 100) * 100;
+  }
+
+  function transferFee(player) {
+    return Math.round(player.salary * 8 / 100) * 100;
+  }
+
+  function makeRandomPlayer(posKey, usedNames) {
+    let name;
+    do {
+      name = pick(FIRST_NAMES) + ' ' + pick(LAST_NAMES);
+    } while (usedNames.has(name));
+    usedNames.add(name);
+
+    const bucket = POSITIONS[posKey].bucket;
+    const foot = weightedPick(FEET);
+    const traits = [];
+
+    if (bucket === 'GK') {
+      traits.push(pick(['gk_acrobata', 'gk_simples', 'gk_organiza']));
+    } else {
+      const roll = Math.random();
+      const pool = ['tabelar', 'chuveirinho', 'sai_tocando', 'batedor_perto', 'batedor_longe'];
+      if (roll < 0.35) traits.push(pick(pool));
+      if (roll < 0.1) {
+        const t2 = pick(pool);
+        if (!traits.includes(t2)) traits.push(t2);
+      }
+    }
+
+    const age = randomAge();
+
+    return {
+      id: 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7),
+      number: null,
+      name,
+      position: posKey,
+      bucket,
+      foot,
+      traits,
+      age,
+      height: randomHeight(bucket),
+      nationality: weightedPickObj(NATIONALITIES).key,
+      avatar: generateAvatar(age),
+      salary: randomSalary(bucket, age),
+    };
+  }
+
   function generateSquad() {
     const used = new Set();
-    let batedorPertoCount = 0, batedorLongeCount = 0;
     let num = 1;
-
     const players = SQUAD_PLAN.map((posKey) => {
-      let name;
-      do {
-        name = pick(FIRST_NAMES) + ' ' + pick(LAST_NAMES);
-      } while (used.has(name));
-      used.add(name);
-
-      const bucket = POSITIONS[posKey].bucket;
-      const foot = weightedPick(FEET);
-      const traits = [];
-
-      if (bucket === 'GK') {
-        traits.push(pick(['gk_acrobata', 'gk_simples', 'gk_organiza']));
-      } else {
-        const roll = Math.random();
-        const pool = ['tabelar', 'chuveirinho', 'sai_tocando'];
-        if (batedorPertoCount < 2) pool.push('batedor_perto');
-        if (batedorLongeCount < 2) pool.push('batedor_longe');
-        if (roll < 0.35) {
-          const t = pick(pool);
-          traits.push(t);
-          if (t === 'batedor_perto') batedorPertoCount++;
-          if (t === 'batedor_longe') batedorLongeCount++;
-        }
-        if (roll < 0.1) {
-          let t2 = pick(pool);
-          if (!traits.includes(t2)) {
-            traits.push(t2);
-            if (t2 === 'batedor_perto') batedorPertoCount++;
-            if (t2 === 'batedor_longe') batedorLongeCount++;
-          }
-        }
-      }
-
-      const age = randomAge();
-
-      return {
-        id: 'p' + num + '_' + Date.now().toString(36),
-        number: num++,
-        name,
-        position: posKey,
-        bucket,
-        foot,
-        traits,
-        age,
-        height: randomHeight(bucket),
-        nationality: weightedPickObj(NATIONALITIES).key,
-        avatar: generateAvatar(age),
-      };
+      const p = makeRandomPlayer(posKey, used);
+      p.number = num++;
+      return p;
     });
-
     return { clubName: 'Bandeirantes', players };
+  }
+
+  function nextFreeNumber(squad) {
+    const usedNumbers = new Set(squad.players.map((p) => p.number));
+    let n = 1;
+    while (usedNumbers.has(n)) n++;
+    return n;
+  }
+
+  function generateCandidates(count) {
+    const used = new Set();
+    const keys = Object.keys(POSITIONS);
+    const list = [];
+    for (let i = 0; i < count; i++) {
+      const posKey = pick(keys);
+      const candidate = makeRandomPlayer(posKey, used);
+      candidate.fee = transferFee(candidate);
+      list.push(candidate);
+    }
+    return list;
+  }
+
+  function signPlayer(squad, candidate) {
+    const newPlayer = Object.assign({}, candidate, { number: nextFreeNumber(squad) });
+    delete newPlayer.fee;
+    squad.players.push(newPlayer);
+    saveSquad(squad);
+    return newPlayer;
+  }
+
+  function releasePlayer(squad, playerId) {
+    const idx = squad.players.findIndex((p) => p.id === playerId);
+    if (idx < 0) return null;
+    const [removed] = squad.players.splice(idx, 1);
+    saveSquad(squad);
+    return removed;
   }
 
   function loadSquad() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        let changed = false;
+        parsed.players.forEach((p) => {
+          if (p.salary == null) { p.salary = randomSalary(p.bucket, p.age); changed = true; }
+          if (!p.id) { p.id = 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7); changed = true; }
+        });
+        if (changed) saveSquad(parsed);
+        return parsed;
+      }
     } catch (e) { /* ignore corrupt storage */ }
     const fresh = generateSquad();
     saveSquad(fresh);
@@ -224,5 +280,6 @@
   window.WSPSquad = {
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
     careerStageFor, generateSquad, loadSquad, saveSquad,
+    releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
   };
 })();

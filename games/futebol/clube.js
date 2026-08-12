@@ -2,7 +2,7 @@
   'use strict';
   const {
     DEPARTMENTS, MAX_LEVEL, upgradeCost, loadClub, upgradeDepartment,
-    SPONSOR_SLOTS, acceptSponsor, rerollSponsor,
+    SPONSOR_SLOTS, acceptSponsor, rerollSponsor, dismissDepartment,
   } = window.WSPClub;
 
   const club = loadClub();
@@ -54,6 +54,9 @@
       }
       info.appendChild(levels);
 
+      const btnRow = document.createElement('div');
+      btnRow.className = 'sponsor-proposal';
+
       const btn = document.createElement('button');
       btn.className = 'upgrade-btn';
       if (maxed) {
@@ -68,7 +71,23 @@
           if (result.ok) render();
         });
       }
-      info.appendChild(btn);
+      btnRow.appendChild(btn);
+
+      if (level > 0) {
+        const dismissCost = Math.round(upgradeCost(level - 1) * 0.6);
+        const dismissBtn = document.createElement('button');
+        dismissBtn.className = 'reroll-btn';
+        dismissBtn.textContent = 'Dispensar — ' + formatMoney(dismissCost);
+        dismissBtn.disabled = club.budget < dismissCost;
+        dismissBtn.addEventListener('click', () => {
+          if (!confirm('Dispensar ' + dept.label + ' por ' + formatMoney(dismissCost) + '?')) return;
+          const result = dismissDepartment(club, key);
+          if (result.ok) render();
+        });
+        btnRow.appendChild(dismissBtn);
+      }
+
+      info.appendChild(btnRow);
 
       card.appendChild(info);
       listEl.appendChild(card);

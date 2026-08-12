@@ -163,6 +163,7 @@
   let breakTimer = 0; // ms remaining in the current break
 
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
+  const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
 
   function makePlayer(team, role, number, x, y, extra) {
     return {
@@ -805,9 +806,17 @@
   function hideOverlay() { overlay.classList.add('hidden'); }
   function showFullTime() {
     overlayTitle.textContent = 'FIM DE JOGO';
-    overlaySub.textContent = `Bandeirantes ${score.home} - ${score.away} Adversário`;
+    let sub = `Bandeirantes ${score.home} - ${score.away} Adversário`;
+    if (homeClub && window.WSPClub) {
+      const expenses = window.WSPClub.payMatchExpenses(homeClub, homeSquad);
+      sub += `\nDespesas da partida: -${formatMoneyBRL(expenses.total)} (caixa: ${formatMoneyBRL(homeClub.budget)})`;
+    }
+    overlaySub.textContent = sub;
     overlayRestart.classList.remove('hidden');
     overlay.classList.remove('hidden');
+  }
+  function formatMoneyBRL(n) {
+    return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
   }
   function showBreak() {
     overlayTitle.textContent = breakKind === 'halftime' ? 'INTERVALO' : 'PARADA TÉCNICA';

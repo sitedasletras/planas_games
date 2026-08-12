@@ -192,6 +192,7 @@ canvas {
 .overlay-sub {
   font-size: 1.1rem;
   margin-bottom: 12px;
+  white-space: pre-line;
 }
 
 .overlay-btn {
