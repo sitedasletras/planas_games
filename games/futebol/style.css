@@ -287,3 +287,72 @@ canvas {
   border-color: #ffd54a;
   background: #2f9e44;
 }
+
+.subs-counter {
+  font-weight: bold;
+  color: #ffd54a;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.subs-hint {
+  font-size: 0.68rem;
+  color: #9fd8b8;
+  margin-bottom: 6px;
+}
+
+.subs-columns {
+  display: flex;
+  gap: 10px;
+}
+
+.subs-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.subs-col-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9fd8b8;
+  margin-bottom: 4px;
+}
+
+.sub-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e3a2a;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  text-align: left;
+  width: 100%;
+  color: white;
+  font-size: 0.68rem;
+}
+
+.sub-player .num {
+  font-weight: bold;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.sub-player .nm {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub-player.selected {
+  border-color: #ffd54a;
+  background: #2f9e44;
+}
+
+.sub-player:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

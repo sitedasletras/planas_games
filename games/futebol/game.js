@@ -41,6 +41,7 @@
   const STAGGER_MS = 900;          // hard foul knocks the fouled player down briefly
   const CLOSE_FK_RANGE = 150, LONG_FK_RANGE = 280;
   const WALL_MIN_DIST = 55; // minimum distance defenders are pushed back on a free kick
+  const MAX_SUBS = 5;
   const STOPPAGE_MS = 1100;
 
   const INSTRUCTIONS = [
@@ -140,6 +141,13 @@
   const instructionsOverlay = document.getElementById('instructions-overlay');
   const instructionsList = document.getElementById('instructions-list');
   const instructionsClose = document.getElementById('instructions-close');
+  const btnSubs = document.getElementById('btn-subs');
+  const subsOverlay = document.getElementById('subs-overlay');
+  const subsOnfieldEl = document.getElementById('subs-onfield');
+  const subsBenchEl = document.getElementById('subs-bench');
+  const subsCounterEl = document.getElementById('subs-counter');
+  const subsHintEl = document.getElementById('subs-hint');
+  const subsClose = document.getElementById('subs-close');
   const joystickZone = document.getElementById('joystick-zone');
   const joystickKnob = document.getElementById('joystick-knob');
   const kickBtn = document.getElementById('kick-btn');
@@ -164,6 +172,13 @@
   let breakKind = null; // null | 'tech' | 'halftime'
   let breakTimer = 0; // ms remaining in the current break
 
+  // substitutions
+  let homeBench = [];
+  let awayBench = [];
+  let homeSubsUsed = 0;
+  let awaySubsUsed = 0;
+  let awaySubMinute = 15 + Math.random() * 20;
+
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
 
@@ -177,6 +192,7 @@
       foot: (extra && extra.foot) || 'destro',
       traits: (extra && extra.traits) || [],
       improvised: !!(extra && extra.improvised),
+      squadId: (extra && extra.squadId) || null,
       yellowCards: 0, redCard: false, staggerMs: 0,
     };
   }
@@ -206,7 +222,20 @@
       }
       return player ? { player, improvised } : null;
     });
-    return { gk, outfield };
+    const bench = [].concat(pools.GK, pools.DEF, pools.MID, pools.ATT);
+    return { gk, outfield, bench };
+  }
+
+  function makeAwayBench() {
+    const bucketChoices = ['DEF', 'MID', 'ATT'];
+    const bench = [];
+    for (let i = 0; i < 5; i++) {
+      bench.push({
+        id: 'away_bench_' + i, number: 12 + i, name: null, foot: 'destro', traits: [],
+        bucket: bucketChoices[Math.floor(Math.random() * bucketChoices.length)],
+      });
+    }
+    return bench;
   }
 
   function buildTeam(team, tacticKey) {
@@ -214,17 +243,20 @@
     const gkY = team === 'home' ? FIELD_H - 36 : 36;
 
     if (team === 'home' && homeSquad) {
-      const { gk, outfield } = selectStarters(homeSquad, tacticKey);
-      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits } : null;
+      const { gk, outfield, bench } = selectStarters(homeSquad, tacticKey);
+      homeBench = bench;
+      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits, squadId: gk.id } : null;
       const list = [makePlayer('home', 'GK', gk ? gk.number : 1, 200, gkY, gkExtra)];
       tactic.slots.forEach((slot, i) => {
         const { x, y } = slotToXY('home', slot);
         const entry = outfield[i];
-        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised } : null;
+        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id } : null;
         list.push(makePlayer('home', 'OUT', entry ? entry.player.number : i + 2, x, y, extra));
       });
       return list;
     }
+
+    if (team === 'away') awayBench = makeAwayBench();
 
     const list = [makePlayer(team, 'GK', 1, 200, gkY)];
     tactic.slots.forEach((slot, i) => {
@@ -234,25 +266,32 @@
     return list;
   }
 
+  function repositionTeam(team, tacticKey) {
+    const teamPlayers = players.filter(p => p.team === team);
+    const gkP = teamPlayers.find(p => p.role === 'GK');
+    const outfieldP = teamPlayers.filter(p => p.role !== 'GK');
+    const tactic = TACTICS[tacticKey];
+    const gkY = team === 'home' ? FIELD_H - 36 : 36;
+    if (gkP) { gkP.x = 200; gkP.y = gkY; gkP.baseX = 200; gkP.baseY = gkY; gkP.vx = 0; gkP.vy = 0; }
+    outfieldP.forEach((p, i) => {
+      const slot = tactic.slots[i % tactic.slots.length];
+      const { x, y } = slotToXY(team, slot);
+      p.x = x; p.y = y; p.baseX = x; p.baseY = y; p.vx = 0; p.vy = 0;
+    });
+    return gkP ? [gkP, ...outfieldP] : outfieldP;
+  }
+
   function resetPositions(keepXI) {
     const prevInstructions = players.map(p => ({ team: p.team, number: p.number, instruction: p.instruction }));
 
-    if (keepXI && players.length && homeSquad) {
-      // same starting XI, just line them back up for kickoff at their current tactic's slots
-      const homePlayers = players.filter(p => p.team === 'home');
-      const gkP = homePlayers.find(p => p.role === 'GK');
-      const outfieldP = homePlayers.filter(p => p.role !== 'GK');
-      const tactic = TACTICS[homeTactic];
-      const gkY = FIELD_H - 36;
-      gkP.x = 200; gkP.y = gkY; gkP.baseX = 200; gkP.baseY = gkY; gkP.vx = 0; gkP.vy = 0;
-      outfieldP.forEach((p, i) => {
-        const slot = tactic.slots[i % tactic.slots.length];
-        const { x, y } = slotToXY('home', slot);
-        p.x = x; p.y = y; p.baseX = x; p.baseY = y; p.vx = 0; p.vy = 0;
-      });
-      players = [gkP, ...outfieldP, ...buildTeam('away', awayTactic)];
+    if (keepXI && players.length) {
+      // same players (including any substitutions made so far), just line
+      // everyone back up for kickoff at their current tactic's slots
+      players = [...repositionTeam('home', homeTactic), ...repositionTeam('away', awayTactic)];
     } else {
       players = [...buildTeam('home', homeTactic), ...buildTeam('away', awayTactic)];
+      homeSubsUsed = 0;
+      awaySubsUsed = 0;
     }
 
     for (const p of players) {
@@ -288,6 +327,7 @@
     speedMultiplier = 1;
     matchOver = false;
     stopPause = 0;
+    awaySubMinute = 15 + Math.random() * 20;
     hideOverlay();
     updateScoreUI();
     halfLabelEl.textContent = '1T';
@@ -426,6 +466,64 @@
   }
   btnInstructions.addEventListener('click', openInstructionsMenu);
   instructionsClose.addEventListener('click', closeInstructionsMenu);
+
+  let subOutSelected = null;
+  function displayNameFor(p) { return p.name || ('#' + p.number); }
+
+  function renderSubsPanel() {
+    subsCounterEl.textContent = homeSubsUsed + '/' + MAX_SUBS + ' usadas';
+    subsHintEl.textContent = homeSubsUsed >= MAX_SUBS
+      ? 'Limite de substituições atingido'
+      : (subOutSelected ? 'Agora escolha quem entra' : 'Toque em quem sai, depois em quem entra');
+
+    subsOnfieldEl.innerHTML = '';
+    const onField = players.filter(p => p.team === 'home').sort((a, b) => a.number - b.number);
+    onField.forEach((p) => {
+      const btn = document.createElement('button');
+      btn.className = 'sub-player' + (subOutSelected === p ? ' selected' : '');
+      btn.innerHTML = '<span class="num">' + p.number + '</span><span class="nm">' + displayNameFor(p) + '</span>';
+      btn.disabled = homeSubsUsed >= MAX_SUBS;
+      btn.addEventListener('click', () => {
+        subOutSelected = subOutSelected === p ? null : p;
+        renderSubsPanel();
+      });
+      subsOnfieldEl.appendChild(btn);
+    });
+
+    subsBenchEl.innerHTML = '';
+    if (!homeBench.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'color:#888;font-size:0.7rem;font-style:italic;padding:6px;';
+      empty.textContent = 'Banco vazio';
+      subsBenchEl.appendChild(empty);
+    }
+    homeBench.slice().sort((a, b) => a.number - b.number).forEach((bp) => {
+      const btn = document.createElement('button');
+      btn.className = 'sub-player';
+      btn.innerHTML = '<span class="num">' + bp.number + '</span><span class="nm">' + bp.name + '</span>';
+      btn.disabled = !subOutSelected || homeSubsUsed >= MAX_SUBS;
+      btn.addEventListener('click', () => {
+        if (!subOutSelected) return;
+        const ok = makeHomeSubstitution(subOutSelected, bp);
+        subOutSelected = null;
+        if (ok) renderSubsPanel();
+      });
+      subsBenchEl.appendChild(btn);
+    });
+  }
+
+  function openSubsMenu() {
+    pauseForMenu();
+    subOutSelected = null;
+    renderSubsPanel();
+    subsOverlay.classList.remove('hidden');
+  }
+  function closeSubsMenu() {
+    subsOverlay.classList.add('hidden');
+    resumeFromMenu();
+  }
+  btnSubs.addEventListener('click', openSubsMenu);
+  subsClose.addEventListener('click', closeSubsMenu);
 
   function inputVector() {
     let x = joyVec.x, y = joyVec.y;
@@ -743,6 +841,40 @@
     if (ball.owner === p) ball.owner = null;
   }
 
+  function substitutePlayer(outPlayer, inData) {
+    const idx = players.indexOf(outPlayer);
+    if (idx < 0) return null;
+    const extra = { name: inData.name, foot: inData.foot, traits: inData.traits || [], squadId: inData.id || null };
+    const newPlayer = makePlayer(outPlayer.team, outPlayer.role, inData.number, outPlayer.x, outPlayer.y, extra);
+    newPlayer.baseX = outPlayer.baseX;
+    newPlayer.baseY = outPlayer.baseY;
+    newPlayer.instruction = outPlayer.instruction;
+    players[idx] = newPlayer;
+    if (controlled === outPlayer) controlled = newPlayer;
+    if (ball.owner === outPlayer) ball.owner = newPlayer;
+    return newPlayer;
+  }
+
+  function makeHomeSubstitution(outPlayer, benchPlayer) {
+    if (homeSubsUsed >= MAX_SUBS) return false;
+    const result = substitutePlayer(outPlayer, benchPlayer);
+    if (!result) return false;
+    homeBench = homeBench.filter((p) => p.id !== benchPlayer.id);
+    homeSubsUsed++;
+    return true;
+  }
+
+  function makeAwaySubstitution() {
+    if (awaySubsUsed >= MAX_SUBS || !awayBench.length) return false;
+    const outCandidates = players.filter((p) => p.team === 'away' && p.role !== 'GK');
+    if (!outCandidates.length) return false;
+    const outPlayer = outCandidates[Math.floor(Math.random() * outCandidates.length)];
+    const benchPlayer = awayBench.shift();
+    const result = substitutePlayer(outPlayer, benchPlayer);
+    if (result) awaySubsUsed++;
+    return !!result;
+  }
+
   function awardFreeKick(team, spot) {
     ball.x = spot.x; ball.y = spot.y;
     ball.vx = 0; ball.vy = 0;
@@ -1022,6 +1154,9 @@
           timerEl.textContent = formatClock(displaySeconds);
 
           const minute = Math.floor(displaySeconds / 60);
+          if (half === 2 && awaySubsUsed < 1 && minute >= awaySubMinute) {
+            makeAwaySubstitution();
+          }
           if (!techTimeoutDone && minute >= TECH_TIMEOUT_MINUTE) {
             techTimeoutDone = true;
             breakKind = 'tech';
