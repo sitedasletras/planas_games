@@ -1171,19 +1171,46 @@
     pushBackDefenders(team, spot);
   }
 
+  function pushAwayFromSpot(p, spot) {
+    const dx = p.x - spot.x, dy = p.y - spot.y;
+    const d = Math.hypot(dx, dy) || 1;
+    if (d < WALL_MIN_DIST) {
+      const scale = WALL_MIN_DIST / d;
+      p.x = Math.max(CLAMP_X_MIN, Math.min(CLAMP_X_MAX, spot.x + dx * scale));
+      p.y = Math.max(CLAMP_Y_MIN, Math.min(CLAMP_Y_MAX, spot.y + dy * scale));
+      p.vx = 0; p.vy = 0;
+    }
+  }
+
   function pushBackDefenders(attackingTeam, spot) {
     const defendingTeam = attackingTeam === 'home' ? 'away' : 'home';
     const defenders = players.filter(p => p.team === defendingTeam && p.role !== 'GK');
-    defenders.forEach((p) => {
-      const dx = p.x - spot.x, dy = p.y - spot.y;
-      const d = Math.hypot(dx, dy) || 1;
-      if (d < WALL_MIN_DIST) {
-        const scale = WALL_MIN_DIST / d;
-        p.x = Math.max(CLAMP_X_MIN, Math.min(CLAMP_X_MAX, spot.x + dx * scale));
-        p.y = Math.max(CLAMP_Y_MIN, Math.min(CLAMP_Y_MAX, spot.y + dy * scale));
+    if (!defenders.length) return;
+
+    const goalY = defendingTeam === 'home' ? FIELD_H - 8 : 8;
+    const distToGoal = Math.abs(spot.y - goalY);
+    const wallSize = distToGoal < CLOSE_FK_RANGE ? 4 : distToGoal < LONG_FK_RANGE ? 2 : 0;
+
+    if (wallSize > 0) {
+      const dirX = 200 - spot.x, dirY = goalY - spot.y;
+      const len = Math.hypot(dirX, dirY) || 1;
+      const ux = dirX / len, uy = dirY / len;
+      const wallCenterX = spot.x + ux * WALL_MIN_DIST;
+      const wallCenterY = spot.y + uy * WALL_MIN_DIST;
+      const perpX = -uy, perpY = ux;
+
+      const size = Math.min(wallSize, defenders.length);
+      const wallPlayers = defenders.slice().sort((a, b) => dist(a, spot) - dist(b, spot)).slice(0, size);
+      wallPlayers.forEach((p, i) => {
+        const offset = (i - (size - 1) / 2) * (PLAYER_R * 2 + 4);
+        p.x = Math.max(CLAMP_X_MIN, Math.min(CLAMP_X_MAX, wallCenterX + perpX * offset));
+        p.y = Math.max(CLAMP_Y_MIN, Math.min(CLAMP_Y_MAX, wallCenterY + perpY * offset));
         p.vx = 0; p.vy = 0;
-      }
-    });
+      });
+      defenders.filter(p => !wallPlayers.includes(p)).forEach(p => pushAwayFromSpot(p, spot));
+    } else {
+      defenders.forEach(p => pushAwayFromSpot(p, spot));
+    }
   }
 
   function isInPenaltyBox(spot, attackingTeam) {
