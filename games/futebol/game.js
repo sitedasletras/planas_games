@@ -329,6 +329,7 @@
       fatigue: 0, fatigueNarrated: false,
       rating: (extra && extra.rating) || 60,
       matchGoals: 0,
+      wanderSeed: Math.random() * 1000,
     };
     matchParticipants.push(p);
     return p;
@@ -917,9 +918,12 @@
           tx = p.baseX + (ball.x - 200) * drift;
           ty = p.baseY + (ball.y - p.baseY) * 0.15 + yBias;
         }
+        const t = performance.now() / 1000;
+        tx += Math.sin(t * 0.6 + p.wanderSeed) * 9;
+        ty += Math.cos(t * 0.45 + p.wanderSeed * 1.7) * 9;
         const dx = tx - p.x, dy = ty - p.y;
         const len = Math.hypot(dx, dy) || 1;
-        const speed = Math.min(TEAMMATE_SPEED, len * 4) * fitFactor;
+        const speed = Math.max(8, Math.min(TEAMMATE_SPEED, len * 4)) * fitFactor;
         p.vx = (dx / len) * speed;
         p.vy = (dy / len) * speed;
       }
@@ -1511,6 +1515,28 @@
     ctx.strokeRect(GOAL_L, FIELD_H, GOAL_W, 14);
   }
 
+  function drawOffsideLine() {
+    const attacker = ball.owner;
+    if (!attacker || attacker.role === 'GK') return;
+    const inAttackHalf = attacker.team === 'home' ? attacker.y < FIELD_H / 2 : attacker.y > FIELD_H / 2;
+    if (!inAttackHalf) return;
+    const opp = opponentsOf(attacker.team).filter(o => o.role !== 'GK');
+    if (opp.length < 2) return;
+    const sorted = attacker.team === 'home'
+      ? opp.slice().sort((a, b) => a.y - b.y)
+      : opp.slice().sort((a, b) => b.y - a.y);
+    const lineY = sorted[1].y;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,214,10,0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(10, lineY);
+    ctx.lineTo(FIELD_W - 10, lineY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawBall() {
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
@@ -1585,6 +1611,7 @@
 
   function render() {
     drawField();
+    drawOffsideLine();
     for (const p of players) drawPlayer(p);
     drawBall();
   }
