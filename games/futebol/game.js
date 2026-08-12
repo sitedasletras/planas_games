@@ -237,6 +237,7 @@
   const narrationOverlay = document.getElementById('narration-overlay');
   const narrationList = document.getElementById('narration-list');
   const narrationClose = document.getElementById('narration-close');
+  const sponsorStripEl = document.getElementById('sponsor-strip');
   const tickerEl = document.getElementById('ticker');
   const controlsHintEl = document.getElementById('controls-hint');
   const controlsHintCloseBtn = document.getElementById('controls-hint-close');
@@ -279,6 +280,27 @@
 
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
+
+  function renderSponsorStrip() {
+    if (!homeClub || !homeClub.sponsors || !window.WSPClub) return;
+    const slots = window.WSPClub.SPONSOR_SLOTS;
+    const active = Object.keys(slots)
+      .map((key) => {
+        const s = homeClub.sponsors[key];
+        return s && s.current ? { icon: slots[key].icon, name: s.current.name } : null;
+      })
+      .filter(Boolean);
+    if (!active.length) return;
+    sponsorStripEl.innerHTML = '';
+    active.forEach((a) => {
+      const pill = document.createElement('span');
+      pill.className = 'sponsor-pill';
+      pill.textContent = a.icon + ' ' + a.name;
+      sponsorStripEl.appendChild(pill);
+    });
+    sponsorStripEl.classList.remove('hidden');
+  }
+  renderSponsorStrip();
 
   // ---------- Efeitos dos departamentos do clube ----------
   const FATIGUE_DEPTS = ['preparador_fisico', 'massagista', 'musculacao'];

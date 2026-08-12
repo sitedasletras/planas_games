@@ -115,6 +115,33 @@ html, body {
   min-height: 1.4em;
 }
 
+.sponsor-strip {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  max-width: 400px;
+  background: repeating-linear-gradient(45deg, #0e1c15, #0e1c15 8px, #16281f 8px, #16281f 16px);
+  padding: 3px 8px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.sponsor-strip.hidden {
+  display: none;
+}
+
+.sponsor-pill {
+  flex-shrink: 0;
+  background: rgba(255, 213, 74, 0.12);
+  border: 1px solid #ffd54a;
+  color: #ffd54a;
+  font-size: 0.6rem;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
 canvas {
   width: 100%;
   max-width: 400px;
