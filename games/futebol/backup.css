@@ -1,0 +1,107 @@
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  background: #0a1a14;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: white;
+}
+
+.backup-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 24px;
+}
+
+.backup-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #16281f;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.back-btn {
+  color: #ffd54a;
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.backup-topbar h1 {
+  font-size: 1.15rem;
+  color: #ffd54a;
+}
+
+.backup-section {
+  margin: 16px 14px;
+  background: #16281f;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.backup-section h2 {
+  font-size: 0.95rem;
+  color: #ffd54a;
+  margin-bottom: 6px;
+}
+
+.hint {
+  font-size: 0.72rem;
+  color: #9fd8b8;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+textarea {
+  width: 100%;
+  background: #0e1c15;
+  color: #cfeede;
+  border: 1px solid #345c48;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.68rem;
+  font-family: monospace;
+  resize: vertical;
+  margin-bottom: 10px;
+}
+
+input[type="file"] {
+  width: 100%;
+  color: #cfeede;
+  font-size: 0.72rem;
+  margin-bottom: 10px;
+}
+
+.backup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.backup-btn {
+  flex: 1;
+  background: #2f9e44;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.backup-btn.secondary {
+  background: #0e1c15;
+  border: 1px solid #345c48;
+  color: #ffd54a;
+}
+
+.import-status {
+  font-size: 0.72rem;
+  color: #9fd8b8;
+  margin-top: 8px;
+  line-height: 1.4;
+}

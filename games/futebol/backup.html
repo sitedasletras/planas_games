@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Salvar/Carregar</title>
+<link rel="stylesheet" href="backup.css">
+</head>
+<body>
+  <div class="backup-wrap">
+    <div class="backup-topbar">
+      <a class="back-btn" href="index.html">←</a>
+      <h1>Salvar / Carregar</h1>
+    </div>
+
+    <div class="backup-section">
+      <h2>Exportar progresso</h2>
+      <p class="hint">Copie o código ou baixe o arquivo para guardar seu elenco, clube e temporada — e usar em outro aparelho ou navegador.</p>
+      <textarea id="export-code" readonly rows="5"></textarea>
+      <div class="backup-actions">
+        <button class="backup-btn" id="copy-btn">Copiar código</button>
+        <button class="backup-btn secondary" id="download-btn">Baixar arquivo</button>
+      </div>
+    </div>
+
+    <div class="backup-section">
+      <h2>Importar progresso</h2>
+      <p class="hint">Cole um código exportado ou escolha o arquivo baixado. Isso substitui o progresso atual neste aparelho.</p>
+      <textarea id="import-code" rows="5" placeholder="Cole o código aqui..."></textarea>
+      <input type="file" id="import-file" accept="application/json,.json">
+      <button class="backup-btn" id="import-btn">Importar</button>
+      <div class="import-status" id="import-status"></div>
+    </div>
+  </div>
+
+  <script src="backup.js"></script>
+</body>
+</html>
