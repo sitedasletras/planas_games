@@ -16,6 +16,7 @@
       premiumUnlocked: false,
       colors: { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a' },
       crest: { shape: 'escudo', emblem: '⚽' },
+      torcidaName: null,
     };
   }
 
@@ -32,7 +33,80 @@
     musculacao: { label: 'Musculação', icon: '🏋️', desc: 'Estrutura de treino de força' },
     hidromassagem: { label: 'Hidromassagem', icon: '🛁', desc: 'Recuperação pós-jogo' },
     assessor_imprensa: { label: 'Assessor de Imprensa', icon: '🎙️', desc: 'Cuida da imagem do clube na mídia' },
+    torcida: { label: 'Torcida Organizada', icon: '📣', desc: 'Mobiliza a torcida e aumenta a renda de bilheteria' },
   };
+
+  // Cada instalação do Campus agrupa um ou mais profissionais/departamentos.
+  // O nível da instalação é a média (arredondada para baixo) dos níveis dos seus departamentos,
+  // e evolui por "tiers" nomeados — a estrutura física acompanha a evolução dos profissionais.
+  const FACILITY_GROUPS = {
+    medico: {
+      label: 'Departamento Médico',
+      icon: '⚕️',
+      depts: ['medico', 'fisioterapia', 'massagista', 'ortopedista', 'psicologo'],
+      tiers: ['Sem estrutura médica', 'Ambulatório', 'Enfermaria', 'Centro Médico', 'Clínica Especializada', 'Hospital Completo'],
+    },
+    tecnica: {
+      label: 'Comissão Técnica',
+      icon: '📋',
+      depts: ['diretor_tecnico', 'treinador', 'auxiliar_tecnico'],
+      tiers: ['Sem comissão formada', 'Comissão Improvisada', 'Sala Técnica', 'CT Básico', 'Centro de Comissão Técnica', 'Comissão de Elite'],
+    },
+    fisica: {
+      label: 'Preparação Física',
+      icon: '🏋️',
+      depts: ['preparador_fisico', 'musculacao', 'hidromassagem'],
+      tiers: ['Sem estrutura física', 'Quadra do Bairro', 'Academia Simples', 'Centro de Performance', 'Laboratório de Alto Rendimento', 'Complexo Olímpico'],
+    },
+    imprensa: {
+      label: 'Imprensa',
+      icon: '🎙️',
+      depts: ['assessor_imprensa'],
+      tiers: ['Sem assessoria', 'Assessoria Informal', 'Central de Imprensa', 'Departamento de Comunicação', 'Central de Mídia Profissional', 'Agência de Comunicação Global'],
+    },
+    torcida: {
+      label: 'Torcida',
+      icon: '📣',
+      depts: ['torcida'],
+      tiers: ['Sem organização', 'Buteco do Bairro', 'Torcida do Bairro', 'Torcida Organizada', 'Torcida Organizada Regional', 'Torcida Organizada Nacional'],
+      nameable: true,
+      nameableFromLevel: 3,
+    },
+  };
+
+  function facilityGroupLevel(club, groupKey) {
+    const group = FACILITY_GROUPS[groupKey];
+    if (!group) return 0;
+    const sum = group.depts.reduce((s, k) => s + (club.departments[k] || 0), 0);
+    return Math.floor(sum / group.depts.length);
+  }
+
+  function facilityTierLabel(club, groupKey) {
+    const group = FACILITY_GROUPS[groupKey];
+    if (!group) return '';
+    return group.tiers[facilityGroupLevel(club, groupKey)];
+  }
+
+  const TORCIDA_NAME_MAX = 28;
+
+  function setTorcidaName(club, name) {
+    const trimmed = (name || '').trim().slice(0, TORCIDA_NAME_MAX);
+    if (!trimmed) return { ok: false, reason: 'empty' };
+    club.torcidaName = trimmed;
+    saveClub(club);
+    return { ok: true };
+  }
+
+  const BASE_MATCH_REVENUE = 8000;
+  const REVENUE_PER_TORCIDA_LEVEL = 6000;
+
+  function payMatchRevenue(club) {
+    const torcidaLevel = (club.departments && club.departments.torcida) || 0;
+    const revenue = BASE_MATCH_REVENUE + torcidaLevel * REVENUE_PER_TORCIDA_LEVEL;
+    club.budget += revenue;
+    saveClub(club);
+    return { revenue, torcidaLevel };
+  }
 
   const SPONSOR_SLOTS = {
     camisa_frente: { label: 'Camisa (Frente)', icon: '👕', min: 150000, max: 400000 },
@@ -60,6 +134,16 @@
     return Math.round(BASE_COST * Math.pow(currentLevel + 1, 1.6));
   }
 
+  // O nível de cada profissional/departamento é limitado pela divisão atual do clube —
+  // dinheiro sozinho não compra uma estrutura de ponta enquanto o time ainda está
+  // disputando o Campeonato do Bairro, por exemplo.
+  const CAMPUS_TIER_CAPS = { bairro: 1, cidade: 2, regional: 4, estadual: 5 };
+
+  function maxDepartmentLevelForGroup(tierGroupKey) {
+    const cap = CAMPUS_TIER_CAPS[tierGroupKey];
+    return Math.min(MAX_LEVEL, cap == null ? MAX_LEVEL : cap);
+  }
+
   function defaultClub() {
     const departments = {};
     Object.keys(DEPARTMENTS).forEach((k) => { departments[k] = 0; });
@@ -85,6 +169,7 @@
         if (parsed.premiumUnlocked == null) parsed.premiumUnlocked = defaults.premiumUnlocked;
         if (!parsed.colors) parsed.colors = defaults.colors;
         if (!parsed.crest) parsed.crest = defaults.crest;
+        if (parsed.torcidaName === undefined) parsed.torcidaName = defaults.torcidaName;
         return parsed;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -97,9 +182,11 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(club)); } catch (e) { /* storage unavailable */ }
   }
 
-  function upgradeDepartment(club, key) {
+  function upgradeDepartment(club, key, levelCap) {
     const level = club.departments[key] || 0;
+    const cap = levelCap == null ? MAX_LEVEL : Math.min(MAX_LEVEL, levelCap);
     if (level >= MAX_LEVEL) return { ok: false, reason: 'max' };
+    if (level >= cap) return { ok: false, reason: 'tier_locked' };
     const cost = upgradeCost(level);
     if (club.budget < cost) return { ok: false, reason: 'money', cost };
     club.budget -= cost;
@@ -168,9 +255,12 @@
 
   window.WSPClub = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
-    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS,
+    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
+    CAMPUS_TIER_CAPS,
     upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
+    facilityGroupLevel, facilityTierLabel, setTorcidaName, payMatchRevenue,
+    maxDepartmentLevelForGroup,
   };
 })();

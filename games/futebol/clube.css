@@ -68,6 +68,13 @@ html, body {
   margin-bottom: 10px;
 }
 
+.campus-tier-note {
+  margin: 0 14px 10px;
+  font-size: 0.7rem;
+  color: #9fd8b8;
+  font-style: italic;
+}
+
 .section-title {
   font-size: 0.85rem;
   text-transform: uppercase;
@@ -180,4 +187,90 @@ html, body {
   background: #333;
   color: #777;
   cursor: not-allowed;
+}
+
+.facility-block {
+  background: #0e1c15;
+  border: 1px solid #223a2e;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.facility-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.facility-icon {
+  font-size: 1.8rem;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #16281f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.facility-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.facility-label {
+  font-weight: bold;
+  font-size: 1rem;
+  color: #ffd54a;
+}
+
+.facility-tier {
+  font-size: 0.75rem;
+  color: #cfeede;
+  margin-bottom: 4px;
+}
+
+.facility-depts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 2px solid #223a2e;
+}
+
+.torcida-naming {
+  background: #16281f;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.75rem;
+}
+
+.torcida-naming.locked {
+  color: #9fd8b8;
+  font-style: italic;
+}
+
+.torcida-current-name {
+  color: #cfeede;
+  margin-bottom: 6px;
+}
+
+.torcida-naming-row {
+  display: flex;
+  gap: 6px;
+}
+
+.torcida-naming-row input {
+  flex: 1;
+  min-width: 0;
+  background: #0e1c15;
+  border: 1px solid #345c48;
+  border-radius: 6px;
+  padding: 8px;
+  color: white;
+  font-size: 0.8rem;
 }

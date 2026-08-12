@@ -1484,6 +1484,9 @@
     overlayTitle.textContent = 'FIM DE JOGO';
     let sub = `${teamLabel('home')} ${score.home} - ${score.away} ${teamLabel('away')}`;
     if (homeClub && window.WSPClub) {
+      const revenue = window.WSPClub.payMatchRevenue(homeClub);
+      const torcidaLabel = homeClub.torcidaName || 'torcida';
+      sub += `\nRenda de bilheteria (${torcidaLabel}): +${formatMoneyBRL(revenue.revenue)}`;
       const expenses = window.WSPClub.payMatchExpenses(homeClub, homeSquad);
       sub += `\nDespesas da partida: -${formatMoneyBRL(expenses.total)} (caixa: ${formatMoneyBRL(homeClub.budget)})`;
     }
