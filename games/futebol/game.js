@@ -245,6 +245,7 @@
   const joystickZone = document.getElementById('joystick-zone');
   const joystickKnob = document.getElementById('joystick-knob');
   const kickBtn = document.getElementById('kick-btn');
+  const sideInstructionsListEl = document.getElementById('side-instructions-list');
 
   // ---------- State ----------
   let players = [];
@@ -258,6 +259,7 @@
   let lastFrame = null;
   let homeTactic = 'quatroTresTres';
   let awayTactic = 'quatroTresTres';
+  let sidePanelRefreshMs = 0;
 
   // clock state
   let half = 1;
@@ -630,6 +632,35 @@
       instructionsList.appendChild(row);
     });
   }
+  function renderSideInstructions() {
+    if (!sideInstructionsListEl) return;
+    const outfield = players.filter(p => p.team === 'home' && p.role !== 'GK');
+    sideInstructionsListEl.innerHTML = '';
+    outfield.forEach((p) => {
+      const row = document.createElement('div');
+      row.className = 'side-instr-row';
+      const name = document.createElement('div');
+      name.className = 'side-instr-name';
+      name.textContent = '#' + p.number + ' ' + displayNameFor(p);
+      row.appendChild(name);
+      const btnWrap = document.createElement('div');
+      btnWrap.className = 'side-instr-btns';
+      INSTRUCTIONS.forEach((opt) => {
+        const b = document.createElement('button');
+        b.className = 'side-instr-btn' + ((p.instruction || 'zona') === opt.key ? ' active' : '');
+        b.textContent = opt.label;
+        b.addEventListener('click', () => {
+          p.instruction = opt.key;
+          if (opt.key !== 'individual') p.markTarget = null;
+          renderSideInstructions();
+        });
+        btnWrap.appendChild(b);
+      });
+      row.appendChild(btnWrap);
+      sideInstructionsListEl.appendChild(row);
+    });
+  }
+
   function openInstructionsMenu() {
     pauseForMenu();
     renderInstructionsList();
@@ -1709,6 +1740,13 @@
     } catch (err) {
       showErrorBanner(err);
     }
+
+    sidePanelRefreshMs -= dt * 1000;
+    if (sidePanelRefreshMs <= 0) {
+      sidePanelRefreshMs = 800;
+      try { renderSideInstructions(); } catch (err) { showErrorBanner(err); }
+    }
+
     requestAnimationFrame(frame);
   }
 

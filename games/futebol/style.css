@@ -17,6 +17,100 @@ html, body {
   position: relative;
 }
 
+.center-col {
+  width: 100%;
+  max-width: 400px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.side-panel {
+  display: none;
+}
+
+@media (min-width: 860px) {
+  .game-wrap {
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+    gap: 16px;
+    padding: 20px 0;
+  }
+
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    width: 260px;
+    flex-shrink: 0;
+    background: #16281f;
+    border-radius: 10px;
+    padding: 12px;
+    color: white;
+    overflow-y: auto;
+    gap: 8px;
+  }
+}
+
+.side-panel-title {
+  font-weight: bold;
+  font-size: 0.95rem;
+  color: #ffd54a;
+}
+
+.side-panel-hint {
+  font-size: 0.68rem;
+  color: #9db8ab;
+  margin-bottom: 4px;
+}
+
+.side-instructions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.side-instr-row {
+  background: #0e1c15;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.side-instr-row .side-instr-name {
+  font-size: 0.75rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-instr-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.side-instr-btn {
+  background: #23392c;
+  color: #cfe8da;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.side-instr-btn.active {
+  background: #ffd54a;
+  color: #16281f;
+  border-color: #ffd54a;
+  font-weight: bold;
+}
+
 .topbar {
   width: 100%;
   max-width: 400px;

@@ -8,103 +8,111 @@
 </head>
 <body>
   <div class="game-wrap">
-    <div class="topbar">
-      <a class="back-btn" href="index.html">←</a>
-      <div class="score-panel">
-        <span class="team-tag home" id="team-tag-home">B</span>
-        <span id="score-home">0</span>
-        <span class="dash">-</span>
-        <span id="score-away">0</span>
-        <span class="team-tag away">A</span>
-      </div>
-      <div class="timer"><span id="half-label">1T</span> <span id="timer">00:00</span></div>
-      <div class="controls-top">
-        <button id="btn-subs" title="Substituições">🔄</button>
-        <button id="btn-instructions" title="Instruções">👤</button>
-        <button id="btn-tactics" title="Tática">📋</button>
-        <button id="btn-speed" title="Acelerar">⏩</button>
-        <button id="btn-pause" title="Pausar">⏸</button>
-      </div>
-    </div>
-
-    <button class="ticker" id="ticker" title="Ver narração completa">📢 Bola rolando...</button>
-
-    <div class="sponsor-strip hidden" id="sponsor-strip"></div>
-
-    <canvas id="field" width="400" height="711"></canvas>
-
-    <div class="controls-hint" id="controls-hint">
-      <span>🕹️ arraste para mover · ⚽ toque (ou ESPAÇO) para chutar</span>
-      <button id="controls-hint-close" title="Fechar">×</button>
-    </div>
-
-    <div class="touch-controls">
-      <div class="joystick-zone" id="joystick-zone">
-        <div class="joystick-base">
-          <div class="joystick-knob" id="joystick-knob"></div>
+    <div class="center-col">
+      <div class="topbar">
+        <a class="back-btn" href="index.html">←</a>
+        <div class="score-panel">
+          <span class="team-tag home" id="team-tag-home">B</span>
+          <span id="score-home">0</span>
+          <span class="dash">-</span>
+          <span id="score-away">0</span>
+          <span class="team-tag away">A</span>
+        </div>
+        <div class="timer"><span id="half-label">1T</span> <span id="timer">00:00</span></div>
+        <div class="controls-top">
+          <button id="btn-subs" title="Substituições">🔄</button>
+          <button id="btn-instructions" title="Instruções">👤</button>
+          <button id="btn-tactics" title="Tática">📋</button>
+          <button id="btn-speed" title="Acelerar">⏩</button>
+          <button id="btn-pause" title="Pausar">⏸</button>
         </div>
       </div>
-      <button class="kick-btn" id="kick-btn">⚽</button>
-    </div>
 
-    <div class="overlay hidden" id="overlay">
-      <div class="overlay-card">
-        <div class="overlay-title" id="overlay-title">GOL!</div>
-        <div class="overlay-sub" id="overlay-sub"></div>
-        <div class="break-actions hidden" id="break-actions">
-          <button class="break-action-btn" id="break-tactics-btn">📋 Tática</button>
-          <button class="break-action-btn" id="break-instructions-btn">👤 Instruções</button>
-          <button class="break-action-btn" id="break-subs-btn">🔄 Substituições</button>
-        </div>
-        <div class="ratings-section hidden" id="ratings-section">
-          <div class="ratings-team" id="ratings-team"></div>
-          <div class="ratings-list" id="ratings-list"></div>
-        </div>
-        <button class="overlay-btn hidden" id="overlay-restart">Jogar novamente</button>
+      <button class="ticker" id="ticker" title="Ver narração completa">📢 Bola rolando...</button>
+
+      <div class="sponsor-strip hidden" id="sponsor-strip"></div>
+
+      <canvas id="field" width="400" height="711"></canvas>
+
+      <div class="controls-hint" id="controls-hint">
+        <span>🕹️ arraste para mover · ⚽ toque (ou ESPAÇO) para chutar</span>
+        <button id="controls-hint-close" title="Fechar">×</button>
       </div>
-    </div>
 
-    <div class="overlay hidden" id="tactics-overlay">
-      <div class="overlay-card">
-        <div class="overlay-title" style="font-size:1.3rem;">Escolha a tática</div>
-        <div class="tactics-list" id="tactics-list"></div>
-        <button class="overlay-btn" id="tactics-close">Fechar</button>
-      </div>
-    </div>
-
-    <div class="overlay hidden" id="instructions-overlay">
-      <div class="overlay-card instructions-card">
-        <div class="overlay-title" style="font-size:1.15rem;">Instruções por jogador</div>
-        <div class="instructions-list" id="instructions-list"></div>
-        <button class="overlay-btn" id="instructions-close">Fechar</button>
-      </div>
-    </div>
-
-    <div class="overlay hidden" id="subs-overlay">
-      <div class="overlay-card instructions-card">
-        <div class="overlay-title" style="font-size:1.15rem;">Substituições</div>
-        <div class="subs-counter" id="subs-counter">0/5 usadas</div>
-        <div class="subs-hint" id="subs-hint">Toque em quem sai, depois em quem entra</div>
-        <div class="subs-columns">
-          <div class="subs-col">
-            <div class="subs-col-title">Em campo</div>
-            <div class="instructions-list" id="subs-onfield"></div>
-          </div>
-          <div class="subs-col">
-            <div class="subs-col-title">Banco</div>
-            <div class="instructions-list" id="subs-bench"></div>
+      <div class="touch-controls">
+        <div class="joystick-zone" id="joystick-zone">
+          <div class="joystick-base">
+            <div class="joystick-knob" id="joystick-knob"></div>
           </div>
         </div>
-        <button class="overlay-btn" id="subs-close">Fechar</button>
+        <button class="kick-btn" id="kick-btn">⚽</button>
+      </div>
+
+      <div class="overlay hidden" id="overlay">
+        <div class="overlay-card">
+          <div class="overlay-title" id="overlay-title">GOL!</div>
+          <div class="overlay-sub" id="overlay-sub"></div>
+          <div class="break-actions hidden" id="break-actions">
+            <button class="break-action-btn" id="break-tactics-btn">📋 Tática</button>
+            <button class="break-action-btn" id="break-instructions-btn">👤 Instruções</button>
+            <button class="break-action-btn" id="break-subs-btn">🔄 Substituições</button>
+          </div>
+          <div class="ratings-section hidden" id="ratings-section">
+            <div class="ratings-team" id="ratings-team"></div>
+            <div class="ratings-list" id="ratings-list"></div>
+          </div>
+          <button class="overlay-btn hidden" id="overlay-restart">Jogar novamente</button>
+        </div>
+      </div>
+
+      <div class="overlay hidden" id="tactics-overlay">
+        <div class="overlay-card">
+          <div class="overlay-title" style="font-size:1.3rem;">Escolha a tática</div>
+          <div class="tactics-list" id="tactics-list"></div>
+          <button class="overlay-btn" id="tactics-close">Fechar</button>
+        </div>
+      </div>
+
+      <div class="overlay hidden" id="instructions-overlay">
+        <div class="overlay-card instructions-card">
+          <div class="overlay-title" style="font-size:1.15rem;">Instruções por jogador</div>
+          <div class="instructions-list" id="instructions-list"></div>
+          <button class="overlay-btn" id="instructions-close">Fechar</button>
+        </div>
+      </div>
+
+      <div class="overlay hidden" id="subs-overlay">
+        <div class="overlay-card instructions-card">
+          <div class="overlay-title" style="font-size:1.15rem;">Substituições</div>
+          <div class="subs-counter" id="subs-counter">0/5 usadas</div>
+          <div class="subs-hint" id="subs-hint">Toque em quem sai, depois em quem entra</div>
+          <div class="subs-columns">
+            <div class="subs-col">
+              <div class="subs-col-title">Em campo</div>
+              <div class="instructions-list" id="subs-onfield"></div>
+            </div>
+            <div class="subs-col">
+              <div class="subs-col-title">Banco</div>
+              <div class="instructions-list" id="subs-bench"></div>
+            </div>
+          </div>
+          <button class="overlay-btn" id="subs-close">Fechar</button>
+        </div>
+      </div>
+
+      <div class="overlay hidden" id="narration-overlay">
+        <div class="overlay-card instructions-card">
+          <div class="overlay-title" style="font-size:1.15rem;">Narração da partida</div>
+          <div class="narration-list" id="narration-list"></div>
+          <button class="overlay-btn" id="narration-close">Fechar</button>
+        </div>
       </div>
     </div>
 
-    <div class="overlay hidden" id="narration-overlay">
-      <div class="overlay-card instructions-card">
-        <div class="overlay-title" style="font-size:1.15rem;">Narração da partida</div>
-        <div class="narration-list" id="narration-list"></div>
-        <button class="overlay-btn" id="narration-close">Fechar</button>
-      </div>
+    <div class="side-panel" id="side-panel">
+      <div class="side-panel-title">Instruções rápidas</div>
+      <div class="side-panel-hint">Ajuste sem pausar o jogo</div>
+      <div class="side-instructions-list" id="side-instructions-list"></div>
     </div>
   </div>
 
