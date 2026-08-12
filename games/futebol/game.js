@@ -18,6 +18,7 @@
   const PICKUP_R = PLAYER_R + BALL_R + 2;
   const SHOOT_POWER = 300, PASS_POWER = 220, CLEAR_POWER = 260;
   const KICK_COOLDOWN_MS = 300;
+  const AI_DECISION_MIN_MS = 500, AI_DECISION_MAX_MS = 1100;
 
   // ---------- Clock ----------
   // Each half shows 46 game-minutes on the scoreboard, compressed into
@@ -257,7 +258,7 @@
       const prev = prevInstructions.find(x => x.team === p.team && x.number === p.number);
       if (prev) p.instruction = prev.instruction;
     }
-    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0 };
+    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0 };
   }
 
   function applyTactic(team, key) {
@@ -516,30 +517,34 @@
     return pastDefense && pastBall;
   }
 
+  function attemptShoot(p, bonus) {
+    const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
+    const spread = (Math.random() - 0.5) * (bonus ? 14 : 32) + footBias(p.foot);
+    kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * (bonus ? 1.15 : 1));
+  }
+
+  function attemptPass(p, pass) {
+    if (isPassOffside(p, pass.target)) {
+      const otherTeam = p.team === 'home' ? 'away' : 'home';
+      awardFreeKick(otherTeam, { x: pass.target.x, y: pass.target.y });
+      stopPause = STOPPAGE_MS;
+      showStoppage('IMPEDIMENTO!', 'Tiro livre para o adversário');
+      return;
+    }
+    kick(p, pass.target.x, pass.target.y, pass.power);
+  }
+
   function doKick() {
     if (matchOver || stopPause > 0) return;
     if (!ball.owner || ball.owner !== controlled) return;
     const p = controlled;
     const bonus = !!ball.freeKickBonus;
     ball.freeKickBonus = false;
-    const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
     const nearGoal = p.team === 'home' ? p.y < 260 : p.y > FIELD_H - 260;
-    if (nearGoal) {
-      const spread = (Math.random() - 0.5) * (bonus ? 14 : 32) + footBias(p.foot);
-      kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * (bonus ? 1.15 : 1));
-      return;
-    }
+    if (nearGoal) { attemptShoot(p, bonus); return; }
     const pass = pickPassTarget(p);
-    if (pass) {
-      if (isPassOffside(p, pass.target)) {
-        const otherTeam = p.team === 'home' ? 'away' : 'home';
-        awardFreeKick(otherTeam, { x: pass.target.x, y: pass.target.y });
-        stopPause = STOPPAGE_MS;
-        showStoppage('IMPEDIMENTO!', 'Tiro livre para o adversário');
-        return;
-      }
-      kick(p, pass.target.x, pass.target.y, pass.power);
-    } else kick(p, 200, attackingGoalY, SHOOT_POWER);
+    if (pass) attemptPass(p, pass);
+    else attemptShoot(p, bonus);
   }
 
   // ---------- AI / control selection ----------
@@ -626,15 +631,21 @@
     return best;
   }
 
-  function awayAIAct() {
+  function awayAIAct(dt) {
+    if (ball.aiCooldown > 0) ball.aiCooldown -= dt * 1000;
+
     if (ball.owner && ball.owner.team === 'away' && ball.owner.role !== 'GK') {
       const p = ball.owner;
-      const goalY = FIELD_H - 8;
       if (p.y > FIELD_H - 260) {
-        const spread = (Math.random() - 0.5) * 40;
-        kick(p, 200 + spread, goalY, SHOOT_POWER);
-      } else {
-        p.facing = { x: 0, y: 1 };
+        attemptShoot(p, false);
+      } else if (ball.aiCooldown <= 0) {
+        const pass = pickPassTarget(p);
+        if (pass && Math.random() < 0.6) {
+          attemptPass(p, pass);
+        } else {
+          p.facing = { x: 0, y: 1 };
+        }
+        ball.aiCooldown = AI_DECISION_MIN_MS + Math.random() * (AI_DECISION_MAX_MS - AI_DECISION_MIN_MS);
       }
     }
     if (ball.owner && ball.owner.role === 'GK') {
@@ -976,7 +987,7 @@
             const oppOutfield = p.team === 'home' ? awayOutfield : homeOutfield;
             updatePlayer(p, dt, teamOutfield, oppOutfield);
           }
-          awayAIAct();
+          awayAIAct(dt);
           updateBall(dt);
 
           displaySeconds += dt * CLOCK_SCALE;
