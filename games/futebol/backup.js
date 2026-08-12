@@ -138,10 +138,15 @@
     }
 
     window.WSPCloud.onAuthChange(async (user) => {
+      if (user && user.isAnonymous) {
+        // sessão anônima antiga (de antes do login por e-mail existir) — não conta como logado
+        window.WSPCloud.signOut();
+        return;
+      }
       if (user) {
         loggedOutEl.classList.add('hidden');
         loggedInEl.classList.remove('hidden');
-        userEmailEl.textContent = user.email || '(anônimo)';
+        userEmailEl.textContent = user.email || '';
 
         if (justLoggedIn) {
           justLoggedIn = false;
