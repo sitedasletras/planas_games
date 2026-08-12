@@ -124,6 +124,42 @@ canvas {
   background: #2f9e44;
 }
 
+.controls-hint {
+  position: absolute;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 376px;
+  background: rgba(14, 28, 21, 0.9);
+  color: #ffd54a;
+  font-size: 0.66rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.controls-hint.hidden {
+  display: none;
+}
+
+.controls-hint button {
+  background: none;
+  border: none;
+  color: #ffd54a;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
 .touch-controls {
   position: absolute;
   bottom: 0;
@@ -227,6 +263,28 @@ canvas {
 
 .overlay-btn.hidden {
   display: none;
+}
+
+.break-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.break-actions.hidden {
+  display: none;
+}
+
+.break-action-btn {
+  background: #1e3a2a;
+  color: #ffd54a;
+  border: 1px solid #345c48;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.85rem;
+  cursor: pointer;
 }
 
 .tactics-list {

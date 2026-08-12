@@ -213,6 +213,10 @@
   const overlayTitle = document.getElementById('overlay-title');
   const overlaySub = document.getElementById('overlay-sub');
   const overlayRestart = document.getElementById('overlay-restart');
+  const breakActionsEl = document.getElementById('break-actions');
+  const breakTacticsBtn = document.getElementById('break-tactics-btn');
+  const breakInstructionsBtn = document.getElementById('break-instructions-btn');
+  const breakSubsBtn = document.getElementById('break-subs-btn');
   const tacticsOverlay = document.getElementById('tactics-overlay');
   const tacticsList = document.getElementById('tactics-list');
   const tacticsClose = document.getElementById('tactics-close');
@@ -231,6 +235,8 @@
   const narrationList = document.getElementById('narration-list');
   const narrationClose = document.getElementById('narration-close');
   const tickerEl = document.getElementById('ticker');
+  const controlsHintEl = document.getElementById('controls-hint');
+  const controlsHintCloseBtn = document.getElementById('controls-hint-close');
   const joystickZone = document.getElementById('joystick-zone');
   const joystickKnob = document.getElementById('joystick-knob');
   const kickBtn = document.getElementById('kick-btn');
@@ -510,6 +516,15 @@
 
   kickBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); doKick(); });
 
+  const CONTROLS_HINT_KEY = 'wsp_controls_hint_dismissed';
+  try {
+    if (localStorage.getItem(CONTROLS_HINT_KEY)) controlsHintEl.classList.add('hidden');
+  } catch (e) { /* storage unavailable */ }
+  controlsHintCloseBtn.addEventListener('click', () => {
+    controlsHintEl.classList.add('hidden');
+    try { localStorage.setItem(CONTROLS_HINT_KEY, '1'); } catch (e) { /* storage unavailable */ }
+  });
+
   btnPause.addEventListener('click', () => {
     paused = !paused;
     btnPause.textContent = paused ? '▶' : '⏸';
@@ -679,6 +694,10 @@
   }
   btnSubs.addEventListener('click', openSubsMenu);
   subsClose.addEventListener('click', closeSubsMenu);
+
+  breakTacticsBtn.addEventListener('click', openTacticsMenu);
+  breakInstructionsBtn.addEventListener('click', openInstructionsMenu);
+  breakSubsBtn.addEventListener('click', openSubsMenu);
 
   function inputVector() {
     let x = joyVec.x, y = joyVec.y;
@@ -1254,6 +1273,7 @@
     overlayTitle.textContent = title;
     overlaySub.textContent = sub || '';
     overlayRestart.classList.add('hidden');
+    breakActionsEl.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
   function hideOverlay() { overlay.classList.add('hidden'); }
@@ -1272,6 +1292,7 @@
     }
     overlaySub.textContent = sub;
     overlayRestart.classList.remove('hidden');
+    breakActionsEl.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
   function formatMoneyBRL(n) {
@@ -1280,12 +1301,13 @@
   function showBreak() {
     overlayTitle.textContent = breakKind === 'halftime' ? 'INTERVALO' : 'PARADA TÉCNICA';
     overlayRestart.classList.add('hidden');
+    breakActionsEl.classList.remove('hidden');
     overlay.classList.remove('hidden');
     updateBreakSub();
   }
   function updateBreakSub() {
     const secsLeft = Math.max(0, Math.ceil(breakTimer / 1000));
-    overlaySub.textContent = `Voltamos em ${secsLeft}s...`;
+    overlaySub.textContent = `Voltamos em ${secsLeft}s... aproveite para ajustar o time:`;
   }
 
   // ---------- Render ----------
