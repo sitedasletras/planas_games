@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Confronto</title>
+<link rel="stylesheet" href="temporada.css">
+</head>
+<body>
+  <div class="temporada-wrap">
+    <div class="temporada-topbar">
+      <a class="back-btn" href="temporada.html">←</a>
+      <h1>Confronto</h1>
+    </div>
+
+    <div class="confronto-stage" id="confronto-stage"></div>
+
+    <div class="confronto-teams">
+      <div class="confronto-team">
+        <div class="confronto-crest" id="home-crest"></div>
+        <div class="confronto-name" id="home-name"></div>
+        <div class="confronto-form" id="home-form"></div>
+      </div>
+      <div class="confronto-vs">×</div>
+      <div class="confronto-team">
+        <div class="confronto-crest" id="away-crest"></div>
+        <div class="confronto-name" id="away-name"></div>
+        <div class="confronto-form" id="away-form"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Força dos elencos</div>
+    <div class="comp-card">
+      <div class="grl-row">
+        <span class="grl-value" id="home-grl"></span>
+        <div class="grl-bar"><div class="grl-fill" id="home-fill"></div><div class="grl-fill away" id="away-fill"></div></div>
+        <span class="grl-value" id="away-grl"></span>
+      </div>
+      <div class="grl-hint" id="grl-hint"></div>
+    </div>
+
+    <div class="comp-actions confronto-actions">
+      <a class="comp-btn secondary" href="temporada.html">Voltar</a>
+      <button class="comp-btn" id="enter-btn">Entrar em campo</button>
+    </div>
+  </div>
+
+  <script src="squad.js"></script>
+  <script src="club.js"></script>
+  <script src="season.js"></script>
+  <script src="confronto.js"></script>
+</body>
+</html>

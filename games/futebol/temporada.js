@@ -53,11 +53,12 @@
     try {
       localStorage.setItem('wsp_season_pending', JSON.stringify({
         type, part,
+        opponentId: opponent ? opponent.id : null,
         opponentName: opponent ? opponent.name : null,
         opponentStrength: opponent ? opponent.strength : null,
       }));
     } catch (e) { /* storage unavailable */ }
-    window.location.href = 'match.html?season=1';
+    window.location.href = 'confronto.html';
   }
 
   function standingsTable(rows, highlightId) {
