@@ -11,78 +11,105 @@
   };
 
   const KEYS = ['wsp_squad_v2', 'wsp_club_v1', 'wsp_season_v1'];
-  const CODE_KEY = 'wsp_sync_code';
-  const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem caracteres ambíguos (0/O, 1/I)
+  const PENDING_EMAIL_KEY = 'wsp_pending_email';
 
-  let app = null, auth = null, db = null, authReadyPromise = null;
+  let app = null, auth = null, db = null;
 
-  function ensureInit() {
-    if (authReadyPromise) return authReadyPromise;
+  function ensureApp() {
     if (!app) {
       app = firebase.initializeApp(firebaseConfig);
       auth = firebase.auth();
       db = firebase.firestore();
     }
-    authReadyPromise = new Promise((resolve, reject) => {
-      const unsubscribe = auth.onAuthStateChanged((user) => {
-        if (user) { unsubscribe(); resolve(user); }
-      }, reject);
-      auth.signInAnonymously().catch(reject);
-    }).catch((err) => {
-      authReadyPromise = null; // permite tentar de novo na próxima chamada, em vez de travar pra sempre
-      throw err;
-    });
-    return authReadyPromise;
   }
 
-  function randomCode() {
-    let code = '';
-    for (let i = 0; i < 8; i++) code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
-    return code;
+  function actionCodeSettings() {
+    return {
+      url: window.location.origin + window.location.pathname,
+      handleCodeInApp: true,
+    };
   }
 
-  function getSyncCode() {
-    return localStorage.getItem(CODE_KEY);
+  async function sendLoginLink(email) {
+    ensureApp();
+    await auth.sendSignInLinkToEmail(email, actionCodeSettings());
+    localStorage.setItem(PENDING_EMAIL_KEY, email);
   }
 
-  function getOrCreateSyncCode() {
-    let code = localStorage.getItem(CODE_KEY);
-    if (!code) {
-      code = randomCode();
-      localStorage.setItem(CODE_KEY, code);
-    }
-    return code;
+  function isLoginLink() {
+    ensureApp();
+    return auth.isSignInWithEmailLink(window.location.href);
+  }
+
+  async function completeLoginFromLink(fallbackEmail) {
+    ensureApp();
+    const email = localStorage.getItem(PENDING_EMAIL_KEY) || fallbackEmail;
+    if (!email) { const err = new Error('email-needed'); err.code = 'email-needed'; throw err; }
+    const result = await auth.signInWithEmailLink(email, window.location.href);
+    localStorage.removeItem(PENDING_EMAIL_KEY);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return result.user;
+  }
+
+  function onAuthChange(cb) {
+    ensureApp();
+    return auth.onAuthStateChanged(cb);
+  }
+
+  function currentUser() {
+    ensureApp();
+    return auth.currentUser;
+  }
+
+  function signOut() {
+    ensureApp();
+    return auth.signOut();
+  }
+
+  function requireUser() {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Você precisa estar conectado com seu e-mail primeiro.');
+    return user;
   }
 
   async function saveToCloud() {
-    await ensureInit();
-    const code = getOrCreateSyncCode();
+    ensureApp();
+    const user = requireUser();
     const data = {};
     KEYS.forEach((k) => {
       const raw = localStorage.getItem(k);
       if (raw != null) data[k] = raw;
     });
-    await db.collection('saves').doc(code).set({
+    await db.collection('saves').doc(user.uid).set({
       data,
+      email: user.email,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    return code;
   }
 
-  async function loadFromCloud(code) {
-    await ensureInit();
-    const cleanCode = (code || '').trim().toUpperCase();
-    if (!cleanCode) throw new Error('Código vazio.');
-    const docSnap = await db.collection('saves').doc(cleanCode).get();
-    if (!docSnap.exists) throw new Error('Código não encontrado na nuvem.');
+  async function loadFromCloud() {
+    ensureApp();
+    const user = requireUser();
+    const docSnap = await db.collection('saves').doc(user.uid).get();
+    if (!docSnap.exists) throw new Error('Nenhum save salvo na nuvem para esse e-mail ainda.');
     const stored = docSnap.data();
     if (!stored || !stored.data) throw new Error('Save vazio ou em formato inválido.');
     const foundKeys = Object.keys(stored.data).filter((k) => KEYS.includes(k));
     if (!foundKeys.length) throw new Error('Nenhum dado reconhecido nesse save.');
     foundKeys.forEach((k) => localStorage.setItem(k, stored.data[k]));
-    localStorage.setItem(CODE_KEY, cleanCode);
     return foundKeys;
   }
 
-  window.WSPCloud = { saveToCloud, loadFromCloud, getSyncCode, getOrCreateSyncCode };
+  async function hasCloudSave() {
+    ensureApp();
+    const user = auth.currentUser;
+    if (!user) return false;
+    const docSnap = await db.collection('saves').doc(user.uid).get();
+    return docSnap.exists;
+  }
+
+  window.WSPCloud = {
+    sendLoginLink, isLoginLink, completeLoginFromLink, onAuthChange, currentUser, signOut,
+    saveToCloud, loadFromCloud, hasCloudSave,
+  };
 })();

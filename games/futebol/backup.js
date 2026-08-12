@@ -92,48 +92,127 @@
     }
   });
 
-  // ---------- Nuvem (Firebase) ----------
+  // ---------- Nuvem (Firebase, login por e-mail sem senha) ----------
+  const loggedOutEl = document.getElementById('cloud-logged-out');
+  const loggedInEl = document.getElementById('cloud-logged-in');
+  const emailInputEl = document.getElementById('cloud-email-input');
+  const loginBtn = document.getElementById('cloud-login-btn');
+  const loginStatusEl = document.getElementById('cloud-login-status');
+  const userEmailEl = document.getElementById('cloud-user-email');
   const cloudSaveBtn = document.getElementById('cloud-save-btn');
-  const cloudSaveStatusEl = document.getElementById('cloud-save-status');
-  const cloudCodeInputEl = document.getElementById('cloud-code-input');
   const cloudLoadBtn = document.getElementById('cloud-load-btn');
-  const cloudLoadStatusEl = document.getElementById('cloud-load-status');
+  const cloudActionStatusEl = document.getElementById('cloud-action-status');
+  const cloudLogoutBtn = document.getElementById('cloud-logout-btn');
 
-  if (window.WSPCloud) {
-    const existingCode = window.WSPCloud.getSyncCode();
-    if (existingCode) cloudCodeInputEl.value = existingCode;
+  async function initCloudUI() {
+    if (!window.WSPCloud || typeof firebase === 'undefined') {
+      loginStatusEl.textContent = 'Não foi possível carregar a nuvem — verifique sua conexão e recarregue a página.';
+      loginBtn.disabled = true;
+      return;
+    }
 
+    let justLoggedIn = false;
+
+    try {
+      if (window.WSPCloud.isLoginLink()) {
+        loginStatusEl.textContent = 'Confirmando seu login...';
+        try {
+          await window.WSPCloud.completeLoginFromLink();
+          justLoggedIn = true;
+        } catch (e) {
+          if (e.code === 'email-needed') {
+            const typed = prompt('Confirme o e-mail que você usou para pedir o link:');
+            if (typed) {
+              try { await window.WSPCloud.completeLoginFromLink(typed); justLoggedIn = true; }
+              catch (e2) { loginStatusEl.textContent = 'Não foi possível confirmar o login: ' + (e2.message || e2); }
+            }
+          } else {
+            loginStatusEl.textContent = 'Não foi possível confirmar o login: ' + (e.message || e);
+          }
+        }
+      }
+    } catch (e) {
+      loginStatusEl.textContent = 'Não foi possível carregar a nuvem — verifique sua conexão e recarregue a página.';
+      loginBtn.disabled = true;
+      return;
+    }
+
+    window.WSPCloud.onAuthChange(async (user) => {
+      if (user) {
+        loggedOutEl.classList.add('hidden');
+        loggedInEl.classList.remove('hidden');
+        userEmailEl.textContent = user.email || '(anônimo)';
+
+        if (justLoggedIn) {
+          justLoggedIn = false;
+          try {
+            const has = await window.WSPCloud.hasCloudSave();
+            if (has && confirm('Encontramos um save salvo na nuvem para esse e-mail. Carregar agora? (substitui o progresso deste aparelho)')) {
+              await window.WSPCloud.loadFromCloud();
+              cloudActionStatusEl.textContent = 'Carregado! Voltando para o início...';
+              setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+            }
+          } catch (e) { /* sem save ainda, tudo bem */ }
+        }
+      } else {
+        loggedOutEl.classList.remove('hidden');
+        loggedInEl.classList.add('hidden');
+      }
+    });
+  }
+
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async () => {
+      const email = emailInputEl.value.trim();
+      if (!email || !email.includes('@')) { loginStatusEl.textContent = 'Digite um e-mail válido.'; return; }
+      loginBtn.disabled = true;
+      loginStatusEl.textContent = 'Enviando link...';
+      try {
+        await window.WSPCloud.sendLoginLink(email);
+        loginStatusEl.textContent = 'Link enviado! Abra seu e-mail e toque no link pra continuar (pode fechar essa aba).';
+      } catch (e) {
+        loginStatusEl.textContent = 'Não foi possível enviar o link: ' + (e.message || e);
+        loginBtn.disabled = false;
+      }
+    });
+  }
+
+  if (cloudSaveBtn) {
     cloudSaveBtn.addEventListener('click', async () => {
       cloudSaveBtn.disabled = true;
-      cloudSaveStatusEl.textContent = 'Salvando na nuvem...';
+      cloudActionStatusEl.textContent = 'Salvando na nuvem...';
       try {
-        const code = await window.WSPCloud.saveToCloud();
-        cloudSaveStatusEl.textContent = 'Salvo! Seu código de sincronização é: ' + code;
-        cloudCodeInputEl.value = code;
+        await window.WSPCloud.saveToCloud();
+        cloudActionStatusEl.textContent = 'Salvo com sucesso!';
       } catch (e) {
-        cloudSaveStatusEl.textContent = 'Não foi possível salvar na nuvem agora. Tente de novo em instantes.';
+        cloudActionStatusEl.textContent = 'Não foi possível salvar: ' + (e.message || e);
       }
       cloudSaveBtn.disabled = false;
     });
+  }
 
+  if (cloudLoadBtn) {
     cloudLoadBtn.addEventListener('click', async () => {
-      const code = cloudCodeInputEl.value.trim();
-      if (!code) { cloudLoadStatusEl.textContent = 'Digite um código de sincronização primeiro.'; return; }
       if (!confirm('Isso vai substituir o progresso atual neste aparelho. Continuar?')) return;
       cloudLoadBtn.disabled = true;
-      cloudLoadStatusEl.textContent = 'Buscando na nuvem...';
+      cloudActionStatusEl.textContent = 'Buscando na nuvem...';
       try {
-        const applied = await window.WSPCloud.loadFromCloud(code);
-        cloudLoadStatusEl.textContent = 'Carregado com sucesso (' + applied.join(', ') + '). Voltando para o início...';
+        const applied = await window.WSPCloud.loadFromCloud();
+        cloudActionStatusEl.textContent = 'Carregado (' + applied.join(', ') + '). Voltando para o início...';
         setTimeout(() => { window.location.href = 'index.html'; }, 1200);
       } catch (e) {
-        cloudLoadStatusEl.textContent = e.message || 'Não foi possível carregar esse código.';
+        cloudActionStatusEl.textContent = e.message || 'Não foi possível carregar.';
         cloudLoadBtn.disabled = false;
       }
     });
-  } else {
-    cloudSaveBtn.disabled = true;
-    cloudLoadBtn.disabled = true;
-    cloudSaveStatusEl.textContent = 'Nuvem indisponível no momento.';
   }
+
+  if (cloudLogoutBtn) {
+    cloudLogoutBtn.addEventListener('click', async () => {
+      await window.WSPCloud.signOut();
+      cloudActionStatusEl.textContent = '';
+    });
+  }
+
+  initCloudUI();
 })();

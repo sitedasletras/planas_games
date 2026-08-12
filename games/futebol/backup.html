@@ -14,34 +14,46 @@
     </div>
 
     <div class="backup-section">
-      <h2>Exportar progresso</h2>
-      <p class="hint">Copie o código ou baixe o arquivo para guardar seu elenco, clube e temporada — e usar em outro aparelho ou navegador.</p>
-      <textarea id="export-code" readonly rows="5"></textarea>
-      <div class="backup-actions">
-        <button class="backup-btn" id="copy-btn">Copiar código</button>
-        <button class="backup-btn secondary" id="download-btn">Baixar arquivo</button>
+      <h2>☁️ Nuvem</h2>
+      <p class="hint">Conecte seu e-mail para salvar e carregar seu progresso em qualquer aparelho automaticamente — sem senha, sem código pra guardar.</p>
+
+      <div id="cloud-logged-out">
+        <input type="email" id="cloud-email-input" placeholder="seu@email.com" style="width:100%;padding:8px;background:#0e1c15;color:#cfeede;border:1px solid #345c48;border-radius:8px;margin-bottom:10px;">
+        <button class="backup-btn" id="cloud-login-btn">Entrar por e-mail</button>
+        <div class="import-status" id="cloud-login-status"></div>
+      </div>
+
+      <div id="cloud-logged-in" class="hidden">
+        <p class="hint">Conectado como <strong id="cloud-user-email"></strong></p>
+        <div class="backup-actions">
+          <button class="backup-btn" id="cloud-save-btn">Salvar na nuvem</button>
+          <button class="backup-btn secondary" id="cloud-load-btn">Carregar da nuvem</button>
+        </div>
+        <div class="import-status" id="cloud-action-status"></div>
+        <button class="backup-btn secondary" id="cloud-logout-btn" style="margin-top:10px;">Sair</button>
       </div>
     </div>
 
     <div class="backup-section">
-      <h2>Importar progresso</h2>
-      <p class="hint">Cole um código exportado ou escolha o arquivo baixado. Isso substitui o progresso atual neste aparelho.</p>
-      <textarea id="import-code" rows="5" placeholder="Cole o código aqui..."></textarea>
-      <input type="file" id="import-file" accept="application/json,.json">
-      <button class="backup-btn" id="import-btn">Importar</button>
-      <div class="import-status" id="import-status"></div>
-    </div>
+      <h2>Modo avançado (sem e-mail)</h2>
+      <p class="hint">Prefere não usar e-mail? Copie um código ou baixe um arquivo pra levar seu progresso manualmente pra outro aparelho.</p>
+      <details>
+        <summary style="cursor:pointer;color:#ffd54a;font-size:0.8rem;margin-bottom:10px;">Ver opções manuais</summary>
 
-    <div class="backup-section">
-      <h2>☁️ Nuvem</h2>
-      <p class="hint">Salve na nuvem e use o código em outro aparelho — sem precisar de login ou senha. Guarde o código em lugar seguro, quem tiver ele acessa esse save.</p>
-      <button class="backup-btn" id="cloud-save-btn">Salvar na nuvem</button>
-      <div class="import-status" id="cloud-save-status"></div>
+        <h2 style="margin-top:14px;">Exportar progresso</h2>
+        <textarea id="export-code" readonly rows="5"></textarea>
+        <div class="backup-actions">
+          <button class="backup-btn" id="copy-btn">Copiar código</button>
+          <button class="backup-btn secondary" id="download-btn">Baixar arquivo</button>
+        </div>
 
-      <p class="hint" style="margin-top:14px;">Carregar de outro aparelho:</p>
-      <input type="text" id="cloud-code-input" placeholder="Código de sincronização" style="width:100%;padding:8px;background:#0e1c15;color:#cfeede;border:1px solid #345c48;border-radius:8px;margin-bottom:10px;font-family:monospace;text-transform:uppercase;">
-      <button class="backup-btn secondary" id="cloud-load-btn">Carregar da nuvem</button>
-      <div class="import-status" id="cloud-load-status"></div>
+        <h2 style="margin-top:14px;">Importar progresso</h2>
+        <p class="hint">Isso substitui o progresso atual neste aparelho.</p>
+        <textarea id="import-code" rows="5" placeholder="Cole o código aqui..."></textarea>
+        <input type="file" id="import-file" accept="application/json,.json">
+        <button class="backup-btn" id="import-btn">Importar</button>
+        <div class="import-status" id="import-status"></div>
+      </details>
     </div>
   </div>
 
