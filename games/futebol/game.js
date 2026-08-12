@@ -43,6 +43,7 @@
   const WALL_MIN_DIST = 55; // minimum distance defenders are pushed back on a free kick
   const MAX_SUBS = 5;
   const STOPPAGE_MS = 1100;
+  const SIDE_STOPPAGE_MS = 700;
   const PENALTY_VAR_CONFIRM_CHANCE = 0.75;
   const PENALTY_GOAL_CHANCE = 0.76;
   const PENALTY_STOPPAGE_MS = 1800;
@@ -447,7 +448,7 @@
       const prev = prevInstructions.find(x => x.team === p.team && x.number === p.number);
       if (prev) p.instruction = prev.instruction;
     }
-    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0 };
+    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0, lastToucher: null };
   }
 
   function applyTactic(team, key) {
@@ -763,6 +764,7 @@
     ball.owner = null;
     ball.kickerImmune = player;
     ball.kickCooldown = KICK_COOLDOWN_MS;
+    ball.lastToucher = player;
   }
 
   function clampBall() {
@@ -805,7 +807,16 @@
     lastShooter = p;
     const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
     const accuracyMult = 1.3 - ((p.rating || 60) / 100) * 0.6;
-    const spread = (Math.random() - 0.5) * (bonus ? 14 : 32) * accuracyMult + footBias(p.foot);
+    const missChance = bonus ? 0.03 : Math.max(0.03, Math.min(0.3, 0.35 - (p.rating || 60) / 200));
+    let spread;
+    if (Math.random() < missChance) {
+      // chute mal ajustado, vai claramente para fora do gol
+      const side = Math.random() < 0.5 ? -1 : 1;
+      spread = side * (65 + Math.random() * 45);
+    } else {
+      spread = (Math.random() - 0.5) * (bonus ? 14 : 32) * accuracyMult;
+    }
+    spread += footBias(p.foot);
     kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * (bonus ? 1.15 : 1));
   }
 
@@ -974,17 +985,36 @@
       ball.x += ball.vx * dt;
       ball.y += ball.vy * dt;
 
-      if (ball.x < WALL_MIN) { ball.x = WALL_MIN; ball.vx *= -0.55; }
-      if (ball.x > WALL_MAX) { ball.x = WALL_MAX; ball.vx *= -0.55; }
+      if (ball.x < WALL_MIN) {
+        const spot = { x: WALL_MIN, y: Math.max(BALL_R, Math.min(FIELD_H - BALL_R, ball.y)) };
+        awardThrowIn(otherTeamOf(ball.lastToucher), spot);
+        return;
+      }
+      if (ball.x > WALL_MAX) {
+        const spot = { x: WALL_MAX, y: Math.max(BALL_R, Math.min(FIELD_H - BALL_R, ball.y)) };
+        awardThrowIn(otherTeamOf(ball.lastToucher), spot);
+        return;
+      }
 
       const inGoalX = ball.x > GOAL_L + BALL_R && ball.x < GOAL_R - BALL_R;
+      const cornerSide = ball.x < FIELD_W / 2 ? WALL_MIN : WALL_MAX;
       if (ball.y < BALL_R) {
         if (inGoalX) { onGoal('home'); return; }
-        ball.y = BALL_R; ball.vy *= -0.55;
+        if (ball.lastToucher && ball.lastToucher.team === 'away') {
+          awardCorner('home', { x: cornerSide, y: BALL_R });
+        } else {
+          awardGoalKick('away', { x: 200, y: 30 });
+        }
+        return;
       }
       if (ball.y > FIELD_H - BALL_R) {
         if (inGoalX) { onGoal('away'); return; }
-        ball.y = FIELD_H - BALL_R; ball.vy *= -0.55;
+        if (ball.lastToucher && ball.lastToucher.team === 'home') {
+          awardCorner('away', { x: cornerSide, y: FIELD_H - BALL_R });
+        } else {
+          awardGoalKick('home', { x: 200, y: FIELD_H - 30 });
+        }
+        return;
       }
     }
 
@@ -998,6 +1028,7 @@
     if (pickupCandidate) {
       if (!ball.owner) {
         ball.owner = pickupCandidate;
+        ball.lastToucher = pickupCandidate;
       } else if (ball.owner !== pickupCandidate && ball.owner.team !== pickupCandidate.team) {
         const roll = Math.random();
         if (roll < FOUL_CHANCE) {
@@ -1005,6 +1036,7 @@
           return;
         } else if (roll < FOUL_CHANCE + STEAL_CHANCE) {
           ball.owner = pickupCandidate;
+          ball.lastToucher = pickupCandidate;
         }
       }
     }
@@ -1082,6 +1114,31 @@
     const result = substitutePlayer(outPlayer, benchPlayer);
     if (result) awaySubsUsed++;
     return !!result;
+  }
+
+  function otherTeamOf(player) {
+    return player && player.team === 'home' ? 'away' : 'home';
+  }
+
+  function awardThrowIn(team, spot) {
+    narrate('Lateral para ' + teamLabel(team) + '.');
+    awardFreeKick(team, spot);
+    stopPause = SIDE_STOPPAGE_MS;
+    showStoppage('LATERAL!', teamLabel(team) + ' vai repor.');
+  }
+
+  function awardCorner(team, spot) {
+    narrate('Escanteio para ' + teamLabel(team) + '.');
+    awardFreeKick(team, spot);
+    stopPause = SIDE_STOPPAGE_MS;
+    showStoppage('ESCANTEIO!', teamLabel(team) + ' vai cobrar.');
+  }
+
+  function awardGoalKick(team, spot) {
+    narrate('Tiro de meta para ' + teamLabel(team) + '.');
+    awardFreeKick(team, spot);
+    stopPause = SIDE_STOPPAGE_MS;
+    showStoppage('TIRO DE META', teamLabel(team) + ' vai repor.');
   }
 
   function awardFreeKick(team, spot) {
