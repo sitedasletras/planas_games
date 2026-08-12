@@ -95,6 +95,26 @@ html, body {
   flex-shrink: 0;
 }
 
+.ticker {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  background: #0e1c15;
+  color: #ffd54a;
+  font-size: 0.68rem;
+  font-family: inherit;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+  padding: 4px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  min-height: 1.4em;
+}
+
 canvas {
   width: 100%;
   max-width: 400px;
@@ -355,4 +375,35 @@ canvas {
 .sub-player:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.narration-list {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 6px;
+  margin: 10px 0;
+  min-width: 260px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.narration-line {
+  display: flex;
+  gap: 8px;
+  background: #1e3a2a;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.narration-line .min {
+  color: #ffd54a;
+  font-weight: bold;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.narration-line.highlight {
+  border: 1px solid #ffd54a;
 }

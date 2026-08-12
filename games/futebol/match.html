@@ -27,6 +27,8 @@
       </div>
     </div>
 
+    <button class="ticker" id="ticker" title="Ver narração completa">📢 Bola rolando...</button>
+
     <canvas id="field" width="400" height="711"></canvas>
 
     <div class="touch-controls">
@@ -78,6 +80,14 @@
           </div>
         </div>
         <button class="overlay-btn" id="subs-close">Fechar</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="narration-overlay">
+      <div class="overlay-card instructions-card">
+        <div class="overlay-title" style="font-size:1.15rem;">Narração da partida</div>
+        <div class="narration-list" id="narration-list"></div>
+        <button class="overlay-btn" id="narration-close">Fechar</button>
       </div>
     </div>
   </div>

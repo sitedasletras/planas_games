@@ -43,6 +43,9 @@
   const WALL_MIN_DIST = 55; // minimum distance defenders are pushed back on a free kick
   const MAX_SUBS = 5;
   const STOPPAGE_MS = 1100;
+  const PENALTY_VAR_CONFIRM_CHANCE = 0.75;
+  const PENALTY_GOAL_CHANCE = 0.76;
+  const PENALTY_STOPPAGE_MS = 1800;
 
   const INSTRUCTIONS = [
     { key: 'zona', label: 'Zona' },
@@ -203,6 +206,10 @@
   const subsCounterEl = document.getElementById('subs-counter');
   const subsHintEl = document.getElementById('subs-hint');
   const subsClose = document.getElementById('subs-close');
+  const narrationOverlay = document.getElementById('narration-overlay');
+  const narrationList = document.getElementById('narration-list');
+  const narrationClose = document.getElementById('narration-close');
+  const tickerEl = document.getElementById('ticker');
   const joystickZone = document.getElementById('joystick-zone');
   const joystickKnob = document.getElementById('joystick-knob');
   const kickBtn = document.getElementById('kick-btn');
@@ -233,6 +240,11 @@
   let homeSubsUsed = 0;
   let awaySubsUsed = 0;
   let awaySubMinute = 15 + Math.random() * 20;
+
+  // narração
+  let narrationLog = [];
+  let lastShooter = null;
+  let pendingPenalty = null; // { team } enquanto uma cobrança de pênalti está em andamento
 
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
@@ -387,6 +399,9 @@
     updateScoreUI();
     halfLabelEl.textContent = '1T';
     timerEl.textContent = formatClock(0);
+    narrationLog = [];
+    tickerEl.textContent = '';
+    narrate('Bola rolando! ' + teamLabel('home') + ' x ' + teamLabel('away') + '.');
   }
 
   function startSecondHalf() {
@@ -398,6 +413,7 @@
     resetPositions(true);
     halfLabelEl.textContent = '2T';
     timerEl.textContent = formatClock(0);
+    narrate('Bola rolando para o 2º tempo!');
   }
 
   // ---------- Input ----------
@@ -524,6 +540,33 @@
   }
   btnInstructions.addEventListener('click', openInstructionsMenu);
   instructionsClose.addEventListener('click', closeInstructionsMenu);
+
+  function renderNarrationList() {
+    narrationList.innerHTML = '';
+    narrationLog.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'narration-line';
+      const min = document.createElement('span');
+      min.className = 'min';
+      min.textContent = entry.label;
+      row.appendChild(min);
+      const txt = document.createElement('span');
+      txt.textContent = entry.text;
+      row.appendChild(txt);
+      narrationList.appendChild(row);
+    });
+  }
+  function openNarrationMenu() {
+    pauseForMenu();
+    renderNarrationList();
+    narrationOverlay.classList.remove('hidden');
+  }
+  function closeNarrationMenu() {
+    narrationOverlay.classList.add('hidden');
+    resumeFromMenu();
+  }
+  tickerEl.addEventListener('click', openNarrationMenu);
+  narrationClose.addEventListener('click', closeNarrationMenu);
 
   let subOutSelected = null;
   function displayNameFor(p) { return p.name || ('#' + p.number); }
@@ -656,6 +699,7 @@
   }
 
   function attemptShoot(p, bonus) {
+    lastShooter = p;
     const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
     const spread = (Math.random() - 0.5) * (bonus ? 14 : 32) + footBias(p.foot);
     kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * (bonus ? 1.15 : 1));
@@ -664,6 +708,7 @@
   function attemptPass(p, pass) {
     if (isPassOffside(p, pass.target)) {
       const otherTeam = p.team === 'home' ? 'away' : 'home';
+      narrate('Impedimento! Tiro livre para ' + teamLabel(otherTeam) + '.');
       awardFreeKick(otherTeam, { x: pass.target.x, y: pass.target.y });
       stopPause = STOPPAGE_MS;
       showStoppage('IMPEDIMENTO!', 'Tiro livre para o adversário');
@@ -848,9 +893,14 @@
     if (ball.kickCooldown <= 0) ball.kickerImmune = null;
   }
 
-  function onGoal(scoringTeam) {
+  function onGoal(scoringTeam, viaPenalty) {
     score[scoringTeam]++;
     updateScoreUI();
+    if (!viaPenalty) {
+      const scorer = lastShooter && lastShooter.team === scoringTeam ? displayName(lastShooter) : null;
+      narrate((scorer ? 'GOL de ' + scorer + '! ' : 'GOL! ') + teamLabel(scoringTeam) + ' marca. ' + score.home + ' x ' + score.away + '.');
+    }
+    lastShooter = null;
     showGoal(scoringTeam);
     resetPositions(true);
     stopPause = 1400;
@@ -891,6 +941,7 @@
     players[idx] = newPlayer;
     if (controlled === outPlayer) controlled = newPlayer;
     if (ball.owner === outPlayer) ball.owner = newPlayer;
+    narrate('Mudança em ' + teamLabel(outPlayer.team) + ': entra ' + displayName(newPlayer) + ', sai ' + displayName(outPlayer) + '.');
     return newPlayer;
   }
 
@@ -959,7 +1010,19 @@
     });
   }
 
+  function isInPenaltyBox(spot, attackingTeam) {
+    const inX = spot.x >= GOAL_L - 40 && spot.x <= GOAL_R + 40;
+    if (!inX) return false;
+    return attackingTeam === 'home' ? spot.y <= 100 : spot.y >= FIELD_H - 100;
+  }
+
   function commitFoul(defender, attackerWithBall) {
+    const spot = { x: ball.x, y: ball.y };
+    if (isInPenaltyBox(spot, attackerWithBall.team)) {
+      commitPenaltyFoul(defender, attackerWithBall, spot);
+      return;
+    }
+
     const hard = Math.random() < HARD_FOUL_SHARE;
     const roll = Math.random();
     let cardResult = null;
@@ -976,10 +1039,108 @@
     else if (cardResult === 'red') sub += ' — cartão vermelho p/ ' + displayName(defender);
     else if (cardResult === 'red2') sub += ' — 2º amarelo, vermelho p/ ' + displayName(defender);
 
-    const spot = { x: ball.x, y: ball.y };
+    narrate((hard ? 'Falta dura de ' : 'Falta de ') + displayName(defender) + ' em ' + displayName(attackerWithBall) + '.' +
+      (cardResult ? ' ' + (cardResult === 'yellow' ? 'Cartão amarelo' : cardResult === 'red' ? 'Cartão vermelho' : '2º amarelo, vermelho!') + ' p/ ' + displayName(defender) + '.' : ''));
+
     awardFreeKick(attackerWithBall.team, spot);
     stopPause = STOPPAGE_MS;
     showStoppage(hard ? 'FALTA DURA!' : 'FALTA!', sub);
+  }
+
+  function commitPenaltyFoul(defender, attackerWithBall, spot) {
+    const benefitsHome = attackerWithBall.team === 'home';
+    narrate(benefitsHome
+      ? 'Falta na área! A torcida grita por pênalti!'
+      : 'Falta na área... muita reclamação, a torcida da casa fica apreensiva.');
+    narrate('O árbitro vai rever o lance no VAR...');
+
+    const confirmed = Math.random() < PENALTY_VAR_CONFIRM_CHANCE;
+    if (!confirmed) {
+      narrate(benefitsHome
+        ? 'Sem pênalti! O VAR marcou simulação de ' + displayName(attackerWithBall) + '. A torcida vaia a decisão!'
+        : 'Sem pênalti! O VAR marcou simulação. Urro de alívio da torcida da casa!');
+      awardFreeKick(defender.team, spot);
+      stopPause = STOPPAGE_MS;
+      showStoppage('SEM PÊNALTI', 'VAR: simulação de ' + displayName(attackerWithBall));
+      return;
+    }
+
+    const hard = Math.random() < HARD_FOUL_SHARE;
+    const roll = Math.random();
+    let cardResult = null;
+    if (hard) {
+      if (roll < RED_CHANCE_HARD) cardResult = bookPlayer(defender, true);
+      else if (roll < RED_CHANCE_HARD + YELLOW_CHANCE_HARD) cardResult = bookPlayer(defender, false);
+    } else if (roll < YELLOW_CHANCE_NORMAL) {
+      cardResult = bookPlayer(defender, false);
+    }
+
+    let cardNote = '';
+    if (cardResult === 'yellow') cardNote = ' Cartão amarelo p/ ' + displayName(defender) + '.';
+    else if (cardResult === 'red') cardNote = ' Cartão vermelho p/ ' + displayName(defender) + '!';
+    else if (cardResult === 'red2') cardNote = ' 2º amarelo, vermelho p/ ' + displayName(defender) + '!';
+
+    narrate('PÊNALTI CONFIRMADO' + (benefitsHome ? '! A torcida vibra!' : ' contra o ' + teamLabel('home') + '...') + cardNote);
+    awardPenalty(attackerWithBall.team);
+  }
+
+  function awardPenalty(team) {
+    const penaltySpot = { x: 200, y: team === 'home' ? 78 : FIELD_H - 78 };
+    ball.x = penaltySpot.x; ball.y = penaltySpot.y;
+    ball.vx = 0; ball.vy = 0;
+    ball.owner = null; ball.kickerImmune = null; ball.kickCooldown = 0;
+    clampBall();
+
+    const teamPlayers = players.filter(p => p.team === team && p.role !== 'GK');
+    const taker = teamPlayers.find(p => p.traits.includes('batedor_perto'))
+      || teamPlayers.find(p => p.traits.includes('batedor_longe'))
+      || teamPlayers[0];
+    if (!taker) {
+      stopPause = STOPPAGE_MS;
+      showStoppage('PÊNALTI!', teamLabel(team) + ' vai cobrar.');
+      return;
+    }
+
+    taker.x = penaltySpot.x;
+    taker.y = team === 'home' ? penaltySpot.y + 6 : penaltySpot.y - 6;
+    taker.vx = 0; taker.vy = 0;
+    taker.facing = { x: 0, y: team === 'home' ? -1 : 1 };
+
+    pendingPenalty = { team, takerName: displayName(taker) };
+    stopPause = PENALTY_STOPPAGE_MS;
+    showStoppage('PÊNALTI!', teamLabel(team) + ' vai cobrar — ' + displayName(taker));
+  }
+
+  function resolvePenalty() {
+    const { team, takerName } = pendingPenalty;
+    pendingPenalty = null;
+    const scored = Math.random() < PENALTY_GOAL_CHANCE;
+    if (scored) {
+      narrate('GOL DE PÊNALTI! ' + takerName + ' não desperdiça! ' + teamLabel(team) + ' marca.');
+      onGoal(team, true);
+      return;
+    }
+    const savedByGK = Math.random() < 0.65;
+    narrate(savedByGK
+      ? 'PÊNALTI DEFENDIDO! Grande defesa do goleiro!'
+      : 'PÊNALTI PERDIDO! ' + takerName + ' manda para fora!');
+    const defendingTeam = team === 'home' ? 'away' : 'home';
+    awardFreeKick(defendingTeam, { x: 200, y: team === 'home' ? 40 : FIELD_H - 40 });
+    stopPause = STOPPAGE_MS;
+    showStoppage(savedByGK ? 'DEFENDEU!' : 'PARA FORA!', '');
+  }
+
+  // ---------- Narração ----------
+  function teamLabel(team) {
+    return team === 'home' ? (homeSquad ? homeSquad.clubName : 'Bandeirantes') : 'Adversário';
+  }
+  function narrate(text) {
+    const minute = Math.floor(displaySeconds / 60);
+    const label = half + 'T ' + minute + "'";
+    narrationLog.push({ label, text });
+    if (narrationLog.length > 60) narrationLog.shift();
+    tickerEl.textContent = '📢 ' + label + ' — ' + text;
+    if (!narrationOverlay.classList.contains('hidden')) renderNarrationList();
   }
 
   // ---------- UI ----------
@@ -1167,7 +1328,10 @@
       if (!paused && !matchOver) {
         if (stopPause > 0) {
           stopPause -= dt * 1000;
-          if (stopPause <= 0) hideOverlay();
+          if (stopPause <= 0) {
+            hideOverlay();
+            if (pendingPenalty) resolvePenalty();
+          }
         } else if (breakKind) {
           breakTimer -= dt * 1000;
           if (breakTimer <= 0) {
@@ -1206,14 +1370,17 @@
             techTimeoutDone = true;
             breakKind = 'tech';
             breakTimer = TECH_TIMEOUT_REAL_SECONDS * 1000;
+            narrate('Parada técnica.');
             showBreak();
           } else if (displaySeconds >= HALF_DISPLAY_SECONDS) {
             if (half === 1) {
               breakKind = 'halftime';
               breakTimer = HALFTIME_REAL_SECONDS * 1000;
+              narrate('Fim de primeiro tempo. ' + teamLabel('home') + ' ' + score.home + ' x ' + score.away + ' ' + teamLabel('away') + '.');
               showBreak();
             } else {
               matchOver = true;
+              narrate('Fim de jogo! ' + teamLabel('home') + ' ' + score.home + ' x ' + score.away + ' ' + teamLabel('away') + '.');
               showFullTime();
             }
           }
