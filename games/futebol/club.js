@@ -2,11 +2,11 @@
   'use strict';
 
   const STORAGE_KEY = 'wsp_club_v1';
-  const STARTING_BUDGET = 500000;
+  const STARTING_BUDGET = 100000;
   const MAX_LEVEL = 5;
-  const BASE_COST = 8000;
-  const OTHER_EXPENSES_PER_MATCH = 15000; // direitos de imagem + viagem + despesas gerais, somados
-  const PREMIUM_COST = 50000;
+  const BASE_COST = 1000;
+  const OTHER_EXPENSES_PER_MATCH = 1500; // direitos de imagem + viagem + despesas gerais, somados
+  const PREMIUM_COST = 10000;
 
   const CREST_SHAPES = ['circulo', 'escudo', 'diamante'];
   const CREST_EMBLEMS = ['⚽', '⭐', '🦁', '🦅', '🐺', '⚔️', '🔱', '👑', '🐎', '🔥', '⚡', '🛡️'];
@@ -17,6 +17,7 @@
       colors: { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a' },
       crest: { shape: 'escudo', emblem: '⚽' },
       torcidaName: null,
+      valorizacaoLevel: 0,
     };
   }
 
@@ -97,8 +98,8 @@
     return { ok: true };
   }
 
-  const BASE_MATCH_REVENUE = 8000;
-  const REVENUE_PER_TORCIDA_LEVEL = 6000;
+  const BASE_MATCH_REVENUE = 3000;
+  const REVENUE_PER_TORCIDA_LEVEL = 1500;
 
   function payMatchRevenue(club) {
     const torcidaLevel = (club.departments && club.departments.torcida) || 0;
@@ -109,10 +110,10 @@
   }
 
   const SPONSOR_SLOTS = {
-    camisa_frente: { label: 'Camisa (Frente)', icon: '👕', min: 150000, max: 400000 },
-    lateral_campo: { label: 'Lateral de Campo', icon: '🚩', min: 20000, max: 60000 },
-    isotonicos: { label: 'Fornecedor de Isotônicos', icon: '🥤', min: 15000, max: 40000 },
-    material_esportivo: { label: 'Material Esportivo', icon: '👟', min: 100000, max: 300000 },
+    camisa_frente: { label: 'Camisa (Frente)', icon: '👕', min: 3000, max: 8000 },
+    lateral_campo: { label: 'Lateral de Campo', icon: '🚩', min: 800, max: 2500 },
+    isotonicos: { label: 'Fornecedor de Isotônicos', icon: '🥤', min: 500, max: 1500 },
+    material_esportivo: { label: 'Material Esportivo', icon: '👟', min: 2000, max: 6000 },
   };
 
   const SPONSOR_NAMES = {
@@ -124,9 +125,11 @@
 
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-  function randomProposal(slotKey) {
+  function randomProposal(slotKey, valorizacaoLevel) {
     const slot = SPONSOR_SLOTS[slotKey];
-    const value = Math.round((slot.min + Math.random() * (slot.max - slot.min)) / 1000) * 1000;
+    const mult = 1 + (valorizacaoLevel || 0) * 0.25;
+    const min = slot.min * mult, max = slot.max * mult;
+    const value = Math.round((min + Math.random() * (max - min)) / 100) * 100;
     return { name: pick(SPONSOR_NAMES[slotKey]), value };
   }
 
@@ -170,6 +173,7 @@
         if (!parsed.colors) parsed.colors = defaults.colors;
         if (!parsed.crest) parsed.crest = defaults.crest;
         if (parsed.torcidaName === undefined) parsed.torcidaName = defaults.torcidaName;
+        if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
         return parsed;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -199,14 +203,27 @@
     const slot = club.sponsors[slotKey];
     club.budget += slot.proposal.value;
     slot.current = slot.proposal;
-    slot.proposal = randomProposal(slotKey);
+    slot.proposal = randomProposal(slotKey, club.valorizacaoLevel);
     saveClub(club);
     return { ok: true, value: slot.current.value };
   }
 
   function rerollSponsor(club, slotKey) {
-    club.sponsors[slotKey].proposal = randomProposal(slotKey);
+    club.sponsors[slotKey].proposal = randomProposal(slotKey, club.valorizacaoLevel);
     saveClub(club);
+  }
+
+  // Chamada quando o clube conquista um título: eleva o patamar de patrocínio
+  // permanentemente e atualiza as propostas em aberto para refletir o novo prestígio.
+  function bumpValorizacao(club) {
+    club.valorizacaoLevel = (club.valorizacaoLevel || 0) + 1;
+    Object.keys(club.sponsors).forEach((k) => {
+      if (!club.sponsors[k].current) {
+        club.sponsors[k].proposal = randomProposal(k, club.valorizacaoLevel);
+      }
+    });
+    saveClub(club);
+    return { level: club.valorizacaoLevel };
   }
 
   function dismissDepartment(club, key) {
@@ -261,6 +278,6 @@
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
     facilityGroupLevel, facilityTierLabel, setTorcidaName, payMatchRevenue,
-    maxDepartmentLevelForGroup,
+    maxDepartmentLevelForGroup, bumpValorizacao,
   };
 })();

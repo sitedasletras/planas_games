@@ -100,9 +100,9 @@
 
   function estimateSquadStrength(squad) {
     if (!squad || !squad.players || !squad.players.length) return 0.5;
-    const avgSalary = squad.players.reduce((s, p) => s + (p.salary || 0), 0) / squad.players.length;
-    // baseline ~13000 -> força média (0.5); escala suave
-    return clamp(0.5 + (avgSalary - 13000) / 40000, 0.15, 0.97);
+    const avgRating = squad.players.reduce((s, p) => s + (p.rating || 60), 0) / squad.players.length;
+    // baseline ~60 de nota -> força média (0.5); escala suave
+    return clamp(0.5 + (avgRating - 60) / 80, 0.15, 0.97);
   }
 
   // ---------- Round-robin schedule (turno e returno) ----------

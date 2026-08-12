@@ -149,13 +149,13 @@
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
   const STAGE_SALARY_MULT = { promessa: 0.6, ascensao: 0.85, auge: 1.3, experiente: 1.0, declinio: 0.7 };
-  const BUCKET_BASE_SALARY = { GK: 12000, DEF: 11000, MID: 13000, ATT: 15000 };
+  const BUCKET_BASE_SALARY = { GK: 300, DEF: 280, MID: 320, ATT: 380 };
 
   function randomSalary(bucket, age) {
     const stage = careerStageFor(age);
     const base = BUCKET_BASE_SALARY[bucket] * STAGE_SALARY_MULT[stage];
     const variance = 0.8 + Math.random() * 0.5;
-    return Math.round((base * variance) / 100) * 100;
+    return Math.round((base * variance) / 10) * 10;
   }
 
   const STAGE_RATING_MULT = { promessa: 0.82, ascensao: 0.93, auge: 1.08, experiente: 1.0, declinio: 0.88 };
@@ -168,12 +168,38 @@
     return Math.round(Math.max(35, Math.min(99, base + variance)));
   }
 
+  // O passe (valor de mercado) é independente do salário: fica sempre entre MARKET_VALUE_MIN
+  // e MARKET_VALUE_MAX — um clube do bairro só encontra jogadores nessa faixa modesta.
+  const MARKET_VALUE_MIN = 500, MARKET_VALUE_MAX = 3000;
+  const BUCKET_BASE_VALUE = { GK: 1000, DEF: 900, MID: 1100, ATT: 1300 };
+
+  function randomMarketValue(bucket, age, rating) {
+    const stage = careerStageFor(age);
+    const base = BUCKET_BASE_VALUE[bucket] * STAGE_RATING_MULT[stage];
+    const ratingFactor = 0.5 + ((rating || 60) / 99) * 0.9;
+    const variance = 0.85 + Math.random() * 0.3;
+    const raw = base * ratingFactor * variance;
+    return Math.max(MARKET_VALUE_MIN, Math.min(MARKET_VALUE_MAX, Math.round(raw / 50) * 50));
+  }
+
   function releaseCost(player) {
-    return Math.round(player.salary * 2.5 / 100) * 100;
+    const value = player.marketValue || MARKET_VALUE_MIN;
+    return Math.max(50, Math.round(value * 0.3 / 10) * 10);
   }
 
   function transferFee(player) {
-    return Math.round(player.salary * 8 / 100) * 100;
+    return player.marketValue || MARKET_VALUE_MIN;
+  }
+
+  // Aplicada quando o clube conquista um título: o elenco atual "recebe valorização" —
+  // não fica preso ao teto normal de passe, refletindo o prestígio do time campeão.
+  function applyValorizacao(squad, boostPct, ratingBoost) {
+    squad.players.forEach((p) => {
+      const base = p.marketValue || MARKET_VALUE_MIN;
+      p.marketValue = Math.round(base * (1 + boostPct) / 50) * 50;
+      p.rating = Math.min(99, (p.rating || 60) + ratingBoost);
+    });
+    saveSquad(squad);
   }
 
   function makeRandomPlayer(posKey, usedNames) {
@@ -200,6 +226,7 @@
     }
 
     const age = randomAge();
+    const rating = randomRating(bucket, age);
 
     return {
       id: 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7),
@@ -214,7 +241,8 @@
       nationality: weightedPickObj(NATIONALITIES).key,
       avatar: generateAvatar(age),
       salary: randomSalary(bucket, age),
-      rating: randomRating(bucket, age),
+      rating,
+      marketValue: randomMarketValue(bucket, age, rating),
     };
   }
 
@@ -305,6 +333,7 @@
           if (p.salary == null) { p.salary = randomSalary(p.bucket, p.age); changed = true; }
           if (!p.id) { p.id = 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7); changed = true; }
           if (p.rating == null) { p.rating = randomRating(p.bucket, p.age); changed = true; }
+          if (p.marketValue == null) { p.marketValue = randomMarketValue(p.bucket, p.age, p.rating); changed = true; }
         });
         if (changed) saveSquad(parsed);
         return parsed;
@@ -347,8 +376,9 @@
 
   window.WSPSquad = {
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
+    MARKET_VALUE_MIN, MARKET_VALUE_MAX,
     careerStageFor, generateSquad, loadSquad, saveSquad,
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
-    renamePlayer, renumberPlayer, renameClub, advanceSeason,
+    renamePlayer, renumberPlayer, renameClub, advanceSeason, applyValorizacao,
   };
 })();

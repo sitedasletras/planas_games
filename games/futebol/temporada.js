@@ -154,6 +154,13 @@
         if (evolutions.length) agingText += ` ${evolutions.length} jovem(ns) evoluiu(íram) com o treino.`;
         if (declines.length) agingText += ` ${declines.length} veterano(s) caiu(íram) de rendimento.`;
 
+        let valorizacaoText = '';
+        if (outcome.userPos === 1) {
+          window.WSPClub.bumpValorizacao(club);
+          window.WSPSquad.applyValorizacao(squad, 0.15, 1);
+          valorizacaoText = '\n🌟 Título de campeão! O elenco e os patrocínios se valorizaram.';
+        }
+
         showOutcome(
           `Temporada encerrada: ${ordinalPt(outcome.userPos)} lugar no ${tier.label}.\n` +
           (outcome.userPromoted && tierChanged ? '⬆️ Promovido para ' + S.TIERS[state.tierIndex].label + '!'
@@ -162,7 +169,7 @@
             : outcome.userPromoted ? 'Já está no topo da pirâmide — permanece no mesmo nível.'
             : 'Permanece no mesmo nível.') +
           `\nFérias + 13º salário do elenco: -${formatMoney(seasonEnd.total)} (caixa: ${formatMoney(club.budget)})` +
-          agingText
+          agingText + valorizacaoText
         );
         ensureCompetitions();
         render();
@@ -239,13 +246,21 @@
         const oldCopaTierIndex = state.copaTierIndex;
         const result = S.finishCopaSeason(state);
         const copaTierChanged = state.copaTierIndex !== oldCopaTierIndex;
+
+        let valorizacaoText = '';
+        if (result.champion) {
+          window.WSPClub.bumpValorizacao(club);
+          window.WSPSquad.applyValorizacao(squad, 0.15, 1);
+          valorizacaoText = '\n🌟 O elenco e os patrocínios se valorizaram.';
+        }
+
         showOutcome(
           (result.champion ? '🏆 ' + squad.clubName + ' foi campeão da ' + copaTier.label + '!\n' : '') +
           (result.userPromoted && copaTierChanged ? '⬆️ Time promovido para a ' + S.COPA_TIERS[state.copaTierIndex].label + ' na próxima temporada.'
             : result.userRelegated && copaTierChanged ? '⬇️ Time rebaixado para a ' + S.COPA_TIERS[state.copaTierIndex].label + ' na próxima temporada.'
             : result.userRelegated ? 'Já está na copa mais baixa — permanece no mesmo nível.'
             : result.userPromoted ? 'Já está no topo das copas disponíveis — permanece no mesmo nível.'
-            : 'Time segue no mesmo nível da copa.')
+            : 'Time segue no mesmo nível da copa.') + valorizacaoText
         );
         ensureCompetitions();
         render();
