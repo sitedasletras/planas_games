@@ -172,6 +172,9 @@
   }
   const TACTIC_KEYS = Object.keys(TACTICS);
 
+  // ---------- Season integration ----------
+  const seasonMode = new URLSearchParams(window.location.search).get('season') === '1';
+
   // ---------- DOM ----------
   const canvas = document.getElementById('field');
   const ctx = canvas.getContext('2d');
@@ -445,7 +448,10 @@
     speedMultiplier = speedMultiplier === 1 ? 2 : 1;
     btnSpeed.style.opacity = speedMultiplier === 2 ? '0.6' : '1';
   });
-  overlayRestart.addEventListener('click', () => resetMatch());
+  overlayRestart.addEventListener('click', () => {
+    if (seasonMode) { window.location.href = 'temporada.html'; return; }
+    resetMatch();
+  });
 
   let pausedByMenu = false;
   function pauseForMenu() {
@@ -1002,6 +1008,12 @@
     if (homeClub && window.WSPClub) {
       const expenses = window.WSPClub.payMatchExpenses(homeClub, homeSquad);
       sub += `\nDespesas da partida: -${formatMoneyBRL(expenses.total)} (caixa: ${formatMoneyBRL(homeClub.budget)})`;
+    }
+    if (seasonMode) {
+      try {
+        localStorage.setItem('wsp_season_result', JSON.stringify({ golsUser: score.home, golsRival: score.away }));
+      } catch (e) { /* storage unavailable */ }
+      overlayRestart.textContent = 'Voltar à Temporada';
     }
     overlaySub.textContent = sub;
     overlayRestart.classList.remove('hidden');

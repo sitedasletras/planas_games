@@ -141,6 +141,16 @@
     return { payroll, other: OTHER_EXPENSES_PER_MATCH, total };
   }
 
+  function payEndOfSeason(club, squad) {
+    const payroll = squad ? squad.players.reduce((s, p) => s + (p.salary || 0), 0) : 0;
+    const ferias = payroll;
+    const decimoTerceiro = payroll;
+    const total = ferias + decimoTerceiro;
+    club.budget -= total;
+    saveClub(club);
+    return { ferias, decimoTerceiro, total };
+  }
+
   function unlockPremium(club) {
     if (club.premiumUnlocked) return { ok: false, reason: 'already' };
     if (club.budget < PREMIUM_COST) return { ok: false, reason: 'money', cost: PREMIUM_COST };
@@ -160,7 +170,7 @@
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
     PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS,
     upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
-    acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses,
+    acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
   };
 })();
