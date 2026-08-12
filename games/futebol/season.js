@@ -31,10 +31,12 @@
     }
   });
 
-  // ---------- Copa ladder (2 níveis por enquanto) ----------
+  // ---------- Copa ladder ----------
   const COPA_TIERS = [
-    { key: 'bairro', label: 'Copa do Bairro', strengthBase: 0.35 },
-    { key: 'cidade', label: 'Copa da Cidade', strengthBase: 0.55 },
+    { key: 'bairro', label: 'Copa do Bairro', strengthBase: 0.32 },
+    { key: 'cidade', label: 'Copa da Cidade', strengthBase: 0.5 },
+    { key: 'regional', label: 'Torneio Classificatório', strengthBase: 0.68 },
+    { key: 'estadual', label: 'Jogos por Chave', strengthBase: 0.85 },
   ];
 
   function seasonLetter(seasonIndex) {
@@ -505,9 +507,8 @@
   }
 
   function copaEligible(tierIndex) {
-    // Copa do Bairro para níveis do grupo bairro, Copa da Cidade para o grupo cidade.
     const tier = TIERS[tierIndex];
-    return tier.group === 'bairro' || tier.group === 'cidade';
+    return COPA_TIERS.some((ct) => ct.key === tier.group);
   }
 
   function ensureCopa(state, clubName, userSquad) {
