@@ -249,6 +249,10 @@
   const duelNameBEl = document.getElementById('duel-name-b');
   const duelRatingBEl = document.getElementById('duel-rating-b');
   const duelResultEl = document.getElementById('duel-result');
+  const pressureFillHomeEl = document.getElementById('pressure-fill-home');
+  const pressureFillAwayEl = document.getElementById('pressure-fill-away');
+  const pressureLabelHomeEl = document.getElementById('pressure-label-home');
+  const pressureLabelAwayEl = document.getElementById('pressure-label-away');
 
   // ---------- State ----------
   let players = [];
@@ -262,6 +266,9 @@
   let homeTactic = 'quatroTresTres';
   let awayTactic = 'quatroTresTres';
   let sidePanelRefreshMs = 0;
+  let pressureRefreshMs = 0;
+  let possessionHomeMs = 0;
+  let possessionAwayMs = 0;
 
   // clock state
   let half = 1;
@@ -530,6 +537,9 @@
     matchOver = false;
     stopPause = 0;
     awaySubMinute = 15 + Math.random() * 20;
+    possessionHomeMs = 0;
+    possessionAwayMs = 0;
+    updatePressureBar();
     hideOverlay();
     updateScoreUI();
     halfLabelEl.textContent = '1T';
@@ -1634,7 +1644,18 @@
       tag.style.borderColor = homeColors.detail;
       tag.textContent = homeClub.crest.emblem;
     }
+    if (pressureFillHomeEl) pressureFillHomeEl.style.background = homeColors.primary;
   })();
+
+  function updatePressureBar() {
+    const total = possessionHomeMs + possessionAwayMs;
+    const homePct = total > 0 ? Math.round((possessionHomeMs / total) * 100) : 50;
+    const awayPct = 100 - homePct;
+    pressureFillHomeEl.style.width = homePct + '%';
+    pressureFillAwayEl.style.width = awayPct + '%';
+    pressureLabelHomeEl.textContent = homePct + '%';
+    pressureLabelAwayEl.textContent = awayPct + '%';
+  }
 
   function drawPlayer(p) {
     let fill = p.team === 'home' ? homeColors.primary : '#b02c2c';
@@ -1781,6 +1802,12 @@
           ballCarrierAIAct(dt);
           updateBall(dt);
 
+          const possessor = ball.owner || ball.lastToucher;
+          if (possessor) {
+            if (possessor.team === 'home') possessionHomeMs += dt * 1000;
+            else possessionAwayMs += dt * 1000;
+          }
+
           displaySeconds += dt * CLOCK_SCALE;
           timerEl.textContent = formatClock(displaySeconds);
 
@@ -1822,6 +1849,12 @@
     if (sidePanelRefreshMs <= 0) {
       sidePanelRefreshMs = 800;
       try { renderSideInstructions(); } catch (err) { showErrorBanner(err); }
+    }
+
+    pressureRefreshMs -= dt * 1000;
+    if (pressureRefreshMs <= 0) {
+      pressureRefreshMs = 1000;
+      try { updatePressureBar(); } catch (err) { showErrorBanner(err); }
     }
 
     if (duelCooldownMs > 0) duelCooldownMs -= dt * 1000;

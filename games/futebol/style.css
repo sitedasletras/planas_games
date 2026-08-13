@@ -196,6 +196,39 @@ html, body {
   flex-shrink: 0;
 }
 
+.pressure-bar {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  height: 14px;
+  display: flex;
+  background: #0e1c15;
+  overflow: hidden;
+}
+
+.pressure-fill-home, .pressure-fill-away {
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+.pressure-fill-home { background: #2f7d4a; }
+.pressure-fill-away { background: #b02c2c; }
+
+.pressure-label-home, .pressure-label-away {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: 0.6rem;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+
+.pressure-label-home { left: 6px; }
+.pressure-label-away { right: 6px; }
+
 .ticker {
   display: block;
   width: 100%;
