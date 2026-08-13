@@ -270,9 +270,12 @@
     const BUCKET_ORDER = ['GK', 'DEF', 'MID', 'ATT'];
 
     BUCKET_ORDER.forEach((bucket) => {
+      // ordem estável por nome — se ordenasse pelo número, o jogador "pularia"
+      // de posição na lista assim que você trocasse o número dele, e ficava
+      // fácil perder o fio de qual linha é qual jogador
       const players = squad.players
         .filter((p) => p.bucket === bucket)
-        .sort((a, b) => a.number - b.number);
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
       if (!players.length) return;
 
       const bucketTitle = document.createElement('div');
@@ -317,7 +320,11 @@
           if (!result.ok && result.reason === 'taken') {
             alert('Já existe um jogador com esse número.');
             numInput.value = p.number;
+            return;
           }
+          numInput.value = p.number;
+          btn.textContent = 'Salvo!';
+          setTimeout(() => { btn.textContent = 'Salvar'; }, 1200);
         });
         row.appendChild(btn);
 

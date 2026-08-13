@@ -10,9 +10,9 @@
   const CLAMP_Y_MIN = 16, CLAMP_Y_MAX = FIELD_H - 16;
   const CLAMP_X_MIN = 16, CLAMP_X_MAX = FIELD_W - 16;
 
-  const TEAMMATE_SPEED = 88;   // px/sec, AI support
-  const CHASER_SPEED = 100;    // px/sec, AI chasing ball
-  const GK_SPEED = 78;
+  const TEAMMATE_SPEED = 98;   // px/sec, AI support
+  const CHASER_SPEED = 108;    // px/sec, AI chasing ball
+  const GK_SPEED = 82;
 
   const PICKUP_R = PLAYER_R + BALL_R + 2;
   const SHOOT_POWER = 260, PASS_POWER = 190, CLEAR_POWER = 230;
@@ -42,6 +42,7 @@
   const WALL_MIN_DIST = 55; // minimum distance defenders are pushed back on a free kick
   const MAX_SUBS = 5;
   const STOPPAGE_MS = 1100;
+  const WALL_STOPPAGE_BONUS_MS = 900; // tempo extra pra dar pra ver a barreira se formando
   const SIDE_STOPPAGE_MS = 700;
   const PENALTY_VAR_CONFIRM_CHANCE = 0.75;
   const PENALTY_GOAL_CHANCE = 0.76;
@@ -1078,6 +1079,10 @@
         p.facing = { x: dx / len, y: dy / len };
       } else {
         const instr = p.instruction || 'zona';
+        const forward = p.team === 'home' ? -1 : 1;
+        // 0 (linha de defesa) a 1 (linha de ataque) — usado pra decidir quem
+        // arrisca correr pra frente em busca de espaço e quem segura a linha
+        const advancement = Math.max(0, Math.min(1, forward < 0 ? 1 - p.baseY / FIELD_H : p.baseY / FIELD_H));
         let tx, ty;
         if (instr === 'individual') {
           if (!p.markTarget) {
@@ -1095,14 +1100,33 @@
           const drift = instr === 'acompanhar' ? Math.min(0.65, baseDrift + 0.3)
             : instr === 'defesa' ? Math.max(0.1, baseDrift - 0.15)
             : baseDrift;
-          const forward = p.team === 'home' ? -1 : 1;
           const yBias = instr === 'ataque' ? forward * 55 : instr === 'defesa' ? -forward * 55 : 0;
           tx = p.baseX + (ball.x - 200) * drift;
           ty = p.baseY + (ball.y - p.baseY) * 0.15 + yBias;
+
+          // sem a bola no pé, o time ainda se move: quem tem a bola ganha apoio
+          // (companheiros se abrem oferecendo linha de passe, e os mais adiantados
+          // arriscam correr pro espaço nas costas da defesa) — e contra a bola o
+          // time comprime/segura a linha junto, em vez de só balançar na posição base
+          if (ball.owner && ball.owner.team === p.team && ball.owner !== p) {
+            const sideSign = (p.x - ball.owner.x) >= 0 ? 1 : -1;
+            tx += sideSign * (16 + advancement * 10);
+            ty += forward * (12 + advancement * 26);
+          } else if (ball.owner && ball.owner.team !== p.team) {
+            const towardX = ball.x - p.x, towardY = ball.y - p.y;
+            const tlen = Math.hypot(towardX, towardY) || 1;
+            // a defesa (advancement baixo) segura mais a linha e comprime menos
+            // em direção à bola, pra manter o bloco coeso pra armar impedimento
+            const pressAmount = 5 + (1 - advancement) * 5;
+            tx += (towardX / tlen) * pressAmount;
+            ty += (towardY / tlen) * pressAmount;
+          }
         }
         const t = performance.now() / 1000;
-        tx += Math.sin(t * 0.6 + p.wanderSeed) * 9;
-        ty += Math.cos(t * 0.45 + p.wanderSeed * 1.7) * 9;
+        // a linha de defesa balança menos (segura a linha), o ataque balança mais
+        const wanderAmp = 10 + advancement * 10;
+        tx += Math.sin(t * 0.6 + p.wanderSeed) * wanderAmp;
+        ty += Math.cos(t * 0.45 + p.wanderSeed * 1.7) * wanderAmp;
         const dx = tx - p.x, dy = ty - p.y;
         const len = Math.hypot(dx, dy) || 1;
         const speed = Math.max(8, Math.min(TEAMMATE_SPEED, len * 4)) * fitFactor;
@@ -1399,7 +1423,7 @@
 
     let teamPlayers = players.filter(p => p.team === team && p.role !== 'GK' && p.staggerMs <= 0);
     if (!teamPlayers.length) teamPlayers = players.filter(p => p.team === team && p.role !== 'GK');
-    if (!teamPlayers.length) return;
+    if (!teamPlayers.length) return false;
     const goalY = team === 'home' ? 8 : FIELD_H - 8;
     const distToGoal = Math.abs(spot.y - goalY);
 
@@ -1417,7 +1441,7 @@
     ball.freeKickBonus = distToGoal < LONG_FK_RANGE &&
       (taker.traits.includes('batedor_perto') || taker.traits.includes('batedor_longe'));
 
-    pushBackDefenders(team, spot);
+    return pushBackDefenders(team, spot);
   }
 
   function pushAwayFromSpot(p, spot) {
@@ -1434,7 +1458,7 @@
   function pushBackDefenders(attackingTeam, spot) {
     const defendingTeam = attackingTeam === 'home' ? 'away' : 'home';
     const defenders = players.filter(p => p.team === defendingTeam && p.role !== 'GK');
-    if (!defenders.length) return;
+    if (!defenders.length) return false;
 
     const goalY = defendingTeam === 'home' ? FIELD_H - 8 : 8;
     const distToGoal = Math.abs(spot.y - goalY);
@@ -1457,9 +1481,10 @@
         p.vx = 0; p.vy = 0;
       });
       defenders.filter(p => !wallPlayers.includes(p)).forEach(p => pushAwayFromSpot(p, spot));
-    } else {
-      defenders.forEach(p => pushAwayFromSpot(p, spot));
+      return true;
     }
+    defenders.forEach(p => pushAwayFromSpot(p, spot));
+    return false;
   }
 
   function isInPenaltyBox(spot, attackingTeam) {
@@ -1528,8 +1553,12 @@
       (cardResult ? ' ' + (cardResult === 'yellow' ? 'Cartão amarelo' : cardResult === 'red' ? 'Cartão vermelho' : '2º amarelo, vermelho!') + ' p/ ' + displayName(defender) + '.' : ''));
 
     checkInjury(hard, attackerWithBall);
-    awardFreeKick(attackerWithBall.team, spot);
-    stopPause = STOPPAGE_MS;
+    const wallFormed = awardFreeKick(attackerWithBall.team, spot);
+    if (wallFormed) {
+      narrate(teamLabel(defender.team) + ' monta a barreira.');
+      sub += ' — barreira montada';
+    }
+    stopPause = wallFormed ? STOPPAGE_MS + WALL_STOPPAGE_BONUS_MS : STOPPAGE_MS;
     showStoppage(hard ? 'FALTA DURA!' : 'FALTA!', sub);
   }
 

@@ -72,7 +72,10 @@
       const tr = document.createElement('tr');
       if (r.id === highlightId) tr.className = 'me';
       const sg = r.gf - r.ga;
-      tr.innerHTML = `<td>${i + 1}</td><td class="name">${r.name}</td><td>${r.played}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${sg > 0 ? '+' : ''}${sg}</td><td class="pts">${r.pts}</td>`;
+      // o nome do usuário fica congelado em r.name desde a criação da liga/copa —
+      // usa o nome atual do clube pra não mostrar um nome antigo depois de renomear
+      const displayName = r.id === 'user' ? squad.clubName : r.name;
+      tr.innerHTML = `<td>${i + 1}</td><td class="name">${displayName}</td><td>${r.played}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${sg > 0 ? '+' : ''}${sg}</td><td class="pts">${r.pts}</td>`;
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
