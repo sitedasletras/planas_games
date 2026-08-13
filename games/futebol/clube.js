@@ -4,11 +4,13 @@
     DEPARTMENTS, MAX_LEVEL, upgradeCost, loadClub, upgradeDepartment,
     SPONSOR_SLOTS, acceptSponsor, rerollSponsor, dismissDepartment,
     FACILITY_GROUPS, TORCIDA_NAME_MAX, facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName,
-    maxDepartmentLevelForGroup,
+    maxDepartmentLevelForGroup, moraleLabel,
   } = window.WSPClub;
 
   const club = loadClub();
   const budgetEl = document.getElementById('budget-value');
+  const moraleFillEl = document.getElementById('morale-fill');
+  const moraleValueEl = document.getElementById('morale-value');
   const listEl = document.getElementById('dept-list');
   const sponsorListEl = document.getElementById('sponsor-list');
   const tierNoteEl = document.getElementById('campus-tier-note');
@@ -17,6 +19,21 @@
   const calendarPlayBtnEl = document.getElementById('calendar-play-btn');
   const newsSectionEl = document.getElementById('news-section');
   const newsListEl = document.getElementById('news-list');
+  const activityMedicoEl = document.getElementById('activity-medico');
+
+  function renderMedicoBadge() {
+    if (!activityMedicoEl || !window.WSPSquad) return;
+    const squad = window.WSPSquad.loadSquad();
+    const injuredCount = squad.players.filter((p) => window.WSPSquad.isInjured(p)).length;
+    const existing = activityMedicoEl.querySelector('.activity-badge');
+    if (existing) existing.remove();
+    if (injuredCount > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'activity-badge';
+      badge.textContent = injuredCount;
+      activityMedicoEl.appendChild(badge);
+    }
+  }
 
   const S = window.WSPSeason;
   const seasonState = S.loadState();
@@ -238,7 +255,11 @@
 
   function render() {
     budgetEl.textContent = formatMoney(club.budget);
+    const morale = club.morale == null ? 50 : club.morale;
+    moraleFillEl.style.width = morale + '%';
+    moraleValueEl.textContent = moraleLabel(morale) + ' (' + morale + ')';
     renderCalendar();
+    renderMedicoBadge();
     tierNoteEl.textContent = currentTier.groupLabel + ' — profissionais limitados ao nível ' + levelCap + '/' + MAX_LEVEL
       + (nextTierGroup ? ' até subir para o ' + nextTierGroup.label : ' (nível máximo já disponível)');
     listEl.innerHTML = '';

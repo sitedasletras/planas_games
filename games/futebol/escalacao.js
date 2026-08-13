@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { POSITIONS, loadSquad } = window.WSPSquad;
+  const { POSITIONS, loadSquad, isInjured } = window.WSPSquad;
 
   const STORAGE_KEY = 'wsp_lineup_v1';
   const BUCKET_ABBR = { GK: 'GOL', DEF: 'ZAG', MID: 'MEI', ATT: 'ATA' };
@@ -95,8 +95,10 @@
     available.forEach((p) => {
       const btn = document.createElement('button');
       btn.className = 'picker-player' + (p.id === current ? ' selected' : '');
-      btn.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + '</span><span class="pos">' +
+      const hurt = isInjured && isInjured(p);
+      btn.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + (hurt ? ' 🤕' : '') + '</span><span class="pos">' +
         positionLabelShort(p) + ' · ' + BUCKET_ABBR[p.bucket] + '</span>';
+      if (hurt) btn.title = 'Machucado — pode ser substituído automaticamente se ainda estiver fora no dia do jogo';
       btn.addEventListener('click', () => {
         setSlotValue(line, index, p.id);
         closePicker();
@@ -117,7 +119,7 @@
       const p = byId[playerId];
       const filled = document.createElement('div');
       filled.className = 'lineup-slot-filled';
-      filled.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + '</span><span class="pos">' +
+      filled.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + (isInjured && isInjured(p) ? ' 🤕' : '') + '</span><span class="pos">' +
         positionLabelShort(p) + '</span>';
       btn.appendChild(filled);
       const clearBtn = document.createElement('span');
@@ -229,7 +231,7 @@
       info.className = 'player-info';
       const name = document.createElement('div');
       name.className = 'player-name';
-      name.textContent = '#' + p.number + ' ' + p.name;
+      name.textContent = '#' + p.number + ' ' + p.name + (isInjured && isInjured(p) ? ' 🤕' : '');
       info.appendChild(name);
       const pos = document.createElement('div');
       pos.className = 'player-position';

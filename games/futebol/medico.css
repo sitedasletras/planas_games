@@ -1,0 +1,41 @@
+.medico-dept-note {
+  margin: 12px 14px 0;
+  font-size: 0.75rem;
+  color: #9fd8b8;
+  font-style: italic;
+}
+
+.injury-empty {
+  margin: 40px 14px;
+  text-align: center;
+  color: #9fd8b8;
+  font-size: 0.9rem;
+}
+
+.injury-card {
+  margin-bottom: 8px;
+}
+
+.injury-status {
+  font-size: 0.72rem;
+  color: #f5a5a5;
+  margin-top: 4px;
+}
+
+.injury-treat-btn {
+  margin-top: 8px;
+  background: #2f9e44;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.injury-treat-btn:disabled {
+  background: #333;
+  color: #777;
+  cursor: not-allowed;
+}

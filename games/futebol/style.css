@@ -419,6 +419,44 @@ canvas {
   display: none;
 }
 
+.press-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+  text-align: left;
+}
+
+.press-answer-btn {
+  background: #0e1c15;
+  border: 1px solid #345c48;
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.press-answer-btn:hover {
+  border-color: #ffd54a;
+}
+
+.press-answer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.press-reaction {
+  font-size: 0.85rem;
+  color: #ffd54a;
+  margin: 8px 0;
+}
+
+.press-reaction.hidden {
+  display: none;
+}
+
 .break-actions {
   display: flex;
   flex-direction: column;

@@ -54,6 +54,23 @@
   const FATIGUE_HALFTIME_RECOVERY = 0.18;
   const INJURY_CHANCE_HARD_FOUL = 0.12;
 
+  // lesão que passa a valer além da partida atual (desfalca o time nos próximos
+  // jogos, até o Médico do departamento reduzir o tempo de recuperação)
+  const INJURY_SEVERITIES = [
+    { key: 'leve', label: 'lesão leve', days: 1, weight: 60 },
+    { key: 'moderada', label: 'lesão moderada', days: 3, weight: 30 },
+    { key: 'grave', label: 'lesão grave', days: 7, weight: 10 },
+  ];
+  function pickInjurySeverity() {
+    const total = INJURY_SEVERITIES.reduce((s, x) => s + x.weight, 0);
+    let r = Math.random() * total;
+    for (const s of INJURY_SEVERITIES) {
+      if (r < s.weight) return s;
+      r -= s.weight;
+    }
+    return INJURY_SEVERITIES[0];
+  }
+
   // ---------- Qualidade do jogador (rating 35-99) ----------
   const RATING_SPEED_BASE = 0.85;
   const RATING_SPEED_SPAN = 0.3; // multiplicador de velocidade vai de 0.85 (rating baixo) a 1.15 (rating alto)
@@ -241,21 +258,33 @@
     }
   }
   function selectStartersFromLineup(squad, lineup) {
+    const isInjured = window.WSPSquad ? window.WSPSquad.isInjured : () => false;
+    const available = squad.players.filter((p) => !isInjured(p));
     const byId = {};
-    squad.players.forEach((p) => { byId[p.id] = p; });
-    const gk = byId[lineup.gkId];
-    if (!gk) return null;
+    available.forEach((p) => { byId[p.id] = p; });
+    const usedIdsSet = new Set();
+    let anyReplaced = false;
+    const pickReplacement = () => available.find((p) => !usedIdsSet.has(p.id)) || null;
+
+    let gk = byId[lineup.gkId];
+    if (!gk) { gk = pickReplacement(); anyReplaced = true; }
+    if (!gk) return null; // elenco inteiro indisponível (todo mundo machucado/vendido)
+    usedIdsSet.add(gk.id);
+
     const orderedIds = [].concat(lineup.lines.def || [], lineup.lines.mid || [], lineup.lines.att || []);
     if (orderedIds.length !== 10) return null;
-    const usedIdsSet = new Set([lineup.gkId]);
     const outfield = [];
     for (const id of orderedIds) {
-      const p = byId[id];
-      if (!p || usedIdsSet.has(id)) return null; // elenco mudou (jogador vendido) ou save corrompido — cai no sorteio
-      usedIdsSet.add(id);
+      let p = byId[id];
+      if (!p || usedIdsSet.has(id)) { p = pickReplacement(); anyReplaced = true; }
+      if (!p) return null; // não sobrou ninguém disponível pra completar o time
+      usedIdsSet.add(p.id);
       outfield.push({ player: p, improvised: false });
     }
-    const bench = squad.players.filter((p) => !usedIdsSet.has(p.id));
+    const bench = available.filter((p) => !usedIdsSet.has(p.id));
+    if (anyReplaced) {
+      narrate('Escalação ajustada: um ou mais titulares escolhidos estavam machucados ou indisponíveis e foram substituídos por reservas.');
+    }
     return { gk, outfield, bench };
   }
 
@@ -283,6 +312,11 @@
   const overlayTitle = document.getElementById('overlay-title');
   const overlaySub = document.getElementById('overlay-sub');
   const overlayRestart = document.getElementById('overlay-restart');
+  const pressOverlay = document.getElementById('press-overlay');
+  const pressQuestionEl = document.getElementById('press-question');
+  const pressAnswersEl = document.getElementById('press-answers');
+  const pressReactionEl = document.getElementById('press-reaction');
+  const pressContinueBtn = document.getElementById('press-continue-btn');
   const breakActionsEl = document.getElementById('break-actions');
   const breakTacticsBtn = document.getElementById('break-tactics-btn');
   const breakInstructionsBtn = document.getElementById('break-instructions-btn');
@@ -471,6 +505,20 @@
     return Math.min(cap, total * perLevel);
   }
 
+  // ---------- Efeito da moral do elenco (entrevista coletiva pós-jogo) ----------
+  // pequeno de propósito: moral não decide partida sozinha, só empurra um pouco
+  function homeMorale() {
+    return (homeClub && homeClub.morale != null) ? homeClub.morale : 50;
+  }
+  function moraleFatigueMult() {
+    // moral baixa cansa mais rápido, moral alta recupera melhor — varia ±15%
+    return 1.15 - (homeMorale() / 100) * 0.3;
+  }
+  function moraleStealAdjust() {
+    // desloca a chance de ganhar a bola em disputas em até ±0.02 (STEAL_CHANCE é 0.06)
+    return ((homeMorale() - 50) / 50) * 0.02;
+  }
+
   function makePlayer(team, role, number, x, y, extra) {
     const p = {
       team, role, number, x, y, vx: 0, vy: 0,
@@ -499,8 +547,9 @@
 
   function selectStarters(squad, tacticKey) {
     const buckets = tacticBuckets(tacticKey);
+    const isInjured = window.WSPSquad ? window.WSPSquad.isInjured : () => false;
     const pools = { GK: [], DEF: [], MID: [], ATT: [] };
-    squad.players.forEach((p) => pools[p.bucket].push(p));
+    squad.players.forEach((p) => { if (!isInjured(p)) pools[p.bucket].push(p); });
     Object.values(pools).forEach((arr) => arr.sort(() => Math.random() - 0.5));
 
     let gk = pools.GK.shift();
@@ -679,7 +728,7 @@
     btnSpeed.style.opacity = speedMultiplier === 2 ? '0.6' : '1';
   });
   overlayRestart.addEventListener('click', () => {
-    window.location.href = 'clube.html';
+    openPressConference();
   });
 
   let pausedByMenu = false;
@@ -984,7 +1033,8 @@
     let fatigueMult = 1;
     if (p.role !== 'GK') {
       const reduction = p.team === 'home' ? deptReduction(FATIGUE_DEPTS, 0.04, 0.5) : 0;
-      p.fatigue = Math.min(1, p.fatigue + dt * FATIGUE_RATE_PER_SEC * (1 - reduction));
+      const moraleMult = p.team === 'home' ? moraleFatigueMult() : 1;
+      p.fatigue = Math.min(1, p.fatigue + dt * FATIGUE_RATE_PER_SEC * (1 - reduction) * moraleMult);
       if (p.team === 'home' && !p.fatigueNarrated && p.fatigue >= FATIGUE_NARRATE_THRESHOLD) {
         p.fatigueNarrated = true;
         narrate(displayName(p) + ' está visivelmente cansado.');
@@ -1177,10 +1227,14 @@
         }
       } else if (ball.owner !== pickupCandidate && ball.owner.team !== pickupCandidate.team) {
         const roll = Math.random();
+        let stealChance = STEAL_CHANCE;
+        const moraleAdj = moraleStealAdjust();
+        if (pickupCandidate.team === 'home') stealChance = Math.max(0.01, stealChance + moraleAdj);
+        else if (ball.owner.team === 'home') stealChance = Math.max(0.01, stealChance - moraleAdj);
         if (roll < FOUL_CHANCE) {
           commitFoul(pickupCandidate, ball.owner);
           return;
-        } else if (roll < FOUL_CHANCE + STEAL_CHANCE) {
+        } else if (roll < FOUL_CHANCE + stealChance) {
           const previousOwner = ball.owner;
           ball.owner = pickupCandidate;
           ball.lastToucher = pickupCandidate;
@@ -1398,6 +1452,18 @@
 
   function forceInjurySub(p) {
     narrate('Lesão! ' + displayName(p) + ' sente dores e não aguenta continuar.');
+    if (p.team === 'home' && p.squadId && homeSquad && window.WSPSquad) {
+      const squadPlayer = homeSquad.players.find((sp) => sp.id === p.squadId);
+      if (squadPlayer) {
+        const severity = pickInjurySeverity();
+        const reduction = deptReduction(INJURY_DEPTS, 0.03, 0.6);
+        const days = Math.max(1, severity.days * (1 - reduction));
+        const dayMs = (window.WSPCalendar && window.WSPCalendar.GAME_DAY_REAL_MS) || (2 * 60 * 60 * 1000);
+        window.WSPSquad.setInjury(squadPlayer, Date.now() + days * dayMs, severity.label);
+        window.WSPSquad.saveSquad(homeSquad);
+        narrate(displayName(p) + ' sofreu uma ' + severity.label + ' e vai desfalcar o time nos próximos jogos.');
+      }
+    }
     if (p.team === 'home' && homeSubsUsed < MAX_SUBS && homeBench.length) {
       makeHomeSubstitution(p, homeBench[0]);
     } else if (p.team === 'away' && awaySubsUsed < MAX_SUBS && awayBench.length) {
@@ -1623,6 +1689,70 @@
       ratingsListEl.appendChild(row);
     });
   }
+  // ---------- Coletiva de imprensa pós-jogo ----------
+  const PRESS_CONTENT = {
+    vitoria: {
+      question: 'Técnico, como você avalia a atuação da equipe hoje?',
+      answers: [
+        { text: 'Fizemos um jogo espetacular, o elenco merece todo o crédito.', delta: 3, reaction: 'A torcida recebe bem a declaração — o elenco sai confiante.' },
+        { text: 'Vencemos, mas ainda temos pontos a melhorar.', delta: 1, reaction: 'Resposta equilibrada, bem recebida pela imprensa.' },
+        { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+      ],
+    },
+    empate: {
+      question: 'O time saiu de campo com uma sensação de "podia ser mais". Qual sua leitura, técnico?',
+      answers: [
+        { text: 'Lutamos até o fim, o empate foi um resultado justo.', delta: 1, reaction: 'Tom equilibrado — o elenco absorve bem a mensagem.' },
+        { text: 'Deveríamos ter vencido, saio frustrado com o resultado.', delta: -1, reaction: 'A autocrítica pesa um pouco no humor do grupo.' },
+        { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+      ],
+    },
+    derrota: {
+      question: 'Mais uma derrota. Como o senhor explica o resultado, técnico?',
+      answers: [
+        { text: 'A responsabilidade é minha, vamos corrigir os erros.', delta: 2, reaction: 'O elenco valoriza o técnico assumir a responsabilidade.' },
+        { text: 'O time deu o seu melhor, faz parte do jogo.', delta: 0, reaction: 'Resposta neutra, sem grande efeito no humor do grupo.' },
+        { text: 'Fomos prejudicados, o adversário teve sorte.', delta: -3, reaction: 'Jogar a culpa pra fora não cai bem — o grupo sente a fuga de responsabilidade.' },
+      ],
+    },
+  };
+
+  function pressBucketFor(golsFor, golsAgainst) {
+    if (golsFor > golsAgainst) return 'vitoria';
+    if (golsFor < golsAgainst) return 'derrota';
+    return 'empate';
+  }
+
+  function openPressConference() {
+    if (!pressOverlay || !homeClub || !window.WSPClub) {
+      window.location.href = 'clube.html';
+      return;
+    }
+    const content = PRESS_CONTENT[pressBucketFor(score.home, score.away)];
+    pressQuestionEl.textContent = content.question;
+    pressReactionEl.classList.add('hidden');
+    pressContinueBtn.classList.add('hidden');
+    pressAnswersEl.innerHTML = '';
+    content.answers.forEach((a) => {
+      const btn = document.createElement('button');
+      btn.className = 'press-answer-btn';
+      btn.textContent = a.text;
+      btn.addEventListener('click', () => {
+        Array.from(pressAnswersEl.children).forEach((c) => { c.disabled = true; });
+        window.WSPClub.adjustMorale(homeClub, a.delta);
+        pressReactionEl.textContent = a.reaction;
+        pressReactionEl.classList.remove('hidden');
+        pressContinueBtn.classList.remove('hidden');
+      });
+      pressAnswersEl.appendChild(btn);
+    });
+    overlay.classList.add('hidden');
+    pressOverlay.classList.remove('hidden');
+  }
+  if (pressContinueBtn) {
+    pressContinueBtn.addEventListener('click', () => { window.location.href = 'clube.html'; });
+  }
+
   function showFullTime() {
     if (homeSquad && window.WSPSquad) {
       let changed = false;
@@ -1662,7 +1792,7 @@
         competition: seasonMode ? 'Temporada' : 'Amistoso',
       });
     }
-    overlayRestart.textContent = 'Ir para o Clube';
+    overlayRestart.textContent = 'Coletiva de Imprensa';
     overlaySub.textContent = sub;
     renderMatchRatings();
     ratingsSectionEl.classList.remove('hidden');

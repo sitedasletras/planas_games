@@ -60,6 +60,28 @@ html, body {
   color: #ffd54a;
 }
 
+.morale-card {
+  margin: 0 14px 14px;
+  padding: 10px 14px;
+  background: #16281f;
+  border: 1px solid #345c48;
+  border-radius: 10px;
+}
+
+.morale-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.morale-value {
+  font-size: 0.78rem;
+  font-weight: bold;
+  color: #ffd54a;
+  flex-shrink: 0;
+}
+
 .hidden { display: none; }
 
 .calendar-card {
@@ -121,6 +143,47 @@ html, body {
   font-size: 0.62rem;
   color: #9fd8b8;
   margin-top: 3px;
+}
+
+.activities-row {
+  display: flex;
+  gap: 8px;
+  padding: 0 14px;
+  margin-bottom: 10px;
+}
+
+.activity-btn {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #16281f;
+  border: 1px solid #345c48;
+  border-radius: 10px;
+  padding: 10px 6px;
+  text-decoration: none;
+  color: #cfeede;
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.activity-icon {
+  font-size: 1.3rem;
+}
+
+.activity-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #e85555;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: bold;
+  border-radius: 8px;
+  padding: 1px 5px;
 }
 
 .dept-list {

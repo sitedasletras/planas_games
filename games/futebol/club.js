@@ -27,7 +27,22 @@
       valorizacaoLevel: 0,
       exclusiveEmblemUnlocked: false,
       exclusiveJerseyUnlocked: false,
+      morale: 50,
     };
+  }
+
+  function adjustMorale(club, delta) {
+    club.morale = Math.max(0, Math.min(100, (club.morale == null ? 50 : club.morale) + delta));
+    saveClub(club);
+    return club.morale;
+  }
+
+  function moraleLabel(morale) {
+    if (morale >= 80) return 'Muito alta';
+    if (morale >= 60) return 'Alta';
+    if (morale >= 40) return 'Neutra';
+    if (morale >= 20) return 'Baixa';
+    return 'Muito baixa';
   }
 
   const DEPARTMENTS = {
@@ -202,6 +217,7 @@
         if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
         if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
         if (parsed.exclusiveJerseyUnlocked == null) parsed.exclusiveJerseyUnlocked = defaults.exclusiveJerseyUnlocked;
+        if (parsed.morale == null) parsed.morale = defaults.morale;
         return parsed;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -310,6 +326,6 @@
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
     facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName, payMatchRevenue,
-    maxDepartmentLevelForGroup, bumpValorizacao,
+    maxDepartmentLevelForGroup, bumpValorizacao, adjustMorale, moraleLabel,
   };
 })();

@@ -266,6 +266,8 @@
       marketValue: randomMarketValue(bucket, age, rating),
       careerGoals: 0,
       careerAssists: 0,
+      injuredUntil: null,
+      injuryLabel: null,
     };
   }
 
@@ -383,6 +385,8 @@
           if (p.careerGoals == null) { p.careerGoals = 0; changed = true; }
           if (p.careerAssists == null) { p.careerAssists = 0; changed = true; }
           if (p.potential == null) { p.potential = randomPotential(p.age); changed = true; }
+          if (p.injuredUntil === undefined) { p.injuredUntil = null; changed = true; }
+          if (p.injuryLabel === undefined) { p.injuryLabel = null; changed = true; }
         });
         if (changed) saveSquad(parsed);
         return parsed;
@@ -425,11 +429,35 @@
     return changes;
   }
 
+  // ---------- Lesões ----------
+  // untilMs é um timestamp absoluto (Date.now() + N dias do jogo em ms) —
+  // squad.js não sabe nada sobre calendário/dias, só guarda o timestamp.
+  function isInjured(player) {
+    return !!(player && player.injuredUntil && player.injuredUntil > Date.now());
+  }
+
+  function setInjury(player, untilMs, label) {
+    player.injuredUntil = untilMs;
+    player.injuryLabel = label;
+  }
+
+  function clearInjury(player) {
+    player.injuredUntil = null;
+    player.injuryLabel = null;
+  }
+
+  // usado pelo tratamento intensivo do Médico: adianta a recuperação em ms
+  function reduceInjuryBy(player, ms) {
+    if (!isInjured(player)) return;
+    player.injuredUntil = Math.max(Date.now(), player.injuredUntil - ms);
+  }
+
   window.WSPSquad = {
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
     MARKET_VALUE_MIN, MARKET_VALUE_MAX, FULL_SQUAD_SIZE,
     careerStageFor, generateSquad, loadSquad, saveSquad,
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
     renamePlayer, renumberPlayer, renameClub, advanceSeason, applyValorizacao,
+    isInjured, setInjury, clearInjury, reduceInjuryBy,
   };
 })();

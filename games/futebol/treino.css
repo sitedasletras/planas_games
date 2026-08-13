@@ -1,0 +1,47 @@
+.training-status {
+  margin: 12px 14px 0;
+  background: #16281f;
+  border: 1px solid #345c48;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  color: #cfeede;
+}
+
+.training-status .cooldown {
+  color: #ffd54a;
+  font-weight: bold;
+}
+
+.training-empty {
+  margin: 40px 14px;
+  text-align: center;
+  color: #9fd8b8;
+  font-size: 0.9rem;
+}
+
+.training-result {
+  font-size: 0.72rem;
+  margin-top: 4px;
+}
+
+.training-result.success { color: #6fcf7d; }
+.training-result.fail { color: #9fd8b8; }
+
+.train-btn {
+  margin-top: 8px;
+  background: #2f9e44;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.train-btn:disabled {
+  background: #333;
+  color: #777;
+  cursor: not-allowed;
+}
