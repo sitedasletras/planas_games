@@ -267,15 +267,38 @@
     return n;
   }
 
+  const BUCKET_POSITION_KEYS = { GK: [], DEF: [], MID: [], ATT: [] };
+  Object.keys(POSITIONS).forEach((k) => { BUCKET_POSITION_KEYS[POSITIONS[k].bucket].push(k); });
+
+  // distribui os candidatos entre as 4 posições (goleiro/zaga/meio/ataque),
+  // em vez de sortear entre todas as 17 posições específicas — o que
+  // enviesava a lista para defesa (tem mais variações de posição na zaga)
+  function candidateBucketPlan(count) {
+    const order = ['GK', 'DEF', 'MID', 'ATT'];
+    const weights = { GK: 1, DEF: 3, MID: 3, ATT: 3 };
+    const totalWeight = order.reduce((s, b) => s + weights[b], 0);
+    const plan = [];
+    order.forEach((b) => {
+      const n = Math.max(1, Math.round((count * weights[b]) / totalWeight));
+      for (let i = 0; i < n; i++) plan.push(b);
+    });
+    while (plan.length > count) plan.pop();
+    while (plan.length < count) plan.push(order[plan.length % order.length]);
+    return plan;
+  }
+
   function generateCandidates(count) {
     const used = new Set();
-    const keys = Object.keys(POSITIONS);
-    const list = [];
-    for (let i = 0; i < count; i++) {
-      const posKey = pick(keys);
+    const plan = candidateBucketPlan(count);
+    const list = plan.map((bucket) => {
+      const posKey = pick(BUCKET_POSITION_KEYS[bucket]);
       const candidate = makeRandomPlayer(posKey, used);
       candidate.fee = transferFee(candidate);
-      list.push(candidate);
+      return candidate;
+    });
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = list[i]; list[i] = list[j]; list[j] = tmp;
     }
     return list;
   }

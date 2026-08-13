@@ -70,7 +70,8 @@
     </svg>`;
   }
 
-  let candidates = generateCandidates(3);
+  const MARKET_SIZE = 10;
+  let candidates = generateCandidates(MARKET_SIZE);
 
   function render() {
     budgetPillEl.textContent = formatMoney(club.budget);
@@ -119,7 +120,7 @@
         saveClub(club);
         signPlayer(squad, c);
         candidates = candidates.filter((x) => x.id !== c.id);
-        if (candidates.length < 3) candidates.push(...generateCandidates(3 - candidates.length));
+        if (candidates.length < MARKET_SIZE) candidates.push(...generateCandidates(MARKET_SIZE - candidates.length));
         render();
       });
       row.appendChild(btn);
@@ -224,7 +225,7 @@
   }
 
   marketRerollBtn.addEventListener('click', () => {
-    candidates = generateCandidates(3);
+    candidates = generateCandidates(MARKET_SIZE);
     renderMarket();
   });
 
