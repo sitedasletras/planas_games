@@ -272,7 +272,21 @@
   let narrationLog = [];
   let lastShooter = null;
   let lastAssistCandidate = null;
+  let goalZoomActive = false;
+  let goalZoomX = 200, goalZoomY = FIELD_H / 2;
+  const GOAL_ZOOM_DURATION = 1400; // igual ao stopPause definido em onGoal()
+  const GOAL_ZOOM_SCALE = 1.7;
+
+  function currentGoalZoomScale() {
+    if (!goalZoomActive) return 1;
+    const elapsed = GOAL_ZOOM_DURATION - stopPause;
+    if (elapsed < 200) return 1 + (GOAL_ZOOM_SCALE - 1) * Math.max(0, elapsed) / 200;
+    if (elapsed < 1000) return GOAL_ZOOM_SCALE;
+    if (elapsed < GOAL_ZOOM_DURATION) return GOAL_ZOOM_SCALE - (GOAL_ZOOM_SCALE - 1) * (elapsed - 1000) / (GOAL_ZOOM_DURATION - 1000);
+    return 1;
+  }
   let pendingPenalty = null; // { team, taker, takerName } enquanto uma cobrança de pênalti está em andamento
+  let pendingKickoffReset = false; // adia o reposicionamento pro kickoff até o fim da comemoração do gol
   let matchParticipants = []; // todo jogador que entrou em campo na partida, pra nota pós-jogo
 
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
@@ -1020,6 +1034,11 @@
   function onGoal(scoringTeam, viaPenalty) {
     score[scoringTeam]++;
     updateScoreUI();
+    if (lastShooter && lastShooter.team === scoringTeam) {
+      goalZoomActive = true;
+      goalZoomX = lastShooter.x;
+      goalZoomY = lastShooter.y;
+    }
     if (!viaPenalty) {
       const scorer = lastShooter && lastShooter.team === scoringTeam ? displayName(lastShooter) : null;
       let assistText = '';
@@ -1036,7 +1055,7 @@
     lastAssistCandidate = null;
     lastShooter = null;
     showGoal(scoringTeam);
-    resetPositions(true);
+    pendingKickoffReset = true;
     stopPause = 1400;
   }
 
@@ -1625,10 +1644,21 @@
   }
 
   function render() {
+    ctx.fillStyle = '#2f9e44';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const zoomScale = currentGoalZoomScale();
+    ctx.save();
+    if (zoomScale !== 1) {
+      ctx.translate(FIELD_W / 2, FIELD_H / 2);
+      ctx.scale(zoomScale, zoomScale);
+      ctx.translate(-goalZoomX, -goalZoomY);
+    }
     drawField();
     drawOffsideLine();
     for (const p of players) drawPlayer(p);
     drawBall();
+    ctx.restore();
   }
 
   // ---------- Error resilience ----------
@@ -1658,6 +1688,8 @@
         if (stopPause > 0) {
           stopPause -= dt * 1000;
           if (stopPause <= 0) {
+            goalZoomActive = false;
+            if (pendingKickoffReset) { resetPositions(true); pendingKickoffReset = false; }
             hideOverlay();
             if (pendingPenalty) resolvePenalty();
           }
