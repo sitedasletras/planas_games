@@ -241,6 +241,14 @@
   const crowdStripEl = document.getElementById('crowd-strip');
   const tickerEl = document.getElementById('ticker');
   const sideInstructionsListEl = document.getElementById('side-instructions-list');
+  const duelPopupEl = document.getElementById('duel-popup');
+  const duelPlayerAEl = document.getElementById('duel-player-a');
+  const duelNameAEl = document.getElementById('duel-name-a');
+  const duelRatingAEl = document.getElementById('duel-rating-a');
+  const duelPlayerBEl = document.getElementById('duel-player-b');
+  const duelNameBEl = document.getElementById('duel-name-b');
+  const duelRatingBEl = document.getElementById('duel-rating-b');
+  const duelResultEl = document.getElementById('duel-result');
 
   // ---------- State ----------
   let players = [];
@@ -289,6 +297,24 @@
   let pendingPenalty = null; // { team, taker, takerName } enquanto uma cobrança de pênalti está em andamento
   let pendingKickoffReset = false; // adia o reposicionamento pro kickoff até o fim da comemoração do gol
   let matchParticipants = []; // todo jogador que entrou em campo na partida, pra nota pós-jogo
+
+  let duelCooldownMs = 0;
+  let duelVisibleMs = 0;
+  const DUEL_COOLDOWN_MS = 6000;
+  const DUEL_VISIBLE_MS = 1600;
+
+  function showDuel(winner, loser) {
+    duelNameAEl.textContent = displayName(winner);
+    duelRatingAEl.textContent = 'NOTA ' + (winner.rating || 60);
+    duelPlayerAEl.classList.add('win');
+    duelNameBEl.textContent = displayName(loser);
+    duelRatingBEl.textContent = 'NOTA ' + (loser.rating || 60);
+    duelPlayerBEl.classList.remove('win');
+    duelResultEl.textContent = displayName(winner) + ' rouba a bola de ' + displayName(loser) + '!';
+    duelPopupEl.classList.remove('hidden');
+    duelVisibleMs = DUEL_VISIBLE_MS;
+    duelCooldownMs = DUEL_COOLDOWN_MS;
+  }
 
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
@@ -1044,9 +1070,11 @@
           commitFoul(pickupCandidate, ball.owner);
           return;
         } else if (roll < FOUL_CHANCE + STEAL_CHANCE) {
+          const previousOwner = ball.owner;
           ball.owner = pickupCandidate;
           ball.lastToucher = pickupCandidate;
           ball.assistCandidate = null; // roubada de bola quebra a corrente de assistência
+          if (duelCooldownMs <= 0) showDuel(pickupCandidate, previousOwner);
         }
       }
     }
@@ -1794,6 +1822,12 @@
     if (sidePanelRefreshMs <= 0) {
       sidePanelRefreshMs = 800;
       try { renderSideInstructions(); } catch (err) { showErrorBanner(err); }
+    }
+
+    if (duelCooldownMs > 0) duelCooldownMs -= dt * 1000;
+    if (duelVisibleMs > 0) {
+      duelVisibleMs -= dt * 1000;
+      if (duelVisibleMs <= 0) duelPopupEl.classList.add('hidden');
     }
 
     requestAnimationFrame(frame);
