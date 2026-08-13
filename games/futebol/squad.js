@@ -243,6 +243,8 @@
       salary: randomSalary(bucket, age),
       rating,
       marketValue: randomMarketValue(bucket, age, rating),
+      careerGoals: 0,
+      careerAssists: 0,
     };
   }
 
@@ -334,6 +336,8 @@
           if (!p.id) { p.id = 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7); changed = true; }
           if (p.rating == null) { p.rating = randomRating(p.bucket, p.age); changed = true; }
           if (p.marketValue == null) { p.marketValue = randomMarketValue(p.bucket, p.age, p.rating); changed = true; }
+          if (p.careerGoals == null) { p.careerGoals = 0; changed = true; }
+          if (p.careerAssists == null) { p.careerAssists = 0; changed = true; }
         });
         if (changed) saveSquad(parsed);
         return parsed;

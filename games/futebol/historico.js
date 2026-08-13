@@ -2,24 +2,26 @@
   'use strict';
 
   const S = window.WSPSeason;
+  const squad = window.WSPSquad.loadSquad();
   const state = S.loadState();
   const cs = state.careerStats || S.freshCareerStats();
 
   const trophyRowEl = document.getElementById('trophy-row');
+  const scorersRowEl = document.getElementById('scorers-row');
   const wdlBarEl = document.getElementById('wdl-bar');
   const winsValEl = document.getElementById('wins-val');
   const drawsValEl = document.getElementById('draws-val');
   const lossesValEl = document.getElementById('losses-val');
   const recordListEl = document.getElementById('record-list');
 
-  function trophyItem(icon, label, count) {
+  function trophyItem(icon, label, count, isText) {
     const item = document.createElement('div');
     item.className = 'trophy-item';
     const iconEl = document.createElement('div');
     iconEl.className = 'trophy-icon';
     iconEl.textContent = icon;
     const countEl = document.createElement('div');
-    countEl.className = 'trophy-count';
+    countEl.className = 'trophy-count' + (isText ? ' text' : '');
     countEl.textContent = count;
     const labelEl = document.createElement('div');
     labelEl.className = 'trophy-label';
@@ -70,4 +72,17 @@
   recordRow('Maior vitória', cs.biggestWin
     ? cs.biggestWin.golsFor + '-' + cs.biggestWin.golsAgainst + ' x ' + cs.biggestWin.opponent + ' (' + cs.biggestWin.competition + ')'
     : '—');
+
+  function playerLabel(p) { return p.name || ('#' + p.number); }
+
+  function topBy(field) {
+    return squad.players.reduce((best, p) => (p[field] || 0) > (best ? best[field] || 0 : -1) ? p : best, null);
+  }
+
+  const topScorer = topBy('careerGoals');
+  const topAssister = topBy('careerAssists');
+  scorersRowEl.appendChild(trophyItem('⚽', 'Artilheiro', topScorer && topScorer.careerGoals
+    ? playerLabel(topScorer) + ' (' + topScorer.careerGoals + ')' : '—', true));
+  scorersRowEl.appendChild(trophyItem('🎯', 'Assistências', topAssister && topAssister.careerAssists
+    ? playerLabel(topAssister) + ' (' + topAssister.careerAssists + ')' : '—', true));
 })();

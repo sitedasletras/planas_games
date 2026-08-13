@@ -271,6 +271,7 @@
   // narração
   let narrationLog = [];
   let lastShooter = null;
+  let lastAssistCandidate = null;
   let pendingPenalty = null; // { team, taker, takerName } enquanto uma cobrança de pênalti está em andamento
   let matchParticipants = []; // todo jogador que entrou em campo na partida, pra nota pós-jogo
 
@@ -324,6 +325,7 @@
       fatigue: 0, fatigueNarrated: false,
       rating: (extra && extra.rating) || 60,
       matchGoals: 0,
+      matchAssists: 0,
       wanderSeed: Math.random() * 1000,
     };
     matchParticipants.push(p);
@@ -444,7 +446,7 @@
       const prev = prevInstructions.find(x => x.team === p.team && x.number === p.number);
       if (prev) p.instruction = prev.instruction;
     }
-    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0, lastToucher: null };
+    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0, lastToucher: null, assistCandidate: null, restartKind: null };
   }
 
   function applyTactic(team, key) {
@@ -730,6 +732,7 @@
     ball.kickerImmune = player;
     ball.kickCooldown = KICK_COOLDOWN_MS;
     ball.lastToucher = player;
+    ball.assistCandidate = null; // attemptPass sets this back right after, for real passes only
   }
 
   function clampBall() {
@@ -770,6 +773,7 @@
 
   function attemptShoot(p, bonus) {
     lastShooter = p;
+    lastAssistCandidate = ball.assistCandidate; // captura antes do próprio chute limpar ball.assistCandidate
     const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
     const accuracyMult = 1.3 - ((p.rating || 60) / 100) * 0.6;
     const missChance = bonus ? 0.03 : Math.max(0.03, Math.min(0.3, 0.35 - (p.rating || 60) / 200));
@@ -795,6 +799,7 @@
       return;
     }
     kick(p, pass.target.x, pass.target.y, pass.power);
+    ball.assistCandidate = p;
   }
 
   function updatePlayer(p, dt, teamOutfield, oppOutfield) {
@@ -888,6 +893,27 @@
 
     if (ball.owner && ball.owner.role !== 'GK') {
       const p = ball.owner;
+      if (ball.restartKind === 'corner') {
+        // escanteio: quase sempre é um cruzamento pra área; gol direto (olímpico) é raro
+        ball.restartKind = null;
+        const golOlimpico = Math.random() < 0.07;
+        if (golOlimpico) {
+          attemptShoot(p, false);
+        } else {
+          const pass = pickPassTarget(p);
+          if (pass) attemptPass(p, pass);
+          else attemptShoot(p, false);
+        }
+        return;
+      }
+      if (ball.restartKind === 'throwin') {
+        // não existe gol direto de lateral pelas regras — é sempre um lançamento pra um companheiro
+        ball.restartKind = null;
+        const pass = pickPassTarget(p);
+        if (pass) attemptPass(p, pass);
+        else p.facing = { x: 0, y: p.team === 'home' ? -1 : 1 };
+        return;
+      }
       const nearGoal = p.team === 'home' ? p.y < 260 : p.y > FIELD_H - 260;
       if (nearGoal) {
         const bonus = !!ball.freeKickBonus;
@@ -908,6 +934,7 @@
       const forwardX = 200 + (Math.random() - 0.5) * 160;
       const forwardY = p.team === 'home' ? p.y - 240 : p.y + 240;
       kick(p, forwardX, forwardY, CLEAR_POWER);
+      ball.assistCandidate = p; // lançamento do goleiro pode virar assistência se um companheiro finalizar em seguida
     }
   }
 
@@ -972,6 +999,9 @@
       if (!ball.owner) {
         ball.owner = pickupCandidate;
         ball.lastToucher = pickupCandidate;
+        if (ball.assistCandidate && (ball.assistCandidate === pickupCandidate || ball.assistCandidate.team !== pickupCandidate.team)) {
+          ball.assistCandidate = null; // interceptado ou bola solta sem ligação com o passe
+        }
       } else if (ball.owner !== pickupCandidate && ball.owner.team !== pickupCandidate.team) {
         const roll = Math.random();
         if (roll < FOUL_CHANCE) {
@@ -980,6 +1010,7 @@
         } else if (roll < FOUL_CHANCE + STEAL_CHANCE) {
           ball.owner = pickupCandidate;
           ball.lastToucher = pickupCandidate;
+          ball.assistCandidate = null; // roubada de bola quebra a corrente de assistência
         }
       }
     }
@@ -991,9 +1022,18 @@
     updateScoreUI();
     if (!viaPenalty) {
       const scorer = lastShooter && lastShooter.team === scoringTeam ? displayName(lastShooter) : null;
-      if (lastShooter && lastShooter.team === scoringTeam) lastShooter.matchGoals++;
-      narrate((scorer ? 'GOL de ' + scorer + '! ' : 'GOL! ') + teamLabel(scoringTeam) + ' marca. ' + score.home + ' x ' + score.away + '.');
+      let assistText = '';
+      if (lastShooter && lastShooter.team === scoringTeam) {
+        lastShooter.matchGoals++;
+        const assister = lastAssistCandidate;
+        if (assister && assister !== lastShooter && assister.team === scoringTeam) {
+          assister.matchAssists++;
+          assistText = ' Assistência de ' + displayName(assister) + '.';
+        }
+      }
+      narrate((scorer ? 'GOL de ' + scorer + '! ' : 'GOL! ') + teamLabel(scoringTeam) + ' marca. ' + score.home + ' x ' + score.away + '.' + assistText);
     }
+    lastAssistCandidate = null;
     lastShooter = null;
     showGoal(scoringTeam);
     resetPositions(true);
@@ -1064,6 +1104,7 @@
   function awardThrowIn(team, spot) {
     narrate('Lateral para ' + teamLabel(team) + '.');
     awardFreeKick(team, spot);
+    ball.restartKind = 'throwin';
     stopPause = SIDE_STOPPAGE_MS;
     showStoppage('LATERAL!', teamLabel(team) + ' vai repor.');
   }
@@ -1071,6 +1112,7 @@
   function awardCorner(team, spot) {
     narrate('Escanteio para ' + teamLabel(team) + '.');
     awardFreeKick(team, spot);
+    ball.restartKind = 'corner';
     stopPause = SIDE_STOPPAGE_MS;
     showStoppage('ESCANTEIO!', teamLabel(team) + ' vai cobrar.');
   }
@@ -1087,6 +1129,8 @@
     ball.vx = 0; ball.vy = 0;
     ball.owner = null; ball.kickerImmune = null; ball.kickCooldown = 0;
     ball.freeKickBonus = false;
+    ball.assistCandidate = null;
+    ball.restartKind = null;
     clampBall();
 
     let teamPlayers = players.filter(p => p.team === team && p.role !== 'GK' && p.staggerMs <= 0);
@@ -1257,6 +1301,7 @@
     ball.x = penaltySpot.x; ball.y = penaltySpot.y;
     ball.vx = 0; ball.vy = 0;
     ball.owner = null; ball.kickerImmune = null; ball.kickCooldown = 0;
+    ball.assistCandidate = null;
     clampBall();
 
     const teamPlayers = players.filter(p => p.team === team && p.role !== 'GK');
@@ -1387,6 +1432,19 @@
     });
   }
   function showFullTime() {
+    if (homeSquad && window.WSPSquad) {
+      let changed = false;
+      matchParticipants.filter((p) => p.team === 'home' && p.squadId).forEach((p) => {
+        const squadPlayer = homeSquad.players.find((sp) => sp.id === p.squadId);
+        if (squadPlayer && (p.matchGoals || p.matchAssists)) {
+          squadPlayer.careerGoals = (squadPlayer.careerGoals || 0) + p.matchGoals;
+          squadPlayer.careerAssists = (squadPlayer.careerAssists || 0) + p.matchAssists;
+          changed = true;
+        }
+      });
+      if (changed) window.WSPSquad.saveSquad(homeSquad);
+    }
+
     overlayTitle.textContent = 'FIM DE JOGO';
     let sub = `${teamLabel('home')} ${score.home} - ${score.away} ${teamLabel('away')}`;
     if (homeClub && window.WSPClub) {

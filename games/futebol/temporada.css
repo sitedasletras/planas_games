@@ -365,6 +365,12 @@ table.standings td.pts {
   font-size: 1.3rem;
   font-weight: bold;
   color: #ffd54a;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.trophy-count.text {
+  font-size: 0.85rem;
 }
 
 .trophy-label {
