@@ -150,7 +150,7 @@
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
   const STAGE_SALARY_MULT = { promessa: 0.6, ascensao: 0.85, auge: 1.3, experiente: 1.0, declinio: 0.7 };
-  const BUCKET_BASE_SALARY = { GK: 300, DEF: 280, MID: 320, ATT: 380 };
+  const BUCKET_BASE_SALARY = { GK: 60, DEF: 56, MID: 64, ATT: 76 };
 
   function randomSalary(bucket, age) {
     const stage = careerStageFor(age);

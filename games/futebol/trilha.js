@@ -4,11 +4,11 @@
   const STORAGE_KEY = 'wsp_trail_v1';
 
   const MILESTONES = [
-    { points: 150, reward: { type: 'money', amount: 2000 }, label: 'Patrocínio inicial' },
-    { points: 400, reward: { type: 'money', amount: 4000 }, label: 'Apoio regional' },
-    { points: 800, reward: { type: 'money', amount: 7000 }, label: 'Contrato ampliado' },
-    { points: 1400, reward: { type: 'money', amount: 12000 }, label: 'Patrocínio master' },
-    { points: 2200, reward: { type: 'money', amount: 18000 }, label: 'Parceria nacional' },
+    { points: 150, reward: { type: 'money', amount: 400 }, label: 'Patrocínio inicial' },
+    { points: 400, reward: { type: 'money', amount: 800 }, label: 'Apoio regional' },
+    { points: 800, reward: { type: 'money', amount: 1400 }, label: 'Contrato ampliado' },
+    { points: 1400, reward: { type: 'money', amount: 2400 }, label: 'Patrocínio master' },
+    { points: 2200, reward: { type: 'money', amount: 3600 }, label: 'Parceria nacional' },
     { points: 3200, reward: { type: 'exclusive_crest', amount: 0 }, label: 'Patrocinador Especial' },
   ];
 

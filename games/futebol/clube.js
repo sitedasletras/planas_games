@@ -3,7 +3,7 @@
   const {
     DEPARTMENTS, MAX_LEVEL, upgradeCost, loadClub, upgradeDepartment,
     SPONSOR_SLOTS, acceptSponsor, rerollSponsor, dismissDepartment,
-    FACILITY_GROUPS, TORCIDA_NAME_MAX, facilityGroupLevel, facilityTierLabel, setTorcidaName,
+    FACILITY_GROUPS, TORCIDA_NAME_MAX, facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName,
     maxDepartmentLevelForGroup,
   } = window.WSPClub;
 
@@ -27,6 +27,24 @@
 
   function formatMoney(n) {
     return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
+  }
+
+  // barra de progresso compacta — com 20 níveis, 20 pontinhos não cabem bem
+  function buildLevelBar(level, max) {
+    const wrap = document.createElement('div');
+    wrap.className = 'level-bar-wrap';
+    const track = document.createElement('div');
+    track.className = 'level-track';
+    const fill = document.createElement('div');
+    fill.className = 'level-fill';
+    fill.style.width = Math.round((level / max) * 100) + '%';
+    track.appendChild(fill);
+    wrap.appendChild(track);
+    const label = document.createElement('span');
+    label.className = 'level-bar-label';
+    label.textContent = level + '/' + max;
+    wrap.appendChild(label);
+    return wrap;
   }
 
   function buildDeptCard(key) {
@@ -57,14 +75,7 @@
     desc.textContent = dept.desc;
     info.appendChild(desc);
 
-    const levels = document.createElement('div');
-    levels.className = 'dept-levels';
-    for (let i = 0; i < MAX_LEVEL; i++) {
-      const dot = document.createElement('span');
-      dot.className = 'level-dot' + (i < level ? ' filled' : '');
-      levels.appendChild(dot);
-    }
-    info.appendChild(levels);
+    info.appendChild(buildLevelBar(level, MAX_LEVEL));
 
     const btnRow = document.createElement('div');
     btnRow.className = 'sponsor-proposal';
@@ -116,7 +127,7 @@
 
     if (level < group.nameableFromLevel) {
       wrap.classList.add('locked');
-      wrap.textContent = 'Evolua a Torcida até "' + group.tiers[group.nameableFromLevel] + '" para poder batizá-la.';
+      wrap.textContent = 'Evolua a Torcida até "' + tierNameForLevel(group, group.nameableFromLevel) + '" (nível ' + group.nameableFromLevel + ') para poder batizá-la.';
       return wrap;
     }
 
@@ -176,14 +187,7 @@
     tier.textContent = tierLabel;
     info.appendChild(tier);
 
-    const levels = document.createElement('div');
-    levels.className = 'dept-levels';
-    for (let i = 0; i < MAX_LEVEL; i++) {
-      const dot = document.createElement('span');
-      dot.className = 'level-dot' + (i < level ? ' filled' : '');
-      levels.appendChild(dot);
-    }
-    info.appendChild(levels);
+    info.appendChild(buildLevelBar(level, MAX_LEVEL));
 
     header.appendChild(info);
     block.appendChild(header);

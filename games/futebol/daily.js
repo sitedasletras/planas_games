@@ -2,7 +2,7 @@
   'use strict';
 
   const STORAGE_KEY = 'wsp_daily_v1';
-  const REWARDS = [500, 750, 1000, 1250, 1500, 2000, 3000];
+  const REWARDS = [100, 150, 200, 250, 300, 400, 600];
 
   function todayStr() {
     const d = new Date();

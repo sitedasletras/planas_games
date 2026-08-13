@@ -235,6 +235,37 @@ html, body {
   border-color: #ffd54a;
 }
 
+.level-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.level-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #0e1c15;
+  border: 1px solid #345c48;
+  overflow: hidden;
+}
+
+.level-fill {
+  height: 100%;
+  background: #ffd54a;
+  border-radius: 3px;
+}
+
+.level-bar-label {
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: #cfeede;
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: right;
+}
+
 .upgrade-btn {
   background: #2f9e44;
   color: white;

@@ -2,11 +2,11 @@
   'use strict';
 
   const STORAGE_KEY = 'wsp_club_v1';
-  const STARTING_BUDGET = 100000;
-  const MAX_LEVEL = 5;
-  const BASE_COST = 1000;
-  const OTHER_EXPENSES_PER_MATCH = 1500; // direitos de imagem + viagem + despesas gerais, somados
-  const PREMIUM_COST = 10000;
+  const STARTING_BUDGET = 20000;
+  const MAX_LEVEL = 20;
+  const BASE_COST = 200;
+  const OTHER_EXPENSES_PER_MATCH = 300; // direitos de imagem + viagem + despesas gerais, somados
+  const PREMIUM_COST = 2000;
 
   const CREST_SHAPES = ['circulo', 'escudo', 'diamante'];
   const CREST_EMBLEMS = ['⚽', '⭐', '🦁', '🦅', '🐺', '⚔️', '🔱', '👑', '🐎', '🔥', '⚡', '🛡️'];
@@ -80,7 +80,7 @@
       depts: ['torcida'],
       tiers: ['Sem organização', 'Buteco do Bairro', 'Torcida do Bairro', 'Torcida Organizada', 'Torcida Organizada Regional', 'Torcida Organizada Nacional'],
       nameable: true,
-      nameableFromLevel: 3,
+      nameableFromLevel: 9,
     },
   };
 
@@ -91,10 +91,23 @@
     return Math.floor(sum / group.depts.length);
   }
 
+  // os grupos têm só 6 nomes de "tier" (0-5), mas o nível vai até 20 agora —
+  // divide os 20 níveis em faixas iguais entre os 5 nomes acima do "sem estrutura"
+  function tierNameForLevel(group, level) {
+    if (level <= 0) return group.tiers[0];
+    const namedTiers = group.tiers.length - 1; // exclui o "sem estrutura" do índice 0
+    const bandSize = Math.ceil(MAX_LEVEL / namedTiers);
+    const milestoneIdx = Math.min(namedTiers, Math.ceil(level / bandSize));
+    return group.tiers[milestoneIdx];
+  }
+
+  // mostra o nível numérico junto do nome, pra dar progressão clara nos 20 degraus
   function facilityTierLabel(club, groupKey) {
     const group = FACILITY_GROUPS[groupKey];
     if (!group) return '';
-    return group.tiers[facilityGroupLevel(club, groupKey)];
+    const level = facilityGroupLevel(club, groupKey);
+    if (level <= 0) return group.tiers[0];
+    return tierNameForLevel(group, level) + ' — Nível ' + level;
   }
 
   const TORCIDA_NAME_MAX = 28;
@@ -107,8 +120,8 @@
     return { ok: true };
   }
 
-  const BASE_MATCH_REVENUE = 3000;
-  const REVENUE_PER_TORCIDA_LEVEL = 1500;
+  const BASE_MATCH_REVENUE = 600;
+  const REVENUE_PER_TORCIDA_LEVEL = 300;
 
   function payMatchRevenue(club) {
     const torcidaLevel = (club.departments && club.departments.torcida) || 0;
@@ -119,10 +132,10 @@
   }
 
   const SPONSOR_SLOTS = {
-    camisa_frente: { label: 'Camisa (Frente)', icon: '👕', min: 3000, max: 8000 },
-    lateral_campo: { label: 'Lateral de Campo', icon: '🚩', min: 800, max: 2500 },
-    isotonicos: { label: 'Fornecedor de Isotônicos', icon: '🥤', min: 500, max: 1500 },
-    material_esportivo: { label: 'Material Esportivo', icon: '👟', min: 2000, max: 6000 },
+    camisa_frente: { label: 'Camisa (Frente)', icon: '👕', min: 600, max: 1600 },
+    lateral_campo: { label: 'Lateral de Campo', icon: '🚩', min: 160, max: 500 },
+    isotonicos: { label: 'Fornecedor de Isotônicos', icon: '🥤', min: 100, max: 300 },
+    material_esportivo: { label: 'Material Esportivo', icon: '👟', min: 400, max: 1200 },
   };
 
   const SPONSOR_NAMES = {
@@ -142,14 +155,17 @@
     return { name: pick(SPONSOR_NAMES[slotKey]), value };
   }
 
+  // expoente mais suave que o antigo (1.6) porque agora a escala vai até 20
+  // níveis, não 5 — com 1.6 o último nível custaria dezenas de milhares
+  // sozinho, muito acima do orçamento inicial de 20k
   function upgradeCost(currentLevel) {
-    return Math.round(BASE_COST * Math.pow(currentLevel + 1, 1.6));
+    return Math.round(BASE_COST * Math.pow(currentLevel + 1, 1.15));
   }
 
   // O nível de cada profissional/departamento é limitado pela divisão atual do clube —
   // dinheiro sozinho não compra uma estrutura de ponta enquanto o time ainda está
-  // disputando o Campeonato do Bairro, por exemplo.
-  const CAMPUS_TIER_CAPS = { bairro: 1, cidade: 2, regional: 4, estadual: 5 };
+  // disputando o Campeonato do Bairro, por exemplo. Proporcional à escala de 20 níveis.
+  const CAMPUS_TIER_CAPS = { bairro: 4, cidade: 8, regional: 16, estadual: 20 };
 
   function maxDepartmentLevelForGroup(tierGroupKey) {
     const cap = CAMPUS_TIER_CAPS[tierGroupKey];
@@ -293,7 +309,7 @@
     upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
-    facilityGroupLevel, facilityTierLabel, setTorcidaName, payMatchRevenue,
+    facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName, payMatchRevenue,
     maxDepartmentLevelForGroup, bumpValorizacao,
   };
 })();
