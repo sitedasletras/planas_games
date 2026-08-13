@@ -117,6 +117,14 @@
   renderForm(homeFormEl, homeForm, 5);
   renderForm(awayFormEl, awayForm, 5);
 
+  if (window.WSPCalendar) {
+    const cal = window.WSPCalendar.loadCalendar();
+    if (!window.WSPCalendar.isMatchAvailable(cal)) {
+      enterBtn.textContent = 'Libera em ' + window.WSPCalendar.formatCountdown(window.WSPCalendar.msUntilNextMatch(cal));
+      enterBtn.disabled = true;
+    }
+  }
+
   enterBtn.addEventListener('click', () => {
     window.location.href = 'match.html?season=1';
   });

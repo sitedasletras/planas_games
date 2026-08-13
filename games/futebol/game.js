@@ -679,8 +679,7 @@
     btnSpeed.style.opacity = speedMultiplier === 2 ? '0.6' : '1';
   });
   overlayRestart.addEventListener('click', () => {
-    if (seasonMode) { window.location.href = 'temporada.html'; return; }
-    resetMatch();
+    window.location.href = 'clube.html';
   });
 
   let pausedByMenu = false;
@@ -1652,8 +1651,18 @@
       try {
         localStorage.setItem('wsp_season_result', JSON.stringify({ golsUser: score.home, golsRival: score.away }));
       } catch (e) { /* storage unavailable */ }
-      overlayRestart.textContent = 'Voltar à Temporada';
     }
+    if (window.WSPCalendar && homeClub) {
+      const cal = window.WSPCalendar.loadCalendar();
+      window.WSPCalendar.registerMatchResult(cal, {
+        clube: (homeSquad && homeSquad.clubName) || 'Seu time',
+        adv: teamLabel('away'),
+        golsFor: score.home,
+        golsAgainst: score.away,
+        competition: seasonMode ? 'Temporada' : 'Amistoso',
+      });
+    }
+    overlayRestart.textContent = 'Ir para o Clube';
     overlaySub.textContent = sub;
     renderMatchRatings();
     ratingsSectionEl.classList.remove('hidden');
@@ -1969,6 +1978,16 @@
     requestAnimationFrame(frame);
   }
 
-  resetMatch();
-  requestAnimationFrame(frame);
+  if (window.WSPCalendar) {
+    const cal = window.WSPCalendar.loadCalendar();
+    if (!window.WSPCalendar.isMatchAvailable(cal)) {
+      window.location.href = 'clube.html';
+    } else {
+      resetMatch();
+      requestAnimationFrame(frame);
+    }
+  } else {
+    resetMatch();
+    requestAnimationFrame(frame);
+  }
 })();

@@ -20,9 +20,9 @@
     </div>
 
     <div class="landing-actions">
-      <a class="action-btn primary" href="match.html">
+      <a class="action-btn primary" href="match.html" id="play-btn">
         <span class="action-icon">▶</span>
-        <span>Jogar</span>
+        <span id="play-btn-label">Jogar</span>
       </a>
       <a class="action-btn" href="temporada.html">
         <span class="action-icon">🏆</span>
@@ -72,7 +72,17 @@
   <script src="squad.js"></script>
   <script src="club.js"></script>
   <script src="daily.js"></script>
+  <script src="calendario.js"></script>
   <script>
+    if (window.WSPCalendar) {
+      const cal = window.WSPCalendar.loadCalendar();
+      if (!window.WSPCalendar.isMatchAvailable(cal)) {
+        const playBtn = document.getElementById('play-btn');
+        const playLabel = document.getElementById('play-btn-label');
+        playBtn.href = 'clube.html';
+        playLabel.textContent = 'Próxima partida: ' + window.WSPCalendar.formatCountdown(window.WSPCalendar.msUntilNextMatch(cal));
+      }
+    }
     if (window.WSPSquad) {
       document.getElementById('club-name').textContent = window.WSPSquad.loadSquad().clubName;
     }

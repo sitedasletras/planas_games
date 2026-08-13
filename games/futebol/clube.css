@@ -60,6 +60,69 @@ html, body {
   color: #ffd54a;
 }
 
+.hidden { display: none; }
+
+.calendar-card {
+  margin: 0 14px 14px;
+  padding: 12px 14px;
+  background: #16281f;
+  border: 1px solid #345c48;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.calendar-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9fd8b8;
+}
+
+.calendar-value {
+  font-size: 1.05rem;
+  font-weight: bold;
+  color: #ffd54a;
+}
+
+.calendar-play-btn {
+  margin-top: 6px;
+  display: inline-block;
+  text-align: center;
+  background: #2f9e44;
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 0.8rem;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.news-list {
+  padding: 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.news-item {
+  background: #0e1c15;
+  border-left: 3px solid #ffd54a;
+  border-radius: 0 8px 8px 0;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  color: #e6f2ea;
+}
+
+.news-item .news-date {
+  display: block;
+  font-size: 0.62rem;
+  color: #9fd8b8;
+  margin-top: 3px;
+}
+
 .dept-list {
   padding: 0 14px;
   display: flex;

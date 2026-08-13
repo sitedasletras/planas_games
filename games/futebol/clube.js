@@ -12,6 +12,11 @@
   const listEl = document.getElementById('dept-list');
   const sponsorListEl = document.getElementById('sponsor-list');
   const tierNoteEl = document.getElementById('campus-tier-note');
+  const calendarLabelEl = document.getElementById('calendar-label');
+  const calendarValueEl = document.getElementById('calendar-value');
+  const calendarPlayBtnEl = document.getElementById('calendar-play-btn');
+  const newsSectionEl = document.getElementById('news-section');
+  const newsListEl = document.getElementById('news-list');
 
   const S = window.WSPSeason;
   const seasonState = S.loadState();
@@ -195,8 +200,41 @@
     return block;
   }
 
+  function renderCalendar() {
+    if (!window.WSPCalendar) return;
+    const cal = window.WSPCalendar.loadCalendar();
+    const available = window.WSPCalendar.isMatchAvailable(cal);
+    if (available) {
+      calendarLabelEl.textContent = 'Partida';
+      calendarValueEl.textContent = 'Disponível agora';
+      calendarPlayBtnEl.classList.remove('hidden');
+    } else {
+      calendarLabelEl.textContent = 'Próxima partida libera em';
+      calendarValueEl.textContent = window.WSPCalendar.formatCountdown(window.WSPCalendar.msUntilNextMatch(cal));
+      calendarPlayBtnEl.classList.add('hidden');
+    }
+
+    newsListEl.innerHTML = '';
+    if (cal.headlines && cal.headlines.length) {
+      newsSectionEl.classList.remove('hidden');
+      cal.headlines.forEach((h) => {
+        const item = document.createElement('div');
+        item.className = 'news-item';
+        item.textContent = h.text;
+        const date = document.createElement('span');
+        date.className = 'news-date';
+        date.textContent = new Date(h.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        item.appendChild(date);
+        newsListEl.appendChild(item);
+      });
+    } else {
+      newsSectionEl.classList.add('hidden');
+    }
+  }
+
   function render() {
     budgetEl.textContent = formatMoney(club.budget);
+    renderCalendar();
     tierNoteEl.textContent = currentTier.groupLabel + ' — profissionais limitados ao nível ' + levelCap + '/' + MAX_LEVEL
       + (nextTierGroup ? ' até subir para o ' + nextTierGroup.label : ' (nível máximo já disponível)');
     listEl.innerHTML = '';
@@ -275,4 +313,5 @@
   }
 
   render();
+  setInterval(renderCalendar, 60000);
 })();

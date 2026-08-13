@@ -37,9 +37,9 @@
         <span class="action-icon">💾</span>
         <span>Salvar Escalação</span>
       </button>
-      <a class="action-btn" href="match.html" style="margin-top:8px;">
+      <a class="action-btn" href="match.html" id="enter-field-btn" style="margin-top:8px;">
         <span class="action-icon">▶</span>
-        <span>Entrar em Campo</span>
+        <span id="enter-field-label">Entrar em Campo</span>
       </a>
     </div>
   </div>
@@ -53,6 +53,18 @@
   </div>
 
   <script src="squad.js"></script>
+  <script src="calendario.js"></script>
   <script src="escalacao.js"></script>
+  <script>
+    if (window.WSPCalendar) {
+      const cal = window.WSPCalendar.loadCalendar();
+      if (!window.WSPCalendar.isMatchAvailable(cal)) {
+        const btn = document.getElementById('enter-field-btn');
+        const label = document.getElementById('enter-field-label');
+        btn.href = 'clube.html';
+        label.textContent = 'Libera em ' + window.WSPCalendar.formatCountdown(window.WSPCalendar.msUntilNextMatch(cal));
+      }
+    }
+  </script>
 </body>
 </html>

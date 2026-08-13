@@ -200,6 +200,12 @@ table.standings td.pts {
   color: #ffd54a;
 }
 
+.comp-btn:disabled {
+  background: #333;
+  color: #999;
+  cursor: not-allowed;
+}
+
 .history-list {
   padding: 0 14px;
   display: flex;
