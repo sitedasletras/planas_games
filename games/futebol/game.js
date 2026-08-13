@@ -10,14 +10,14 @@
   const CLAMP_Y_MIN = 16, CLAMP_Y_MAX = FIELD_H - 16;
   const CLAMP_X_MIN = 16, CLAMP_X_MAX = FIELD_W - 16;
 
-  const TEAMMATE_SPEED = 105;  // px/sec, AI support
-  const CHASER_SPEED = 120;    // px/sec, AI chasing ball
-  const GK_SPEED = 90;
+  const TEAMMATE_SPEED = 88;   // px/sec, AI support
+  const CHASER_SPEED = 100;    // px/sec, AI chasing ball
+  const GK_SPEED = 78;
 
   const PICKUP_R = PLAYER_R + BALL_R + 2;
-  const SHOOT_POWER = 300, PASS_POWER = 220, CLEAR_POWER = 260;
+  const SHOOT_POWER = 260, PASS_POWER = 190, CLEAR_POWER = 230;
   const KICK_COOLDOWN_MS = 300;
-  const AI_DECISION_MIN_MS = 500, AI_DECISION_MAX_MS = 1100;
+  const AI_DECISION_MIN_MS = 650, AI_DECISION_MAX_MS = 1300;
 
   // ---------- Clock ----------
   // Each half shows 46 game-minutes on the scoreboard, compressed into
@@ -31,12 +31,12 @@
   const HALFTIME_REAL_SECONDS = 15;
 
   // ---------- Fouls / cards / offside ----------
-  const FOUL_CHANCE = 0.015;       // per-frame chance a tackle attempt is a foul
+  const FOUL_CHANCE = 0.006;       // per-frame chance a tackle attempt is a foul
   const STEAL_CHANCE = 0.06;       // per-frame chance of a clean steal (unchanged)
-  const HARD_FOUL_SHARE = 0.25;    // fraction of fouls that come in hard
-  const YELLOW_CHANCE_NORMAL = 0.15;
-  const YELLOW_CHANCE_HARD = 0.45;
-  const RED_CHANCE_HARD = 0.08;
+  const HARD_FOUL_SHARE = 0.2;     // fraction of fouls that come in hard
+  const YELLOW_CHANCE_NORMAL = 0.08;
+  const YELLOW_CHANCE_HARD = 0.25;
+  const RED_CHANCE_HARD = 0.03;
   const STAGGER_MS = 900;          // hard foul knocks the fouled player down briefly
   const CLOSE_FK_RANGE = 150, LONG_FK_RANGE = 280;
   const WALL_MIN_DIST = 55; // minimum distance defenders are pushed back on a free kick
