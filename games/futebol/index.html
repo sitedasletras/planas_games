@@ -55,8 +55,19 @@
     </div>
   </div>
 
+  <div class="daily-overlay hidden" id="daily-overlay">
+    <div class="daily-card">
+      <div class="daily-title">Recompensa diária</div>
+      <div class="daily-day" id="daily-day">Dia 1</div>
+      <div class="daily-coin">💰</div>
+      <div class="daily-amount" id="daily-amount">R$ 500</div>
+      <button class="action-btn primary" id="daily-claim-btn">Resgatar</button>
+    </div>
+  </div>
+
   <script src="squad.js"></script>
   <script src="club.js"></script>
+  <script src="daily.js"></script>
   <script>
     if (window.WSPSquad) {
       document.getElementById('club-name').textContent = window.WSPSquad.loadSquad().clubName;
@@ -67,6 +78,19 @@
       badge.textContent = club.crest.emblem;
       badge.style.background = club.colors.primary;
       badge.style.borderColor = club.colors.detail;
+    }
+    if (window.WSPDaily) {
+      const reward = window.WSPDaily.checkReward();
+      if (reward.available) {
+        const overlay = document.getElementById('daily-overlay');
+        document.getElementById('daily-day').textContent = 'Dia ' + reward.day;
+        document.getElementById('daily-amount').textContent = 'R$ ' + reward.amount.toLocaleString('pt-BR');
+        overlay.classList.remove('hidden');
+        document.getElementById('daily-claim-btn').addEventListener('click', () => {
+          window.WSPDaily.claimReward();
+          overlay.classList.add('hidden');
+        });
+      }
     }
   </script>
 </body>
