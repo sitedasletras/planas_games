@@ -298,17 +298,17 @@
 
         const posLabel = document.createElement('div');
         posLabel.className = 'player-edit-position';
-        posLabel.textContent = POSITIONS[p.position].label;
+        posLabel.textContent = POSITIONS[p.position].label + ' · ' + p.age + ' anos · Potencial ' + (p.potential || 5);
         nameCol.appendChild(posLabel);
 
         row.appendChild(nameCol);
 
         const numInput = document.createElement('input');
         numInput.type = 'text';
+        numInput.className = 'player-number-input';
         numInput.value = p.number;
         numInput.placeholder = 'Nº';
         numInput.title = 'Número da camisa';
-        numInput.style.flex = '0 0 44px';
         row.appendChild(numInput);
 
         const btn = document.createElement('button');

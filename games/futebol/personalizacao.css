@@ -82,6 +82,8 @@
 }
 
 .field-row input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
   flex: 1.4;
   background: #0e1c15;
   border: 1px solid #345c48;
@@ -89,6 +91,14 @@
   padding: 8px 10px;
   border-radius: 6px;
   font-size: 0.85rem;
+}
+
+.player-number-input {
+  flex: none !important;
+  width: 40px !important;
+  padding: 8px 4px !important;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .field-row input[type="color"] {
