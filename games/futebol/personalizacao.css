@@ -121,6 +121,19 @@
   cursor: pointer;
 }
 
+.player-edit-hint {
+  font-size: 0.72rem;
+  color: #9fd8b8;
+  margin-bottom: 10px;
+}
+
+.save-all-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+
 .emblem-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);

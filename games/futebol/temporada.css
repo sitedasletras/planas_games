@@ -70,6 +70,111 @@ html, body {
 
 .outcome-banner.hidden { display: none; }
 
+.renumber-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  padding: 16px;
+}
+
+.renumber-overlay.hidden { display: none; }
+
+.renumber-card {
+  background: #16281f;
+  border: 2px solid #ffd54a;
+  border-radius: 14px;
+  padding: 18px;
+  color: white;
+  max-width: 440px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.renumber-title {
+  font-size: 1.05rem;
+  color: #ffd54a;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.renumber-sub {
+  font-size: 0.8rem;
+  color: #cfeede;
+  margin-bottom: 12px;
+}
+
+.renumber-list {
+  overflow-y: auto;
+  flex: 1;
+  margin-bottom: 12px;
+}
+
+.renumber-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #22392c;
+}
+
+.renumber-row .nm {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.renumber-row .pos {
+  font-size: 0.65rem;
+  color: #9fd8b8;
+  flex-shrink: 0;
+}
+
+.renumber-row input {
+  width: 40px;
+  flex-shrink: 0;
+  text-align: center;
+  background: #0e1c15;
+  border: 1px solid #345c48;
+  color: white;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.renumber-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.renumber-actions button {
+  flex: 1;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.renumber-save {
+  background: #2f9e44;
+  color: white;
+}
+
+.renumber-skip {
+  background: #223a2e;
+  color: #cfeede;
+}
+
 .section-title {
   font-size: 0.85rem;
   text-transform: uppercase;

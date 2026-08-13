@@ -364,6 +364,44 @@
     return { ok: true };
   }
 
+  // aplica nome+número de vários jogadores de uma vez só, validando o conjunto
+  // final inteiro (evita falso "número repetido" ao trocar números entre dois
+  // jogadores, já que a checagem não é mais uma-a-uma contra o estado antigo)
+  function applyPlayerEdits(squad, edits) {
+    const finalNumbers = new Map();
+    squad.players.forEach((p) => finalNumbers.set(p.id, p.number));
+
+    for (const edit of edits) {
+      const n = parseInt(edit.number, 10);
+      if (!Number.isInteger(n) || n < 1 || n > 99) {
+        return { ok: false, reason: 'invalid', playerId: edit.id };
+      }
+      finalNumbers.set(edit.id, n);
+    }
+
+    const seen = new Map();
+    for (const [id, n] of finalNumbers) {
+      if (seen.has(n)) {
+        const other = squad.players.find((p) => p.id === seen.get(n));
+        const mine = squad.players.find((p) => p.id === id);
+        return { ok: false, reason: 'duplicate', number: n, players: [mine && mine.name, other && other.name] };
+      }
+      seen.set(n, id);
+    }
+
+    edits.forEach((edit) => {
+      const player = squad.players.find((p) => p.id === edit.id);
+      if (!player) return;
+      if (edit.name != null) {
+        const name = String(edit.name).trim();
+        if (name) player.name = name.slice(0, 40);
+      }
+      player.number = finalNumbers.get(edit.id);
+    });
+    saveSquad(squad);
+    return { ok: true };
+  }
+
   function renameClub(squad, newName) {
     const name = (newName || '').trim();
     if (!name) return { ok: false, reason: 'empty' };
@@ -494,7 +532,7 @@
     MARKET_VALUE_MIN, MARKET_VALUE_MAX, FULL_SQUAD_SIZE,
     careerStageFor, generateSquad, loadSquad, saveSquad,
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
-    renamePlayer, renumberPlayer, renameClub, advanceSeason, applyValorizacao,
+    renamePlayer, renumberPlayer, applyPlayerEdits, renameClub, advanceSeason, applyValorizacao,
     isInjured, setInjury, clearInjury, reduceInjuryBy,
     applyConditionRecovery, applyMatchConditionDrop,
   };

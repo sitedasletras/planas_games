@@ -176,6 +176,7 @@
         );
         ensureCompetitions();
         render();
+        offerRenumbering();
       });
       actions.appendChild(endBtn);
     }
@@ -321,6 +322,73 @@
   function showOutcome(text) {
     outcomeEl.textContent = text;
     outcomeEl.classList.remove('hidden');
+  }
+
+  // oferecida no fim de cada temporada — reaproveita applyPlayerEdits (mesma
+  // validação em lote da Personalização) pra deixar o usuário reorganizar a
+  // numeração da camisa de uma vez, sem depender do premium de Personalização
+  function offerRenumbering() {
+    const POSITIONS = window.WSPSquad.POSITIONS;
+    const overlay = document.createElement('div');
+    overlay.className = 'renumber-overlay';
+    const card = document.createElement('div');
+    card.className = 'renumber-card';
+    card.innerHTML = `
+      <div class="renumber-title">Nova numeração do elenco</div>
+      <div class="renumber-sub">Início de temporada — se quiser, reorganize os números da camisa agora.</div>
+    `;
+
+    const list = document.createElement('div');
+    list.className = 'renumber-list';
+    const players = squad.players.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const inputs = players.map((p) => {
+      const row = document.createElement('div');
+      row.className = 'renumber-row';
+      const nm = document.createElement('div');
+      nm.className = 'nm';
+      nm.textContent = p.name;
+      row.appendChild(nm);
+      const pos = document.createElement('div');
+      pos.className = 'pos';
+      pos.textContent = POSITIONS[p.position].label;
+      row.appendChild(pos);
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = p.number;
+      row.appendChild(input);
+      list.appendChild(row);
+      return { id: p.id, input };
+    });
+    card.appendChild(list);
+
+    const actions = document.createElement('div');
+    actions.className = 'renumber-actions';
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'renumber-skip';
+    skipBtn.textContent = 'Manter atual';
+    skipBtn.addEventListener('click', () => overlay.remove());
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'renumber-save';
+    saveBtn.textContent = 'Salvar Numeração';
+    saveBtn.addEventListener('click', () => {
+      const edits = inputs.map((i) => ({ id: i.id, number: i.input.value }));
+      const result = window.WSPSquad.applyPlayerEdits(squad, edits);
+      if (!result.ok) {
+        if (result.reason === 'duplicate') {
+          alert('Número ' + result.number + ' repetido entre ' + result.players.filter(Boolean).join(' e ') + '.');
+        } else {
+          alert('Tem um número inválido (use de 1 a 99).');
+        }
+        return;
+      }
+      overlay.remove();
+    });
+    actions.appendChild(skipBtn);
+    actions.appendChild(saveBtn);
+    card.appendChild(actions);
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
   }
 
   function renderHistory() {

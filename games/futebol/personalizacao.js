@@ -261,13 +261,10 @@
     return section;
   }
 
-  function playersSection() {
-    const section = document.createElement('div');
-    section.className = 'custom-section';
-    section.innerHTML = '<h2>Editar Jogadores</h2>';
-
+  function buildPlayerEditRows(section) {
     const BUCKET_LABEL = { GK: 'Goleiros', DEF: 'Zaga', MID: 'Meio-campo', ATT: 'Ataque' };
     const BUCKET_ORDER = ['GK', 'DEF', 'MID', 'ATT'];
+    const inputs = [];
 
     BUCKET_ORDER.forEach((bucket) => {
       // ordem estável por nome — se ordenasse pelo número, o jogador "pularia"
@@ -311,26 +308,49 @@
         numInput.title = 'Número da camisa';
         row.appendChild(numInput);
 
-        const btn = document.createElement('button');
-        btn.className = 'save-btn';
-        btn.textContent = 'Salvar';
-        btn.addEventListener('click', () => {
-          window.WSPSquad.renamePlayer(squad, p.id, nameInput.value);
-          const result = window.WSPSquad.renumberPlayer(squad, p.id, numInput.value);
-          if (!result.ok && result.reason === 'taken') {
-            alert('Já existe um jogador com esse número.');
-            numInput.value = p.number;
-            return;
-          }
-          numInput.value = p.number;
-          btn.textContent = 'Salvo!';
-          setTimeout(() => { btn.textContent = 'Salvar'; }, 1200);
-        });
-        row.appendChild(btn);
-
         section.appendChild(row);
+        inputs.push({ id: p.id, nameInput, numInput, originalNumber: p.number });
       });
     });
+
+    return inputs;
+  }
+
+  function playersSection() {
+    const section = document.createElement('div');
+    section.className = 'custom-section';
+    section.innerHTML = '<h2>Editar Jogadores</h2>';
+
+    const hint = document.createElement('div');
+    hint.className = 'player-edit-hint';
+    hint.textContent = 'Altere nomes e números à vontade e salve tudo de uma vez no final.';
+    section.appendChild(hint);
+
+    const inputs = buildPlayerEditRows(section);
+
+    const saveAllBtn = document.createElement('button');
+    saveAllBtn.className = 'save-btn save-all-btn';
+    saveAllBtn.textContent = 'Salvar Numeração e Nomes';
+    saveAllBtn.addEventListener('click', () => {
+      const edits = inputs.map((i) => ({ id: i.id, name: i.nameInput.value, number: i.numInput.value }));
+      const result = window.WSPSquad.applyPlayerEdits(squad, edits);
+      if (!result.ok) {
+        if (result.reason === 'duplicate') {
+          alert('Número ' + result.number + ' repetido entre ' + result.players.filter(Boolean).join(' e ') + '.');
+        } else {
+          alert('Tem um número inválido (use de 1 a 99).');
+        }
+        return;
+      }
+      inputs.forEach((i) => {
+        const p = squad.players.find((pl) => pl.id === i.id);
+        i.numInput.value = p.number;
+        i.originalNumber = p.number;
+      });
+      saveAllBtn.textContent = 'Salvo!';
+      setTimeout(() => { saveAllBtn.textContent = 'Salvar Numeração e Nomes'; }, 1500);
+    });
+    section.appendChild(saveAllBtn);
 
     return section;
   }
