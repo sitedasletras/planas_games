@@ -28,6 +28,7 @@
       exclusiveEmblemUnlocked: false,
       exclusiveJerseyUnlocked: false,
       morale: 50,
+      pendingDiscount: null, // { group, pct } — definido pela Diretoria, consumido na próxima melhoria daquele grupo
     };
   }
 
@@ -218,6 +219,7 @@
         if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
         if (parsed.exclusiveJerseyUnlocked == null) parsed.exclusiveJerseyUnlocked = defaults.exclusiveJerseyUnlocked;
         if (parsed.morale == null) parsed.morale = defaults.morale;
+        if (parsed.pendingDiscount === undefined) parsed.pendingDiscount = defaults.pendingDiscount;
         return parsed;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -230,15 +232,37 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(club)); } catch (e) { /* storage unavailable */ }
   }
 
+  function groupForDept(key) {
+    for (const g of Object.keys(FACILITY_GROUPS)) {
+      if (FACILITY_GROUPS[g].depts.includes(key)) return g;
+    }
+    return null;
+  }
+
+  // preço final considerando o desconto que a Diretoria pode ter liberado
+  // pra um grupo específico (ver diretoria.js) — usado tanto pra exibir o
+  // preço quanto pra cobrar de verdade, sempre os dois batendo
+  function effectiveUpgradeCost(club, key) {
+    const level = club.departments[key] || 0;
+    let cost = upgradeCost(level);
+    if (club.pendingDiscount && club.pendingDiscount.group === groupForDept(key)) {
+      cost = Math.max(1, Math.round(cost * (1 - club.pendingDiscount.pct)));
+    }
+    return cost;
+  }
+
   function upgradeDepartment(club, key, levelCap) {
     const level = club.departments[key] || 0;
     const cap = levelCap == null ? MAX_LEVEL : Math.min(MAX_LEVEL, levelCap);
     if (level >= MAX_LEVEL) return { ok: false, reason: 'max' };
     if (level >= cap) return { ok: false, reason: 'tier_locked' };
-    const cost = upgradeCost(level);
+    const cost = effectiveUpgradeCost(club, key);
     if (club.budget < cost) return { ok: false, reason: 'money', cost };
     club.budget -= cost;
     club.departments[key] = level + 1;
+    if (club.pendingDiscount && club.pendingDiscount.group === groupForDept(key)) {
+      club.pendingDiscount = null;
+    }
     saveClub(club);
     return { ok: true, cost };
   }
@@ -322,7 +346,7 @@
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
     PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
     CAMPUS_TIER_CAPS, crestColor,
-    upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
+    upgradeCost, effectiveUpgradeCost, groupForDept, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
     facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName, payMatchRevenue,

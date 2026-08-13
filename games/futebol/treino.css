@@ -45,3 +45,28 @@
   color: #777;
   cursor: not-allowed;
 }
+
+.physical-card {
+  margin: 12px 14px 0;
+  background: #16281f;
+  border: 1px solid #345c48;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.physical-card-title {
+  font-weight: bold;
+  color: #ffd54a;
+  margin-bottom: 4px;
+}
+
+.physical-card-desc {
+  font-size: 0.75rem;
+  color: #9fd8b8;
+  margin-bottom: 8px;
+}
+
+.physical-btn {
+  width: 100%;
+  margin-top: 0;
+}

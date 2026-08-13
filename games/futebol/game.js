@@ -78,6 +78,15 @@
     return RATING_SPEED_BASE + ((rating || 60) / 100) * RATING_SPEED_SPAN;
   }
 
+  // condicionamento físico do elenco (persistente entre partidas) — jogador
+  // desgastado começa a partida já um pouco mais devagar, indo de 0.85x (20%,
+  // o piso do desgaste) a 1x (100%, totalmente recuperado)
+  const CONDITION_SPEED_SPAN = 0.15;
+  function conditionSpeedMult(condition) {
+    const c = condition == null ? 100 : condition;
+    return 1 - (1 - c / 100) * CONDITION_SPEED_SPAN;
+  }
+
   const INSTRUCTIONS = [
     { key: 'zona', label: 'Zona' },
     { key: 'individual', label: 'Marc.' },
@@ -408,6 +417,7 @@
   let pendingPenalty = null; // { team, taker, takerName } enquanto uma cobrança de pênalti está em andamento
   let pendingKickoffReset = false; // adia o reposicionamento pro kickoff até o fim da comemoração do gol
   let matchParticipants = []; // todo jogador que entrou em campo na partida, pra nota pós-jogo
+  let matchInjuriesThisGame = []; // { name, label } — lesões persistentes sofridas nesta partida, pra coletiva
 
   let duelCooldownMs = 0;
   let duelVisibleMs = 0;
@@ -429,6 +439,13 @@
 
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
+
+  if (homeSquad && window.WSPSquad) {
+    const fisicaLevel = (homeClub && homeClub.departments)
+      ? ['preparador_fisico', 'musculacao', 'hidromassagem'].reduce((s, k) => s + (homeClub.departments[k] || 0), 0) / 3
+      : 0;
+    if (window.WSPSquad.applyConditionRecovery(homeSquad, fisicaLevel)) window.WSPSquad.saveSquad(homeSquad);
+  }
 
   // se o usuário montou uma escalação em escalacao.html, ela decide quem começa
   // jogando e em que esquema — senão cai no sorteio automático de sempre
@@ -533,6 +550,7 @@
       yellowCards: 0, redCard: false, staggerMs: 0,
       fatigue: 0, fatigueNarrated: false,
       rating: (extra && extra.rating) || 60,
+      condition: (extra && extra.condition != null) ? extra.condition : 100,
       matchGoals: 0,
       matchAssists: 0,
       wanderSeed: Math.random() * 1000,
@@ -585,12 +603,12 @@
       const fromLineup = (homeLineup && tacticKey === homeLineupTacticKey) ? selectStartersFromLineup(homeSquad, homeLineup) : null;
       const { gk, outfield, bench } = fromLineup || selectStarters(homeSquad, tacticKey);
       homeBench = bench;
-      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits, squadId: gk.id, rating: gk.rating } : null;
+      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits, squadId: gk.id, rating: gk.rating, condition: gk.condition } : null;
       const list = [makePlayer('home', 'GK', gk ? gk.number : 1, 200, gkY, gkExtra)];
       tactic.slots.forEach((slot, i) => {
         const { x, y } = slotToXY('home', slot);
         const entry = outfield[i];
-        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id, rating: entry.player.rating } : null;
+        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id, rating: entry.player.rating, condition: entry.player.condition } : null;
         list.push(makePlayer('home', 'OUT', entry ? entry.player.number : i + 2, x, y, extra));
       });
       return list;
@@ -1093,7 +1111,7 @@
       }
     }
     if (p.role !== 'GK') {
-      const combinedMult = fatigueMult * ratingSpeedMult(p.rating);
+      const combinedMult = fatigueMult * ratingSpeedMult(p.rating) * conditionSpeedMult(p.condition);
       p.vx *= combinedMult; p.vy *= combinedMult;
     }
     p.x += p.vx * dt;
@@ -1301,7 +1319,7 @@
   function substitutePlayer(outPlayer, inData) {
     const idx = players.indexOf(outPlayer);
     if (idx < 0) return null;
-    const extra = { name: inData.name, foot: inData.foot, traits: inData.traits || [], squadId: inData.id || null, rating: inData.rating };
+    const extra = { name: inData.name, foot: inData.foot, traits: inData.traits || [], squadId: inData.id || null, rating: inData.rating, condition: inData.condition };
     const newPlayer = makePlayer(outPlayer.team, outPlayer.role, inData.number, outPlayer.x, outPlayer.y, extra);
     newPlayer.baseX = outPlayer.baseX;
     newPlayer.baseY = outPlayer.baseY;
@@ -1462,6 +1480,7 @@
         window.WSPSquad.setInjury(squadPlayer, Date.now() + days * dayMs, severity.label);
         window.WSPSquad.saveSquad(homeSquad);
         narrate(displayName(p) + ' sofreu uma ' + severity.label + ' e vai desfalcar o time nos próximos jogos.');
+        matchInjuriesThisGame.push({ name: displayName(p), label: severity.label });
       }
     }
     if (p.team === 'home' && homeSubsUsed < MAX_SUBS && homeBench.length) {
@@ -1690,31 +1709,64 @@
     });
   }
   // ---------- Coletiva de imprensa pós-jogo ----------
-  const PRESS_CONTENT = {
-    vitoria: {
-      question: 'Técnico, como você avalia a atuação da equipe hoje?',
-      answers: [
-        { text: 'Fizemos um jogo espetacular, o elenco merece todo o crédito.', delta: 3, reaction: 'A torcida recebe bem a declaração — o elenco sai confiante.' },
-        { text: 'Vencemos, mas ainda temos pontos a melhorar.', delta: 1, reaction: 'Resposta equilibrada, bem recebida pela imprensa.' },
-        { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
-      ],
-    },
-    empate: {
-      question: 'O time saiu de campo com uma sensação de "podia ser mais". Qual sua leitura, técnico?',
-      answers: [
-        { text: 'Lutamos até o fim, o empate foi um resultado justo.', delta: 1, reaction: 'Tom equilibrado — o elenco absorve bem a mensagem.' },
-        { text: 'Deveríamos ter vencido, saio frustrado com o resultado.', delta: -1, reaction: 'A autocrítica pesa um pouco no humor do grupo.' },
-        { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
-      ],
-    },
-    derrota: {
-      question: 'Mais uma derrota. Como o senhor explica o resultado, técnico?',
-      answers: [
-        { text: 'A responsabilidade é minha, vamos corrigir os erros.', delta: 2, reaction: 'O elenco valoriza o técnico assumir a responsabilidade.' },
-        { text: 'O time deu o seu melhor, faz parte do jogo.', delta: 0, reaction: 'Resposta neutra, sem grande efeito no humor do grupo.' },
-        { text: 'Fomos prejudicados, o adversário teve sorte.', delta: -3, reaction: 'Jogar a culpa pra fora não cai bem — o grupo sente a fuga de responsabilidade.' },
-      ],
-    },
+  // várias perguntas por situação, pra não repetir sempre a mesma — a que se
+  // encaixa num evento específico da partida (lesão, expulsão) tem prioridade
+  // sobre as genéricas de resultado
+  const PRESS_RESULT_TOPICS = {
+    vitoria: [
+      {
+        question: 'Técnico, como você avalia a atuação da equipe hoje?',
+        answers: [
+          { text: 'Fizemos um jogo espetacular, o elenco merece todo o crédito.', delta: 3, reaction: 'A torcida recebe bem a declaração — o elenco sai confiante.' },
+          { text: 'Vencemos, mas ainda temos pontos a melhorar.', delta: 1, reaction: 'Resposta equilibrada, bem recebida pela imprensa.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      },
+      {
+        question: 'Essa vitória aproxima o time dos objetivos da temporada?',
+        answers: [
+          { text: 'Sim, estamos no caminho certo pra brigar lá em cima.', delta: 2, reaction: 'Declaração ambiciosa anima o grupo.' },
+          { text: 'Um passo de cada vez, sem contar com o que ainda não veio.', delta: 1, reaction: 'Tom cauteloso, bem recebido pela diretoria.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      },
+    ],
+    empate: [
+      {
+        question: 'O time saiu de campo com uma sensação de "podia ser mais". Qual sua leitura, técnico?',
+        answers: [
+          { text: 'Lutamos até o fim, o empate foi um resultado justo.', delta: 1, reaction: 'Tom equilibrado — o elenco absorve bem a mensagem.' },
+          { text: 'Deveríamos ter vencido, saio frustrado com o resultado.', delta: -1, reaction: 'A autocrítica pesa um pouco no humor do grupo.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      },
+      {
+        question: 'Faltou algo pontual pra sair com os três pontos hoje?',
+        answers: [
+          { text: 'Faltou capricho nas finalizações, isso a gente treina.', delta: 1, reaction: 'Resposta técnica, o grupo aceita bem a cobrança específica.' },
+          { text: 'A arbitragem atrapalhou o nosso resultado.', delta: -2, reaction: 'Culpar a arbitragem não convence — a imprensa cobra mais no dia seguinte.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      },
+    ],
+    derrota: [
+      {
+        question: 'Mais uma derrota. Como o senhor explica o resultado, técnico?',
+        answers: [
+          { text: 'A responsabilidade é minha, vamos corrigir os erros.', delta: 2, reaction: 'O elenco valoriza o técnico assumir a responsabilidade.' },
+          { text: 'O time deu o seu melhor, faz parte do jogo.', delta: 0, reaction: 'Resposta neutra, sem grande efeito no humor do grupo.' },
+          { text: 'Fomos prejudicados, o adversário teve sorte.', delta: -3, reaction: 'Jogar a culpa pra fora não cai bem — o grupo sente a fuga de responsabilidade.' },
+        ],
+      },
+      {
+        question: 'A torcida já começa a cobrar. O senhor teme pelo cargo?',
+        answers: [
+          { text: 'Meu compromisso é com o trabalho, vamos reverter isso treinando.', delta: 2, reaction: 'Postura firme tranquiliza o vestiário.' },
+          { text: 'Isso não depende de mim, é decisão da diretoria.', delta: -1, reaction: 'Resposta evasiva não empolga ninguém.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      },
+    ],
   };
 
   function pressBucketFor(golsFor, golsAgainst) {
@@ -1723,12 +1775,72 @@
     return 'empate';
   }
 
+  // perguntas ligadas a um evento específico da própria partida — quando
+  // existem, entram na roda junto com as genéricas de resultado
+  function pressEventTopics() {
+    const topics = [];
+    const homePlayers = matchParticipants.filter((p) => p.team === 'home');
+
+    if (matchInjuriesThisGame.length) {
+      const inj = matchInjuriesThisGame[0];
+      topics.push({
+        question: 'A saída de ' + inj.name + ' por lesão preocupa pros próximos jogos?',
+        answers: [
+          { text: 'Vamos cuidar dele com calma no departamento médico, sem pressa.', delta: 1, reaction: 'Postura responsável com a saúde do elenco é bem vista.' },
+          { text: 'É um desfalque sensível, vamos sentir a falta dele.', delta: -1, reaction: 'A preocupação pública deixa o grupo um pouco tenso.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      });
+    }
+
+    const sentOff = homePlayers.find((p) => p.redCard);
+    if (sentOff) {
+      topics.push({
+        question: 'A expulsão de ' + displayName(sentOff) + ' pesou no resultado?',
+        answers: [
+          { text: 'Jogar com um a menos sempre pesa, mas não é desculpa.', delta: 1, reaction: 'Resposta madura, sem terceirizar a responsabilidade.' },
+          { text: 'A arbitragem exagerou no rigor com o meu jogador.', delta: -1, reaction: 'A reclamação pública não cai bem com a arbitragem local.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      });
+    }
+
+    const rated = homePlayers.map((p) => ({ p, rating: computePlayerRating(p) })).sort((a, b) => b.rating - a.rating);
+    if (rated.length && rated[0].rating >= 7.5) {
+      const star = rated[0].p;
+      topics.push({
+        question: 'Como foi a atuação de ' + displayName(star) + ' hoje?',
+        answers: [
+          { text: 'Ele está num momento espetacular, merece reconhecimento.', delta: 2, reaction: 'Elogio público valoriza o jogador e anima o elenco.' },
+          { text: 'É um jogador do time, o mérito é coletivo.', delta: 1, reaction: 'Resposta institucional, bem recebida.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      });
+    }
+
+    topics.push({
+      question: 'Vocês pretendem reforçar o elenco no próximo mercado de contratações?',
+      answers: [
+        { text: 'Estamos de olho no mercado, sempre buscando evoluir.', delta: 1, reaction: 'Declaração de ambição agrada a diretoria.' },
+        { text: 'O foco agora é 100% no elenco que já temos.', delta: 0, reaction: 'Resposta neutra, sem grande repercussão.' },
+        { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+      ],
+    });
+
+    return topics;
+  }
+
   function openPressConference() {
     if (!pressOverlay || !homeClub || !window.WSPClub) {
       window.location.href = 'clube.html';
       return;
     }
-    const content = PRESS_CONTENT[pressBucketFor(score.home, score.away)];
+    const bucket = pressBucketFor(score.home, score.away);
+    // eventos da própria partida (lesão, expulsão, destaque) entram em dobro
+    // no sorteio, pra aparecerem com mais frequência que as genéricas quando existem
+    const eventTopics = pressEventTopics();
+    const pool = [].concat(PRESS_RESULT_TOPICS[bucket], eventTopics, eventTopics);
+    const content = pool[Math.floor(Math.random() * pool.length)];
     pressQuestionEl.textContent = content.question;
     pressReactionEl.classList.add('hidden');
     pressContinueBtn.classList.add('hidden');
@@ -1755,16 +1867,17 @@
 
   function showFullTime() {
     if (homeSquad && window.WSPSquad) {
-      let changed = false;
-      matchParticipants.filter((p) => p.team === 'home' && p.squadId).forEach((p) => {
+      const homeParticipants = matchParticipants.filter((p) => p.team === 'home' && p.squadId);
+      homeParticipants.forEach((p) => {
         const squadPlayer = homeSquad.players.find((sp) => sp.id === p.squadId);
         if (squadPlayer && (p.matchGoals || p.matchAssists)) {
           squadPlayer.careerGoals = (squadPlayer.careerGoals || 0) + p.matchGoals;
           squadPlayer.careerAssists = (squadPlayer.careerAssists || 0) + p.matchAssists;
-          changed = true;
         }
       });
-      if (changed) window.WSPSquad.saveSquad(homeSquad);
+      const fisicaReduction = deptReduction(FATIGUE_DEPTS, 0.04, 0.5);
+      window.WSPSquad.applyMatchConditionDrop(homeSquad, homeParticipants.map((p) => p.squadId), fisicaReduction);
+      window.WSPSquad.saveSquad(homeSquad);
     }
 
     overlayTitle.textContent = 'FIM DE JOGO';

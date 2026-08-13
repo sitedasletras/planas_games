@@ -265,6 +265,18 @@
   background: #1e3a2a;
 }
 
+.condition-tag {
+  font-size: 0.62rem;
+  font-weight: bold;
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.condition-tag.good { background: #1e3a2a; color: #6fcf7d; }
+.condition-tag.mid { background: #3a2f0e; color: #ffd54a; }
+.condition-tag.low { background: #3a1616; color: #f5a5a5; }
+
 .overlay {
   position: fixed;
   inset: 0;

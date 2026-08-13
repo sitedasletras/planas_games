@@ -55,6 +55,7 @@
   <script src="squad.js"></script>
   <script src="calendario.js"></script>
   <script src="escalacao.js"></script>
+  <script src="presidente.js"></script>
   <script>
     if (window.WSPCalendar) {
       const cal = window.WSPCalendar.loadCalendar();
@@ -64,6 +65,13 @@
         btn.href = 'clube.html';
         label.textContent = 'Libera em ' + window.WSPCalendar.formatCountdown(window.WSPCalendar.msUntilNextMatch(cal));
       }
+    }
+    if (window.WSPTour) {
+      window.WSPTour.runTour('escalacao', [
+        'Aqui você monta o esquema tático: escolha quantos jogadores quer na defesa, meio-campo e ataque — sempre somando 10, mais o goleiro à parte.',
+        'Toque em cada vaga pra escolher o jogador. O selo 🤕 avisa quem está machucado, e a porcentagem colorida mostra o condicionamento físico de cada um.',
+        "Não esqueça de tocar em 'Salvar Escalação' — ela vale pra próxima partida, mesmo que você feche o jogo e volte depois.",
+      ]);
     }
   </script>
 </body>

@@ -268,6 +268,7 @@
       careerAssists: 0,
       injuredUntil: null,
       injuryLabel: null,
+      condition: 100,
     };
   }
 
@@ -387,6 +388,7 @@
           if (p.potential == null) { p.potential = randomPotential(p.age); changed = true; }
           if (p.injuredUntil === undefined) { p.injuredUntil = null; changed = true; }
           if (p.injuryLabel === undefined) { p.injuryLabel = null; changed = true; }
+          if (p.condition == null) { p.condition = 100; changed = true; }
         });
         if (changed) saveSquad(parsed);
         return parsed;
@@ -452,6 +454,41 @@
     player.injuredUntil = Math.max(Date.now(), player.injuredUntil - ms);
   }
 
+  // ---------- Condicionamento físico ----------
+  // recupera sozinho com o tempo (mais rápido com Preparação Física melhor) —
+  // chamado sempre que o elenco é carregado numa tela que também tem o clube
+  function applyConditionRecovery(squad, fisicaLevel) {
+    const now = Date.now();
+    const last = squad.conditionUpdatedAt || now;
+    const dayMs = (window.WSPCalendar && window.WSPCalendar.GAME_DAY_REAL_MS) || (2 * 60 * 60 * 1000);
+    const daysElapsed = (now - last) / dayMs;
+    squad.conditionUpdatedAt = now;
+    if (daysElapsed <= 0) return false;
+    const recoveryPerDay = 8 + Math.min(10, (fisicaLevel || 0) * 0.5);
+    const recovery = daysElapsed * recoveryPerDay;
+    let changed = false;
+    squad.players.forEach((p) => {
+      if (p.condition == null) p.condition = 100;
+      if (p.condition < 100) {
+        p.condition = Math.min(100, p.condition + recovery);
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  // desgaste ao final de uma partida, pra quem entrou em campo — reduzido pelo
+  // nível de Preparador Físico/Massagista/Musculação (mesmo grupo da fadiga)
+  function applyMatchConditionDrop(squad, playerIds, fisicaReduction) {
+    const drop = 12 * (1 - Math.min(0.6, fisicaReduction || 0));
+    const byId = {};
+    squad.players.forEach((p) => { byId[p.id] = p; });
+    playerIds.forEach((id) => {
+      const p = byId[id];
+      if (p) p.condition = Math.max(20, (p.condition == null ? 100 : p.condition) - drop);
+    });
+  }
+
   window.WSPSquad = {
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
     MARKET_VALUE_MIN, MARKET_VALUE_MAX, FULL_SQUAD_SIZE,
@@ -459,5 +496,6 @@
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
     renamePlayer, renumberPlayer, renameClub, advanceSeason, applyValorizacao,
     isInjured, setInjury, clearInjury, reduceInjuryBy,
+    applyConditionRecovery, applyMatchConditionDrop,
   };
 })();

@@ -62,6 +62,12 @@
     return (POSITIONS[p.position] && POSITIONS[p.position].label) || '';
   }
 
+  function conditionTag(p) {
+    const c = p.condition == null ? 100 : Math.round(p.condition);
+    const tier = c >= 80 ? 'good' : c >= 50 ? 'mid' : 'low';
+    return '<span class="condition-tag ' + tier + '">' + c + '%</span>';
+  }
+
   let toastTimer = null;
   function showToast(msg) {
     let toast = document.getElementById('save-toast');
@@ -96,8 +102,8 @@
       const btn = document.createElement('button');
       btn.className = 'picker-player' + (p.id === current ? ' selected' : '');
       const hurt = isInjured && isInjured(p);
-      btn.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + (hurt ? ' 🤕' : '') + '</span><span class="pos">' +
-        positionLabelShort(p) + ' · ' + BUCKET_ABBR[p.bucket] + '</span>';
+      btn.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + (hurt ? ' 🤕' : '') + '</span>' +
+        conditionTag(p) + '<span class="pos">' + positionLabelShort(p) + ' · ' + BUCKET_ABBR[p.bucket] + '</span>';
       if (hurt) btn.title = 'Machucado — pode ser substituído automaticamente se ainda estiver fora no dia do jogo';
       btn.addEventListener('click', () => {
         setSlotValue(line, index, p.id);
@@ -119,8 +125,8 @@
       const p = byId[playerId];
       const filled = document.createElement('div');
       filled.className = 'lineup-slot-filled';
-      filled.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + (isInjured && isInjured(p) ? ' 🤕' : '') + '</span><span class="pos">' +
-        positionLabelShort(p) + '</span>';
+      filled.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + (isInjured && isInjured(p) ? ' 🤕' : '') + '</span>' +
+        conditionTag(p) + '<span class="pos">' + positionLabelShort(p) + '</span>';
       btn.appendChild(filled);
       const clearBtn = document.createElement('span');
       clearBtn.className = 'lineup-slot-clear';

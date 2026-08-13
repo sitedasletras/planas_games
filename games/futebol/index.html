@@ -73,7 +73,20 @@
   <script src="club.js"></script>
   <script src="daily.js"></script>
   <script src="calendario.js"></script>
+  <script src="presidente.js"></script>
   <script>
+    function startHubTour() {
+      if (window.WSPTour) {
+        window.WSPTour.runTour('hub', [
+          'Olá! Eu cuido da presidência do clube e vou te ajudar a conhecer o jogo. Sempre que tiver dúvida, é só tocar no botão ❓ no canto da tela.',
+          "No menu principal: 'Jogar' entra direto numa partida, e 'Temporada' te leva pro campeonato com ligas e copas de verdade.",
+          "'Escalação' é onde você monta o time titular, e 'Elenco' é onde você contrata e gerencia os jogadores.",
+          "'Clube' é o coração da gestão: Campus, patrocínios, calendário da próxima partida e as atividades entre os jogos — Treino, Médico e Diretoria.",
+          'As outras opções guardam seu histórico de títulos, a trilha de recompensas, a personalização do escudo/uniforme e o backup dos seus dados. Boa sorte!',
+        ]);
+      }
+    }
+
     if (window.WSPCalendar) {
       const cal = window.WSPCalendar.loadCalendar();
       if (!window.WSPCalendar.isMatchAvailable(cal)) {
@@ -103,8 +116,13 @@
         document.getElementById('daily-claim-btn').addEventListener('click', () => {
           window.WSPDaily.claimReward();
           overlay.classList.add('hidden');
+          startHubTour();
         });
+      } else {
+        startHubTour();
       }
+    } else {
+      startHubTour();
     }
   </script>
 </body>

@@ -1,20 +1,28 @@
 (() => {
   'use strict';
-  const { POSITIONS, loadSquad, saveSquad, careerStageFor, isInjured } = window.WSPSquad;
+  const { POSITIONS, loadSquad, saveSquad, careerStageFor, isInjured, applyConditionRecovery } = window.WSPSquad;
+  const { loadClub } = window.WSPClub || {};
   const Cal = window.WSPCalendar;
 
   const STORAGE_KEY = 'wsp_training_v1';
   const COOLDOWN_MS = (Cal && Cal.GAME_DAY_REAL_MS) || 2 * 60 * 60 * 1000; // 1 dia do jogo
+  const FISICA_DEPTS = ['preparador_fisico', 'musculacao', 'hidromassagem'];
 
   const squad = loadSquad();
+  const club = loadClub ? loadClub() : null;
+  const fisicaLevel = club ? FISICA_DEPTS.reduce((s, k) => s + (club.departments[k] || 0), 0) / FISICA_DEPTS.length : 0;
+  if (applyConditionRecovery && applyConditionRecovery(squad, fisicaLevel)) saveSquad(squad);
+
   const statusEl = document.getElementById('training-status');
   const listEl = document.getElementById('training-list');
+  const physicalDescEl = document.getElementById('physical-card-desc');
+  const physicalBtnEl = document.getElementById('physical-btn');
 
   function loadState() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      return raw || { lastTrainingAt: null, lastResult: null };
-    } catch (e) { return { lastTrainingAt: null, lastResult: null }; }
+      return raw || { lastTrainingAt: null, lastResult: null, lastPhysicalAt: null };
+    } catch (e) { return { lastTrainingAt: null, lastResult: null, lastPhysicalAt: null }; }
   }
   function saveState(s) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) { /* storage unavailable */ }
@@ -26,6 +34,42 @@
     if (!state.lastTrainingAt) return 0;
     return Math.max(0, state.lastTrainingAt + COOLDOWN_MS - Date.now());
   }
+
+  function physicalCooldownRemaining() {
+    if (!state.lastPhysicalAt) return 0;
+    return Math.max(0, state.lastPhysicalAt + COOLDOWN_MS - Date.now());
+  }
+
+  function physicalBoost() {
+    return Math.min(35, 15 + fisicaLevel * 1);
+  }
+
+  function renderPhysical() {
+    const remaining = physicalCooldownRemaining();
+    const boost = physicalBoost();
+    physicalDescEl.textContent = 'Sessão coletiva de condicionamento — recupera até +' + boost.toFixed(0)
+      + '% de condicionamento físico pra todo o elenco (nível médio da Preparação Física: ' + fisicaLevel.toFixed(1) + ').'
+      + ' Quer trocar o responsável? Dispense e contrate outro Preparador Físico no Clube > Campus.';
+    if (remaining > 0) {
+      physicalBtnEl.textContent = 'Próximo treino físico em ' + (Cal ? Cal.formatCountdown(remaining) : Math.ceil(remaining / 60000) + 'min');
+      physicalBtnEl.disabled = true;
+    } else {
+      physicalBtnEl.textContent = 'Treino físico coletivo';
+      physicalBtnEl.disabled = false;
+    }
+  }
+
+  physicalBtnEl.addEventListener('click', () => {
+    if (physicalCooldownRemaining() > 0) return;
+    const boost = physicalBoost();
+    squad.players.forEach((p) => {
+      p.condition = Math.min(100, (p.condition == null ? 100 : p.condition) + boost);
+    });
+    state.lastPhysicalAt = Date.now();
+    saveState(state);
+    saveSquad(squad);
+    renderPhysical();
+  });
 
   function trainable(p) {
     const stage = careerStageFor(p.age);
@@ -106,5 +150,6 @@
   }
 
   render();
-  setInterval(render, 60000);
+  renderPhysical();
+  setInterval(() => { render(); renderPhysical(); }, 60000);
 })();

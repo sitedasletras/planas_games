@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const {
-    DEPARTMENTS, MAX_LEVEL, upgradeCost, loadClub, upgradeDepartment,
+    DEPARTMENTS, MAX_LEVEL, upgradeCost, effectiveUpgradeCost, loadClub, upgradeDepartment,
     SPONSOR_SLOTS, acceptSponsor, rerollSponsor, dismissDepartment,
     FACILITY_GROUPS, TORCIDA_NAME_MAX, facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName,
     maxDepartmentLevelForGroup, moraleLabel,
@@ -69,7 +69,8 @@
     const level = club.departments[key] || 0;
     const maxed = level >= MAX_LEVEL;
     const tierLocked = !maxed && level >= levelCap;
-    const cost = (maxed || tierLocked) ? null : upgradeCost(level);
+    const cost = (maxed || tierLocked) ? null : effectiveUpgradeCost(club, key);
+    const discounted = !!(club.pendingDiscount && cost != null && cost < upgradeCost(level));
 
     const card = document.createElement('div');
     card.className = 'dept-card';
@@ -109,7 +110,7 @@
       btn.disabled = true;
     } else {
       const canAfford = club.budget >= cost;
-      btn.textContent = 'Melhorar — ' + formatMoney(cost);
+      btn.textContent = (discounted ? '🏛️ ' : '') + 'Melhorar — ' + formatMoney(cost) + (discounted ? ' (desconto da diretoria)' : '');
       btn.disabled = !canAfford;
       btn.addEventListener('click', () => {
         const result = upgradeDepartment(club, key, levelCap);

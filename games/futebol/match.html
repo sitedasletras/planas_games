@@ -142,5 +142,27 @@
   <script src="trilha.js"></script>
   <script src="calendario.js"></script>
   <script src="game.js"></script>
+  <script src="presidente.js"></script>
+  <script>
+    if (window.WSPTour && (!window.WSPCalendar || window.WSPCalendar.isMatchAvailable(window.WSPCalendar.loadCalendar()))) {
+      // pausa a partida enquanto o tour está na tela, pra não perder nada
+      // do jogo lendo as dicas — e retoma sozinho quando ele fecha
+      let tourPausedMatch = false;
+      window.WSPTour.runTour('partida', [
+        'Durante a partida você pode pausar, acelerar, trocar a tática, dar instruções pros jogadores e fazer substituições — os botões ficam aqui em cima.',
+        'Se um jogador se machucar ou levar cartão, isso pode valer pra além dessa partida — de olho no Médico depois do jogo!',
+        'No fim da partida tem a entrevista coletiva: suas respostas mudam a moral do elenco. Boa sorte em campo!',
+      ], {
+        onOpen: () => {
+          const btn = document.getElementById('btn-pause');
+          if (btn && btn.textContent === '⏸') { btn.click(); tourPausedMatch = true; }
+        },
+        onFinish: () => {
+          const btn = document.getElementById('btn-pause');
+          if (btn && tourPausedMatch) { btn.click(); tourPausedMatch = false; }
+        },
+      });
+    }
+  </script>
 </body>
 </html>
