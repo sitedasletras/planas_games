@@ -206,16 +206,21 @@ html, body {
 .rating-chip.mid { background: #ffd54a; }
 .rating-chip.low { background: #b0b0b0; }
 
-.rating-chip.potential {
-  background: #3a3f47;
-  color: #c9d1d9;
-  border: 1px solid #5c6470;
-}
-
-.rating-chip.potential.gem {
+.rating-chip.gem {
   background: linear-gradient(135deg, #8a6d00, #3a2f0e);
   color: #ffd54a;
   border: 1px solid #ffd54a;
+}
+
+.number-chip {
+  font-size: 0.62rem;
+  font-weight: bold;
+  padding: 1px 6px;
+  border-radius: 8px;
+  color: #cfeede;
+  background: #0e1c15;
+  border: 1px solid #345c48;
+  flex-shrink: 0;
 }
 
 .reroll-btn {

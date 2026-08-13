@@ -38,24 +38,25 @@
     return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
   }
 
-  function ratingTier(rating) {
-    if (rating >= 75) return 'high';
-    if (rating >= 55) return 'mid';
+  function potentialTier(potential) {
+    if (potential > 10) return 'gem';
+    if (potential >= 8) return 'high';
+    if (potential >= 5) return 'mid';
     return 'low';
-  }
-
-  function ratingChip(rating) {
-    const chip = document.createElement('span');
-    chip.className = 'rating-chip ' + ratingTier(rating);
-    chip.textContent = rating;
-    return chip;
   }
 
   function potentialChip(potential) {
     const chip = document.createElement('span');
-    chip.className = 'rating-chip potential' + (potential > 10 ? ' gem' : '');
+    chip.className = 'rating-chip ' + potentialTier(potential);
     chip.title = 'Potencial';
     chip.textContent = 'POT ' + potential;
+    return chip;
+  }
+
+  function numberChip(number) {
+    const chip = document.createElement('span');
+    chip.className = 'number-chip';
+    chip.textContent = '#' + number;
     return chip;
   }
 
@@ -110,7 +111,6 @@
       const nat = NAT_BY_KEY[c.nationality];
       name.textContent = c.name + ' ' + (nat ? nat.flag : '');
       nameRow.appendChild(name);
-      nameRow.appendChild(ratingChip(c.rating));
       nameRow.appendChild(potentialChip(c.potential));
       info.appendChild(nameRow);
       const pos = document.createElement('div');
@@ -176,7 +176,7 @@
         const nat = NAT_BY_KEY[p.nationality];
         name.textContent = p.name + ' ' + (nat ? nat.flag : '');
         nameRow.appendChild(name);
-        nameRow.appendChild(ratingChip(p.rating));
+        nameRow.appendChild(numberChip(p.number));
         nameRow.appendChild(potentialChip(p.potential));
         info.appendChild(nameRow);
 
