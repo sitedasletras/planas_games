@@ -1,11 +1,13 @@
 (() => {
   'use strict';
-  const { POSITIONS, loadSquad, isInjured } = window.WSPSquad;
+  const { POSITIONS, FEET, loadSquad, isInjured } = window.WSPSquad;
 
   const STORAGE_KEY = 'wsp_lineup_v1';
   const BUCKET_ABBR = { GK: 'GOL', DEF: 'ZAG', MID: 'MEI', ATT: 'ATA' };
   const LINE_LABEL = { gk: 'Goleiro', def: 'Defesa', mid: 'Meio-campo', att: 'Ataque' };
   const BUCKET_ORDER = ['GK', 'DEF', 'MID', 'ATT'];
+  const FOOT_LABEL = {};
+  FEET.forEach((f) => { FOOT_LABEL[f.key] = f.label; });
 
   const squad = loadSquad();
   const byId = {};
@@ -62,6 +64,15 @@
     return (POSITIONS[p.position] && POSITIONS[p.position].label) || '';
   }
 
+  // linha de estatísticas usada no seletor de jogador — nota, potencial, idade
+  // e pé, pra dar informação suficiente pra escolher (ex: qual lateral é canhoto)
+  function statsLine(p) {
+    return '<span class="picker-stat">Nota ' + (p.rating || 60) + '</span>' +
+      '<span class="picker-stat">Pot ' + (p.potential || 5) + '</span>' +
+      '<span class="picker-stat">' + p.age + ' anos</span>' +
+      '<span class="picker-stat">' + (FOOT_LABEL[p.foot] || p.foot) + '</span>';
+  }
+
   function conditionTag(p) {
     const c = p.condition == null ? 100 : Math.round(p.condition);
     const tier = c >= 80 ? 'good' : c >= 50 ? 'mid' : 'low';
@@ -102,8 +113,16 @@
       const btn = document.createElement('button');
       btn.className = 'picker-player' + (p.id === current ? ' selected' : '');
       const hurt = isInjured && isInjured(p);
-      btn.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + (hurt ? ' 🤕' : '') + '</span>' +
-        conditionTag(p) + '<span class="pos">' + positionLabelShort(p) + ' · ' + BUCKET_ABBR[p.bucket] + '</span>';
+      btn.innerHTML =
+        '<div class="picker-row-top">' +
+          '<span class="num">#' + p.number + '</span>' +
+          '<span class="nm">' + p.name + (hurt ? ' 🤕' : '') + '</span>' +
+          conditionTag(p) +
+        '</div>' +
+        '<div class="picker-row-bottom">' +
+          '<span class="pos">' + positionLabelShort(p) + ' · ' + BUCKET_ABBR[p.bucket] + '</span>' +
+          statsLine(p) +
+        '</div>';
       if (hurt) btn.title = 'Machucado — pode ser substituído automaticamente se ainda estiver fora no dia do jogo';
       btn.addEventListener('click', () => {
         setSlotValue(line, index, p.id);
