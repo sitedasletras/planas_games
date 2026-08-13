@@ -21,5 +21,15 @@
   <script src="squad.js"></script>
   <script src="club.js"></script>
   <script src="personalizacao.js"></script>
+  <script src="presidente.js"></script>
+  <script>
+    if (window.WSPTour) {
+      window.WSPTour.runTour('personalizacao', [
+        'Aqui você personaliza a identidade do clube: nome, cores do uniforme e escudo.',
+        'Também dá pra editar nome e número da camisa de cada jogador do elenco.',
+        'Ganhando títulos ou avançando na trilha de patrocínio, você libera opções exclusivas de escudo e uniforme.',
+      ]);
+    }
+  </script>
 </body>
 </html>

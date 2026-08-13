@@ -28,6 +28,16 @@
   <script src="squad.js"></script>
   <script src="club.js"></script>
   <script src="trilha.js"></script>
+  <script src="presidente.js"></script>
+  <script>
+    if (window.WSPTour) {
+      window.WSPTour.runTour('trilha', [
+        'Essa é a trilha do Patrocinador Especial: você ganha pontos jogando partidas — vitórias, empates e gols marcados contam.',
+        'Cada marco desbloqueado dá uma recompensa em dinheiro; o marco final libera um emblema de escudo e uniforme exclusivos.',
+        "Toque em 'Resgatar' assim que um marco acender pra garantir o prêmio.",
+      ]);
+    }
+  </script>
   <script>
     function formatMoney(n) { return 'R$ ' + Math.round(n).toLocaleString('pt-BR'); }
 
