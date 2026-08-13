@@ -11,6 +11,12 @@
   const CREST_SHAPES = ['circulo', 'escudo', 'diamante'];
   const CREST_EMBLEMS = ['⚽', '⭐', '🦁', '🦅', '🐺', '⚔️', '🔱', '👑', '🐎', '🔥', '⚡', '🛡️'];
   const EXCLUSIVE_CREST_EMBLEMS = ['💎', '🏆', '👽', '🐉'];
+  const EXCLUSIVE_JERSEY_PRESETS = [
+    { label: 'Ouro Especial', primary: '#8a6d00', secondary: '#ffd54a', detail: '#ffffff' },
+    { label: 'Prata Lendária', primary: '#3a3f47', secondary: '#c9d1d9', detail: '#ffd54a' },
+    { label: 'Fúria Roxa', primary: '#3a0e5c', secondary: '#c084fc', detail: '#ffd54a' },
+    { label: 'Fênix', primary: '#7a1a1a', secondary: '#ff8c3f', detail: '#ffd54a' },
+  ];
 
   function defaultCustomization() {
     return {
@@ -20,6 +26,7 @@
       torcidaName: null,
       valorizacaoLevel: 0,
       exclusiveEmblemUnlocked: false,
+      exclusiveJerseyUnlocked: false,
     };
   }
 
@@ -177,6 +184,7 @@
         if (parsed.torcidaName === undefined) parsed.torcidaName = defaults.torcidaName;
         if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
         if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
+        if (parsed.exclusiveJerseyUnlocked == null) parsed.exclusiveJerseyUnlocked = defaults.exclusiveJerseyUnlocked;
         return parsed;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -275,7 +283,7 @@
 
   window.WSPClub = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
-    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
+    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
     CAMPUS_TIER_CAPS,
     upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,

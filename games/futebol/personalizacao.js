@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const { loadSquad, renameClub } = window.WSPSquad;
-  const { loadClub, unlockPremium, saveCustomization, PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS } = window.WSPClub;
+  const { loadClub, unlockPremium, saveCustomization, PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS } = window.WSPClub;
 
   const squad = loadSquad();
   const club = loadClub();
@@ -104,6 +104,7 @@
       { key: 'secondary', label: 'Cor secundária' },
       { key: 'detail', label: 'Cor de detalhe' },
     ];
+    const colorInputs = {};
     fields.forEach((f) => {
       const row = document.createElement('div');
       row.className = 'field-row';
@@ -118,9 +119,39 @@
         saveCustomization(club, { colors: patch });
         renderPreview();
       });
+      colorInputs[f.key] = input;
       row.appendChild(input);
       section.appendChild(row);
     });
+
+    if (club.exclusiveJerseyUnlocked) {
+      const exclusiveTitle = document.createElement('div');
+      exclusiveTitle.className = 'exclusive-emblem-title';
+      exclusiveTitle.textContent = 'Uniformes exclusivos (Patrocinador Especial)';
+      section.appendChild(exclusiveTitle);
+
+      const presetRow = document.createElement('div');
+      presetRow.className = 'jersey-preset-row';
+      EXCLUSIVE_JERSEY_PRESETS.forEach((preset) => {
+        const btn = document.createElement('button');
+        btn.className = 'jersey-preset-option';
+        btn.title = preset.label;
+        btn.style.background = preset.primary;
+        btn.style.borderColor = preset.secondary;
+        const dot = document.createElement('span');
+        dot.style.cssText = 'display:block;width:10px;height:10px;border-radius:50%;background:' + preset.detail + ';margin:0 auto;';
+        btn.appendChild(dot);
+        btn.addEventListener('click', () => {
+          saveCustomization(club, { colors: { primary: preset.primary, secondary: preset.secondary, detail: preset.detail } });
+          colorInputs.primary.value = preset.primary;
+          colorInputs.secondary.value = preset.secondary;
+          colorInputs.detail.value = preset.detail;
+          renderPreview();
+        });
+        presetRow.appendChild(btn);
+      });
+      section.appendChild(presetRow);
+    }
 
     return section;
   }

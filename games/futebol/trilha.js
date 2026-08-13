@@ -66,6 +66,7 @@
         club.budget += m.reward.amount;
       } else if (m.reward.type === 'exclusive_crest') {
         club.exclusiveEmblemUnlocked = true;
+        club.exclusiveJerseyUnlocked = true;
       }
       window.WSPClub.saveClub(club);
     }
