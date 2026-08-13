@@ -124,6 +124,19 @@
   border-color: #ffd54a;
 }
 
+.exclusive-emblem-title {
+  font-size: 0.7rem;
+  color: #ffd54a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.emblem-option.exclusive {
+  background: linear-gradient(160deg, #3a2f0e, #16281f);
+  border-color: rgba(255, 213, 74, 0.4);
+}
+
 .shape-row {
   display: flex;
   gap: 8px;

@@ -1,0 +1,78 @@
+.trail-points-card {
+  text-align: center;
+}
+
+.trail-points-label {
+  font-size: 0.75rem;
+  color: #9fd8b8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.trail-points-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #ffd54a;
+  margin: 4px 0;
+}
+
+.trail-hint {
+  font-size: 0.72rem;
+  color: #7fae91;
+}
+
+.trail-list {
+  margin: 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #16281f;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trail-item.ready {
+  border-color: #ffd54a;
+}
+
+.trail-item.claimed {
+  opacity: 0.55;
+}
+
+.trail-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.trail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.trail-item-title {
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.trail-item-desc {
+  font-size: 0.72rem;
+  color: #9fd8b8;
+}
+
+.trail-claim-btn {
+  flex-shrink: 0;
+  background: linear-gradient(160deg, #2f8f4e, #14401f);
+  border: 1px solid #ffd54a;
+  color: white;
+  font-weight: bold;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+}

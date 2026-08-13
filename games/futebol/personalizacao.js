@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const { loadSquad, renameClub } = window.WSPSquad;
-  const { loadClub, unlockPremium, saveCustomization, PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS } = window.WSPClub;
+  const { loadClub, unlockPremium, saveCustomization, PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS } = window.WSPClub;
 
   const squad = loadSquad();
   const club = loadClub();
@@ -178,6 +178,30 @@
       grid.appendChild(btn);
     });
     section.appendChild(grid);
+
+    if (club.exclusiveEmblemUnlocked) {
+      const exclusiveTitle = document.createElement('div');
+      exclusiveTitle.className = 'exclusive-emblem-title';
+      exclusiveTitle.textContent = 'Emblemas exclusivos (Patrocinador Especial)';
+      section.appendChild(exclusiveTitle);
+
+      const exclusiveGrid = document.createElement('div');
+      exclusiveGrid.className = 'emblem-grid';
+      EXCLUSIVE_CREST_EMBLEMS.forEach((emblem) => {
+        const btn = document.createElement('button');
+        btn.className = 'emblem-option exclusive' + (club.crest.emblem === emblem ? ' active' : '');
+        btn.textContent = emblem;
+        btn.addEventListener('click', () => {
+          saveCustomization(club, { crest: { emblem } });
+          exclusiveGrid.querySelectorAll('.emblem-option').forEach((b) => b.classList.remove('active'));
+          grid.querySelectorAll('.emblem-option').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderPreview();
+        });
+        exclusiveGrid.appendChild(btn);
+      });
+      section.appendChild(exclusiveGrid);
+    }
 
     return section;
   }

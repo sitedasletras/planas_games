@@ -10,6 +10,7 @@
 
   const CREST_SHAPES = ['circulo', 'escudo', 'diamante'];
   const CREST_EMBLEMS = ['⚽', '⭐', '🦁', '🦅', '🐺', '⚔️', '🔱', '👑', '🐎', '🔥', '⚡', '🛡️'];
+  const EXCLUSIVE_CREST_EMBLEMS = ['💎', '🏆', '👽', '🐉'];
 
   function defaultCustomization() {
     return {
@@ -18,6 +19,7 @@
       crest: { shape: 'escudo', emblem: '⚽' },
       torcidaName: null,
       valorizacaoLevel: 0,
+      exclusiveEmblemUnlocked: false,
     };
   }
 
@@ -174,6 +176,7 @@
         if (!parsed.crest) parsed.crest = defaults.crest;
         if (parsed.torcidaName === undefined) parsed.torcidaName = defaults.torcidaName;
         if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
+        if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
         return parsed;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -272,7 +275,7 @@
 
   window.WSPClub = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
-    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
+    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
     CAMPUS_TIER_CAPS,
     upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,

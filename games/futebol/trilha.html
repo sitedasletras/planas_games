@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4102102989530314" crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Patrocinador Especial</title>
+<link rel="stylesheet" href="temporada.css">
+<link rel="stylesheet" href="trilha.css">
+</head>
+<body>
+  <div class="temporada-wrap">
+    <div class="temporada-topbar">
+      <a class="back-btn" href="index.html">←</a>
+      <h1>Patrocinador Especial</h1>
+    </div>
+
+    <div class="comp-card trail-points-card">
+      <div class="trail-points-label">Pontos de patrocínio</div>
+      <div class="trail-points-value" id="trail-points">0</div>
+      <div class="trail-hint">Ganhe pontos jogando partidas: vitórias, empates e gols marcados contam.</div>
+    </div>
+
+    <div class="section-title">Marcos</div>
+    <div class="trail-list" id="trail-list"></div>
+  </div>
+
+  <script src="squad.js"></script>
+  <script src="club.js"></script>
+  <script src="trilha.js"></script>
+  <script>
+    function formatMoney(n) { return 'R$ ' + Math.round(n).toLocaleString('pt-BR'); }
+
+    function render() {
+      const progress = window.WSPTrail.getProgress();
+      document.getElementById('trail-points').textContent = progress.points;
+      const list = document.getElementById('trail-list');
+      list.innerHTML = '';
+      progress.milestones.forEach((m) => {
+        const item = document.createElement('div');
+        item.className = 'trail-item' + (m.claimed ? ' claimed' : m.reached ? ' ready' : ' locked');
+
+        const icon = document.createElement('div');
+        icon.className = 'trail-icon';
+        icon.textContent = m.claimed ? '✅' : m.reached ? '🎁' : '🔒';
+        item.appendChild(icon);
+
+        const info = document.createElement('div');
+        info.className = 'trail-info';
+        const title = document.createElement('div');
+        title.className = 'trail-item-title';
+        title.textContent = m.label + ' — ' + m.points + ' pts';
+        info.appendChild(title);
+        const desc = document.createElement('div');
+        desc.className = 'trail-item-desc';
+        desc.textContent = m.reward.type === 'exclusive_crest'
+          ? 'Emblema exclusivo de escudo'
+          : formatMoney(m.reward.amount);
+        info.appendChild(desc);
+        item.appendChild(info);
+
+        if (!m.claimed && m.reached) {
+          const btn = document.createElement('button');
+          btn.className = 'trail-claim-btn';
+          btn.textContent = 'Resgatar';
+          btn.addEventListener('click', () => {
+            window.WSPTrail.claimMilestone(m.index);
+            render();
+          });
+          item.appendChild(btn);
+        }
+
+        list.appendChild(item);
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>

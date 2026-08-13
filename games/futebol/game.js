@@ -1545,6 +1545,7 @@
       const expenses = window.WSPClub.payMatchExpenses(homeClub, homeSquad);
       sub += `\nDespesas da partida: -${formatMoneyBRL(expenses.total)} (caixa: ${formatMoneyBRL(homeClub.budget)})`;
     }
+    if (window.WSPTrail) window.WSPTrail.addMatchResult(score.home, score.away);
     if (seasonMode) {
       try {
         localStorage.setItem('wsp_season_result', JSON.stringify({ golsUser: score.home, golsRival: score.away }));
