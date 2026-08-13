@@ -15,15 +15,40 @@
       <h1>Escalação</h1>
     </div>
 
-    <div class="formation-badge" id="formation-badge">4-3-3 · Equilibrado</div>
+    <div class="formation-badge" id="formation-badge">4-3-3</div>
+
+    <div class="formation-picker" id="formation-picker">
+      <div class="formation-picker-title">Monte seu esquema</div>
+      <div class="formation-steppers" id="formation-steppers"></div>
+      <div class="formation-total" id="formation-total"></div>
+    </div>
 
     <div class="elenco-sections" id="lineup-sections"></div>
 
+    <div class="elenco-sections" id="bench-sections">
+      <div class="elenco-section">
+        <h2>Banco / Reservas</h2>
+        <div id="bench-list"></div>
+      </div>
+    </div>
+
     <div class="lineup-footer">
-      <a class="action-btn primary" href="match.html">
+      <button class="action-btn primary" id="save-lineup-btn" style="width:100%;border:none;font:inherit;">
+        <span class="action-icon">💾</span>
+        <span>Salvar Escalação</span>
+      </button>
+      <a class="action-btn" href="match.html" style="margin-top:8px;">
         <span class="action-icon">▶</span>
         <span>Entrar em Campo</span>
       </a>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="picker-overlay">
+    <div class="overlay-card instructions-card">
+      <div class="overlay-title" style="font-size:1.1rem;" id="picker-title">Escolher jogador</div>
+      <div class="picker-list" id="picker-list"></div>
+      <button class="overlay-btn" id="picker-close">Fechar</button>
     </div>
   </div>
 

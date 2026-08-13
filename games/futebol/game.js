@@ -189,6 +189,76 @@
   }
   const TACTIC_KEYS = Object.keys(TACTICS);
 
+  // gera o layout de campo (linhas espaçadas por igual) pra qualquer combinação
+  // livre de defesa/meio/ataque que não bata com nenhuma tática pronta acima
+  function generateFormationSlots(nDef, nMid, nAtt) {
+    const DEPTH = { def: 150, mid: 330, att: 520 };
+    function rowXs(n) {
+      if (n <= 0) return [];
+      if (n === 1) return [200];
+      const margin = 40;
+      const span = 400 - margin * 2;
+      const xs = [];
+      for (let i = 0; i < n; i++) xs.push(margin + (span * i) / (n - 1));
+      return xs;
+    }
+    const slots = [];
+    rowXs(nDef).forEach((x) => slots.push({ d: DEPTH.def, x }));
+    rowXs(nMid).forEach((x) => slots.push({ d: DEPTH.mid, x }));
+    rowXs(nAtt).forEach((x) => slots.push({ d: DEPTH.att, x }));
+    return slots;
+  }
+
+  // devolve a chave de uma tática (pronta ou recém-gerada) cujo formation seja
+  // exatamente [nDef, nMid, nAtt] — usado pra escalação livre montada pelo usuário
+  function ensureTacticForFormation(nDef, nMid, nAtt) {
+    for (const key of TACTIC_KEYS) {
+      const f = TACTICS[key].formation;
+      if (f && f[0] === nDef && f[1] === nMid && f[2] === nAtt) return key;
+    }
+    const key = 'custom_' + nDef + '_' + nMid + '_' + nAtt;
+    if (!TACTICS[key]) {
+      TACTICS[key] = {
+        label: nDef + '-' + nMid + '-' + nAtt,
+        drift: Math.max(0.15, Math.min(0.5, 0.15 + nAtt * 0.07)),
+        formation: [nDef, nMid, nAtt],
+        slots: generateFormationSlots(nDef, nMid, nAtt),
+        generated: true,
+      };
+      TACTIC_KEYS.push(key);
+    }
+    return key;
+  }
+
+  // ---------- Escalação salva pelo usuário (games/futebol/escalacao.html) ----------
+  const LINEUP_STORAGE_KEY = 'wsp_lineup_v1';
+  function loadUserLineup() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LINEUP_STORAGE_KEY) || 'null');
+      return (raw && Array.isArray(raw.formation) && raw.formation.length === 3 && raw.gkId && raw.lines) ? raw : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function selectStartersFromLineup(squad, lineup) {
+    const byId = {};
+    squad.players.forEach((p) => { byId[p.id] = p; });
+    const gk = byId[lineup.gkId];
+    if (!gk) return null;
+    const orderedIds = [].concat(lineup.lines.def || [], lineup.lines.mid || [], lineup.lines.att || []);
+    if (orderedIds.length !== 10) return null;
+    const usedIdsSet = new Set([lineup.gkId]);
+    const outfield = [];
+    for (const id of orderedIds) {
+      const p = byId[id];
+      if (!p || usedIdsSet.has(id)) return null; // elenco mudou (jogador vendido) ou save corrompido — cai no sorteio
+      usedIdsSet.add(id);
+      outfield.push({ player: p, improvised: false });
+    }
+    const bench = squad.players.filter((p) => !usedIdsSet.has(p.id));
+    return { gk, outfield, bench };
+  }
+
   // ---------- Season integration ----------
   const seasonMode = new URLSearchParams(window.location.search).get('season') === '1';
   let seasonOpponent = null; // { name, strength } quando a partida vem da temporada
@@ -326,6 +396,37 @@
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
 
+  // se o usuário montou uma escalação em escalacao.html, ela decide quem começa
+  // jogando e em que esquema — senão cai no sorteio automático de sempre
+  let homeLineup = null;
+  let homeLineupTacticKey = null;
+  if (homeSquad) {
+    const raw = loadUserLineup();
+    if (raw) {
+      const [nDef, nMid, nAtt] = raw.formation;
+      const total = (raw.lines.def || []).length + (raw.lines.mid || []).length + (raw.lines.att || []).length;
+      if (nDef + nMid + nAtt === 10 && total === 10) {
+        const candidate = selectStartersFromLineup(homeSquad, raw);
+        if (candidate) {
+          homeLineup = raw;
+          homeLineupTacticKey = ensureTacticForFormation(nDef, nMid, nAtt);
+          homeTactic = homeLineupTacticKey;
+        }
+      }
+    }
+  }
+
+  const BUCKET_ABBR = { GK: 'GOL', DEF: 'ZAG', MID: 'MEI', ATT: 'ATA' };
+  const squadById = {};
+  if (homeSquad) homeSquad.players.forEach((sp) => { squadById[sp.id] = sp; });
+  function positionAbbrevFor(p) {
+    // p pode ser um jogador em campo (procura no elenco pelo squadId) ou
+    // já um registro do elenco (banco), que tem .bucket direto.
+    const sp = p.bucket ? p : (p.squadId ? squadById[p.squadId] : null);
+    if (sp && sp.bucket) return BUCKET_ABBR[sp.bucket] || '';
+    return p.role === 'GK' ? BUCKET_ABBR.GK : '';
+  }
+
   function renderCrowdStrip() {
     if (!crowdStripEl) return;
     const level = (homeClub && homeClub.departments && homeClub.departments.torcida) || 0;
@@ -432,7 +533,8 @@
     const gkY = team === 'home' ? FIELD_H - 36 : 36;
 
     if (team === 'home' && homeSquad) {
-      const { gk, outfield, bench } = selectStarters(homeSquad, tacticKey);
+      const fromLineup = (homeLineup && tacticKey === homeLineupTacticKey) ? selectStartersFromLineup(homeSquad, homeLineup) : null;
+      const { gk, outfield, bench } = fromLineup || selectStarters(homeSquad, tacticKey);
       homeBench = bench;
       const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits, squadId: gk.id, rating: gk.rating } : null;
       const list = [makePlayer('home', 'GK', gk ? gk.number : 1, 200, gkY, gkExtra)];
@@ -732,7 +834,7 @@
     onField.forEach((p) => {
       const btn = document.createElement('button');
       btn.className = 'sub-player' + (subOutSelected === p ? ' selected' : '');
-      btn.innerHTML = '<span class="num">' + p.number + '</span><span class="nm">' + displayNameFor(p) + '</span>';
+      btn.innerHTML = '<span class="num">' + p.number + '</span><span class="pos">' + positionAbbrevFor(p) + '</span><span class="nm">' + displayNameFor(p) + '</span>';
       btn.disabled = homeSubsUsed >= MAX_SUBS;
       btn.addEventListener('click', () => {
         subOutSelected = subOutSelected === p ? null : p;
@@ -751,7 +853,7 @@
     homeBench.slice().sort((a, b) => a.number - b.number).forEach((bp) => {
       const btn = document.createElement('button');
       btn.className = 'sub-player';
-      btn.innerHTML = '<span class="num">' + bp.number + '</span><span class="nm">' + bp.name + '</span>';
+      btn.innerHTML = '<span class="num">' + bp.number + '</span><span class="pos">' + positionAbbrevFor(bp) + '</span><span class="nm">' + bp.name + '</span>';
       btn.disabled = !subOutSelected || homeSubsUsed >= MAX_SUBS;
       btn.addEventListener('click', () => {
         if (!subOutSelected) return;

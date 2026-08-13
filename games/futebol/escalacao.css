@@ -56,3 +56,271 @@
 .lineup-footer .action-btn:active {
   transform: scale(0.97);
 }
+
+.formation-picker {
+  margin: 10px 14px 0;
+  background: #16281f;
+  border: 1px solid #345c48;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.formation-picker-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9fd8b8;
+  margin-bottom: 8px;
+}
+
+.formation-steppers {
+  display: flex;
+  gap: 10px;
+}
+
+.stepper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #0e1c15;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.stepper-label {
+  font-size: 0.68rem;
+  color: #9fd8b8;
+  margin-bottom: 4px;
+}
+
+.stepper-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #345c48;
+  background: #16281f;
+  color: #ffd54a;
+  font-weight: bold;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepper-value {
+  font-weight: bold;
+  font-size: 1rem;
+  min-width: 16px;
+  text-align: center;
+}
+
+.formation-total {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #9fd8b8;
+}
+
+.formation-total.invalid {
+  color: #f5a5a5;
+}
+
+.lineup-slot {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #16281f;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border: none;
+  border-left: 3px solid transparent;
+  color: white;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.lineup-slot.gk { border-left-color: #a05a2c; }
+.lineup-slot.def { border-left-color: #4a7fd6; }
+.lineup-slot.mid { border-left-color: #ffd54a; }
+.lineup-slot.att { border-left-color: #e85555; }
+
+.lineup-slot-empty {
+  flex: 1;
+  color: #6a8f7c;
+  font-size: 0.8rem;
+  font-style: italic;
+  border: 1px dashed #345c48;
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+
+.lineup-slot-filled {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.lineup-slot-filled .num {
+  font-weight: bold;
+  color: #ffd54a;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.lineup-slot-filled .nm {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.lineup-slot-filled .pos {
+  font-size: 0.65rem;
+  color: #9fd8b8;
+  flex-shrink: 0;
+}
+
+.lineup-slot-clear {
+  flex-shrink: 0;
+  background: #4a1f1f;
+  color: #f5a5a5;
+  border: 1px solid #7a3030;
+  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+#bench-list .player-card {
+  opacity: 0.6;
+}
+
+.picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 55vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.picker-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0e1c15;
+  border: 1px solid #345c48;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  color: white;
+  font: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.picker-player .num {
+  font-weight: bold;
+  color: #ffd54a;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.picker-player .nm {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-player .pos {
+  font-size: 0.68rem;
+  color: #9fd8b8;
+  flex-shrink: 0;
+}
+
+.picker-player.selected {
+  border-color: #ffd54a;
+  background: #1e3a2a;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 16px;
+}
+
+.overlay.hidden { display: none; }
+
+.overlay-card {
+  background: #16281f;
+  border: 2px solid #ffd54a;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  color: white;
+  max-height: 85vh;
+  max-width: 440px;
+  width: 100%;
+  overflow-y: auto;
+}
+
+.overlay-title {
+  font-size: 1.1rem;
+  color: #ffd54a;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.overlay-btn {
+  background: #2f9e44;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.save-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: #2f9e44;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.85rem;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
