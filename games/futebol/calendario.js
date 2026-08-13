@@ -2,7 +2,12 @@
   'use strict';
 
   const STORAGE_KEY = 'wsp_calendar_v1';
-  const MATCH_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3 dias reais de intervalo entre partidas
+  // calendário do jogo, não do mundo real: 2h reais = 1 "dia" dentro do WSP.
+  // os "3 dias" de intervalo viram 6h reais corridas — se o jogador ficar mais
+  // tempo fora, o relógio não avança além disso, só espera ele voltar.
+  const GAME_DAY_REAL_MS = 2 * 60 * 60 * 1000;
+  const MATCH_COOLDOWN_GAME_DAYS = 3;
+  const MATCH_COOLDOWN_MS = GAME_DAY_REAL_MS * MATCH_COOLDOWN_GAME_DAYS;
   const MAX_HEADLINES = 10;
 
   function freshCalendar() {
@@ -30,17 +35,16 @@
     return Math.max(0, cal.nextMatchAt - Date.now());
   }
 
+  // dias "de dentro do jogo" que faltam, não dias reais — é essa a unidade
+  // mostrada pro jogador (o relógio real por trás corre bem mais rápido)
+  function gameDaysRemaining(ms) {
+    return Math.max(0, Math.ceil(ms / GAME_DAY_REAL_MS));
+  }
+
   function formatCountdown(ms) {
     if (ms <= 0) return 'Disponível agora';
-    const totalMinutes = Math.ceil(ms / 60000);
-    const days = Math.floor(totalMinutes / (60 * 24));
-    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-    const minutes = totalMinutes % 60;
-    const parts = [];
-    if (days) parts.push(days + 'd');
-    if (hours) parts.push(hours + 'h');
-    if (!days && minutes) parts.push(minutes + 'min');
-    return parts.length ? parts.join(' ') : 'menos de 1min';
+    const days = gameDaysRemaining(ms);
+    return days === 1 ? '1 dia' : days + ' dias';
   }
 
   // ---------- Manchetes e opinião da torcida ----------
@@ -118,9 +122,9 @@
   }
 
   window.WSPCalendar = {
-    MATCH_COOLDOWN_MS,
+    GAME_DAY_REAL_MS, MATCH_COOLDOWN_GAME_DAYS, MATCH_COOLDOWN_MS,
     loadCalendar, saveCalendar, freshCalendar,
-    isMatchAvailable, msUntilNextMatch, formatCountdown,
+    isMatchAvailable, msUntilNextMatch, formatCountdown, gameDaysRemaining,
     generateHeadlines, registerMatchResult,
   };
 })();
