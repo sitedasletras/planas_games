@@ -225,7 +225,7 @@
   const resetStatusEl = document.getElementById('reset-status');
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      if (!confirm('Isso vai apagar TODO o progresso deste aparelho (elenco, clube, temporada, recompensas e trilha) e recomeçar do zero com R$ 100.000. Essa ação não pode ser desfeita. Continuar?')) return;
+      if (!confirm('Isso vai apagar TODO o progresso deste aparelho (elenco, clube, temporada, recompensas e trilha) e recomeçar do zero com R$ 20.000. Essa ação não pode ser desfeita. Continuar?')) return;
       RESET_KEYS.forEach((k) => localStorage.removeItem(k));
       resetStatusEl.textContent = 'Dados apagados! Recomeçando...';
       setTimeout(() => { window.location.href = 'index.html'; }, 1000);
