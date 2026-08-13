@@ -190,6 +190,13 @@ html, body {
   padding: 12px;
 }
 
+.market-news {
+  margin: 0 14px 10px;
+  font-size: 0.72rem;
+  color: #9fd8b8;
+  line-height: 1.5;
+}
+
 .comp-sub {
   font-size: 0.75rem;
   color: #9fd8b8;

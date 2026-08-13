@@ -112,6 +112,20 @@
     sub.textContent = tier.label + ' — Rodada ' + Math.min(league.round + 1, 18) + '/18';
     leagueCardEl.appendChild(sub);
 
+    if (league.round === 0) {
+      const reinforced = league.teams.filter((t) => t.lastWindow === 'reforco').map((t) => t.name);
+      const weakened = league.teams.filter((t) => t.lastWindow === 'perda').map((t) => t.name);
+      if (reinforced.length || weakened.length) {
+        const news = document.createElement('div');
+        news.className = 'market-news';
+        let txt = 'Janela de transferências: ';
+        if (reinforced.length) txt += '📈 ' + reinforced.join(', ') + ' se reforçaram. ';
+        if (weakened.length) txt += '📉 ' + weakened.join(', ') + ' perderam peças.';
+        news.textContent = txt;
+        leagueCardEl.appendChild(news);
+      }
+    }
+
     const table = S.sortedStandings(league);
     leagueCardEl.appendChild(standingsTable(table, 'user'));
 

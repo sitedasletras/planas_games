@@ -12,7 +12,9 @@
 
   const TEAMMATE_SPEED = 98;   // px/sec, AI support
   const CHASER_SPEED = 108;    // px/sec, AI chasing ball
+  const DRIBBLE_SPEED = 92;    // px/sec, quem está com a bola avançando
   const GK_SPEED = 82;
+  const DRIBBLE_PRESSURE_R = 70; // raio em que o marcador mais próximo influencia o drible
 
   const PICKUP_R = PLAYER_R + BALL_R + 2;
   const SHOOT_POWER = 260, PASS_POWER = 190, CLEAR_POWER = 230;
@@ -396,7 +398,9 @@
   let awayBench = [];
   let homeSubsUsed = 0;
   let awaySubsUsed = 0;
-  let awaySubMinute = 15 + Math.random() * 20;
+  let awaySubMinutes = [12 + Math.random() * 10, 24 + Math.random() * 8, 34 + Math.random() * 8];
+  let awaySubWindowIdx = 0;
+  let awayPostureAppliedMinute = -1;
 
   // narração
   let narrationLog = [];
@@ -706,7 +710,9 @@
     speedMultiplier = 1;
     matchOver = false;
     stopPause = 0;
-    awaySubMinute = 15 + Math.random() * 20;
+    awaySubMinutes = [12 + Math.random() * 10, 24 + Math.random() * 8, 34 + Math.random() * 8];
+    awaySubWindowIdx = 0;
+    awayPostureAppliedMinute = -1;
     possessionHomeMs = 0;
     possessionAwayMs = 0;
     updatePressureBar();
@@ -984,12 +990,29 @@
   function pickPassTarget(p) {
     const mates = teammates(p.team).filter(m => m !== p && m.role !== 'GK');
     if (!mates.length) return null;
+    const opponents = opponentsOf(p.team).filter(o => o.role !== 'GK');
+    const forward = p.team === 'home' ? -1 : 1;
 
-    let target = mates[0];
-    for (const m of mates) {
-      if (p.team === 'home' ? m.y < target.y : m.y > target.y) target = m;
+    // pontua cada companheiro por avanço + espaço livre (marcação), penalizando
+    // levemente passes muito longos — bem melhor que "sempre o mais adiantado",
+    // que ignorava se o cara estava marcado ou impedido
+    function scoreFor(m) {
+      const advancement = forward < 0 ? (FIELD_H - m.y) : m.y;
+      const marker = nearestTo(opponents, m);
+      const openness = marker ? dist(m, marker) : 200;
+      const distFromPasser = dist(p, m);
+      return advancement * 0.55 + openness * 1.3 - Math.max(0, distFromPasser - 220) * 0.4;
     }
-    return { target, power: PASS_POWER };
+
+    const onside = mates.filter((m) => !isPassOffside(p, m));
+    const pool = onside.length ? onside : mates;
+    let target = pool[0], bestScore = scoreFor(pool[0]);
+    for (const m of pool) {
+      const s = scoreFor(m);
+      if (s > bestScore) { bestScore = s; target = m; }
+    }
+    const power = Math.min(260, Math.max(150, dist(p, target) * 0.9 + 70));
+    return { target, power };
   }
 
   function footBias(foot) {
@@ -1068,10 +1091,36 @@
       p.vx = (dx / len) * GK_SPEED * Math.min(1, Math.abs(dx) / 10);
       p.vy = (dy / len) * GK_SPEED * Math.min(1, Math.abs(dy) / 10);
     } else {
+      const hasBall = ball.owner === p;
+      // "isPressing" cobre dois casos com o mesmo comportamento (correr reto
+      // pra bola): perseguir bola solta, e o defensor mais próximo pressionando
+      // quem está com a bola do time adversário
       const chaser = nearestTo(teamOutfield, ball);
-      const isChaser = chaser === p;
+      const isPressing = !hasBall && chaser === p;
       const fitFactor = p.improvised ? 0.9 : 1; // out-of-position players are a bit less sharp
-      if (isChaser) {
+      if (hasBall) {
+        // motor de drible: avança em direção ao gol adversário desviando do
+        // marcador mais próximo, em vez de só correr atrás da própria bola
+        // (que ficava "grudada" nele e fazia o drible parecer sem direção)
+        const forward = p.team === 'home' ? -1 : 1;
+        const nearestOpp = nearestTo(oppOutfield, p);
+        let steerX = 0;
+        if (nearestOpp) {
+          const awayX = p.x - nearestOpp.x, awayY = p.y - nearestOpp.y;
+          const oppDist = Math.hypot(awayX, awayY) || 1;
+          if (oppDist < DRIBBLE_PRESSURE_R) {
+            steerX = (awayX / oppDist) * (1 - oppDist / DRIBBLE_PRESSURE_R);
+          }
+        }
+        let tx = p.x + steerX * 70;
+        let ty = p.y + forward * 90;
+        tx = Math.max(CLAMP_X_MIN + 10, Math.min(CLAMP_X_MAX - 10, tx));
+        const dx = tx - p.x, dy = ty - p.y;
+        const len = Math.hypot(dx, dy) || 1;
+        p.vx = (dx / len) * DRIBBLE_SPEED * fitFactor;
+        p.vy = (dy / len) * DRIBBLE_SPEED * fitFactor;
+        p.facing = { x: dx / len, y: dy / len };
+      } else if (isPressing) {
         const dx = ball.x - p.x, dy = ball.y - p.y;
         const len = Math.hypot(dx, dy) || 1;
         p.vx = (dx / len) * CHASER_SPEED * fitFactor;
@@ -1269,7 +1318,9 @@
         }
       } else if (ball.owner !== pickupCandidate && ball.owner.team !== pickupCandidate.team) {
         const roll = Math.random();
-        let stealChance = STEAL_CHANCE;
+        // defensor mais bem avaliado rouba mais, driblador mais bem avaliado resiste mais
+        const ratingDiff = (pickupCandidate.rating || 60) - (ball.owner.rating || 60);
+        let stealChance = Math.max(0.015, Math.min(0.16, STEAL_CHANCE + ratingDiff * 0.0015));
         const moraleAdj = moraleStealAdjust();
         if (pickupCandidate.team === 'home') stealChance = Math.max(0.01, stealChance + moraleAdj);
         else if (ball.owner.team === 'home') stealChance = Math.max(0.01, stealChance - moraleAdj);
@@ -1367,11 +1418,30 @@
     if (awaySubsUsed >= MAX_SUBS || !awayBench.length) return false;
     const outCandidates = players.filter((p) => p.team === 'away' && p.role !== 'GK');
     if (!outCandidates.length) return false;
-    const outPlayer = outCandidates[Math.floor(Math.random() * outCandidates.length)];
+    // tira sempre o mais desgastado, como um técnico de verdade faria — em vez de sortear
+    const outPlayer = outCandidates.reduce((worst, p) => (p.fatigue > worst.fatigue ? p : worst), outCandidates[0]);
     const benchPlayer = awayBench.shift();
     const result = substitutePlayer(outPlayer, benchPlayer);
     if (result) awaySubsUsed++;
     return !!result;
+  }
+
+  // motor tático do adversário: reage ao placar empurrando a linha quando
+  // está perdendo (mais gente em 'ataque') e segurando o resultado quando
+  // está vencendo com folga (mais gente em 'defesa'), reaproveitando o
+  // mesmo sistema de instruções que o usuário já usa pro próprio time
+  function updateAwayPosture(minute) {
+    const diff = score.away - score.home;
+    const late = minute >= 20;
+    let mode = 'zona';
+    if (diff <= -1 && late) mode = 'ataque';
+    else if (diff >= 2 && late) mode = 'defesa';
+    const awayOutfield = players.filter((p) => p.team === 'away' && p.role !== 'GK');
+    awayOutfield.forEach((p, i) => {
+      // mesmo empurrando a linha, mantém uma base seguindo a zona pra não
+      // expor o time inteiro
+      p.instruction = (mode === 'ataque' && i % 3 === 0) ? 'zona' : mode;
+    });
   }
 
   function otherTeamOf(player) {
@@ -2196,8 +2266,13 @@
           timerEl.textContent = formatClock(displaySeconds);
 
           const minute = Math.floor(displaySeconds / 60);
-          if (half === 2 && awaySubsUsed < 1 && minute >= awaySubMinute) {
+          if (half === 2 && awaySubWindowIdx < awaySubMinutes.length && minute >= awaySubMinutes[awaySubWindowIdx]) {
             makeAwaySubstitution();
+            awaySubWindowIdx++;
+          }
+          if (minute !== awayPostureAppliedMinute) {
+            awayPostureAppliedMinute = minute;
+            updateAwayPosture(minute);
           }
           if (!techTimeoutDone && minute >= TECH_TIMEOUT_MINUTE) {
             techTimeoutDone = true;

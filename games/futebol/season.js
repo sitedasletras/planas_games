@@ -76,12 +76,45 @@
         id: 'ai_' + i + '_' + Math.random().toString(36).slice(2, 7),
         name: randomClubName(used),
         strength: clamp(strengthBase + variance, 0.15, 0.97),
+        lastWindow: null,
       });
     }
     return list;
   }
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  // ---------- Mercado de transferências (rivais) ----------
+  // clubes de cada divisão são um "pool" persistente (state.tierClubs) — a
+  // cada vez que o usuário volta a jogar naquela divisão, os rivais que ele
+  // já enfrentou lá se reforçam ou perdem peças, em vez de sortear um elenco
+  // totalmente novo do zero
+  function applyTransferWindow(clubs) {
+    clubs.forEach((c) => {
+      const roll = Math.random();
+      if (roll < 0.12) {
+        c.strength = clamp(c.strength + 0.05 + Math.random() * 0.07, 0.15, 0.97);
+        c.lastWindow = 'reforco';
+      } else if (roll < 0.24) {
+        c.strength = clamp(c.strength - (0.05 + Math.random() * 0.07), 0.15, 0.97);
+        c.lastWindow = 'perda';
+      } else {
+        c.strength = clamp(c.strength + (Math.random() - 0.5) * 0.03, 0.15, 0.97);
+        c.lastWindow = null;
+      }
+    });
+  }
+
+  function ensureTierClubPool(state, tierIndex) {
+    if (!state.tierClubs) state.tierClubs = {};
+    if (!state.tierClubs[tierIndex]) {
+      const tier = TIERS[tierIndex];
+      state.tierClubs[tierIndex] = generateOpponents(TEAMS_PER_TIER - 1, tier.strengthBase);
+    } else {
+      applyTransferWindow(state.tierClubs[tierIndex]);
+    }
+    return state.tierClubs[tierIndex];
+  }
 
   // ---------- Result simulation ----------
   function poissonSample(lambda) {
@@ -137,9 +170,10 @@
   }
 
   // ---------- League ----------
-  function freshLeague(tierIndex, clubName) {
-    const tier = TIERS[tierIndex];
-    const opponents = generateOpponents(TEAMS_PER_TIER - 1, tier.strengthBase);
+  function freshLeague(tierIndex, clubName, state) {
+    const opponents = state
+      ? ensureTierClubPool(state, tierIndex).map((c) => ({ ...c }))
+      : generateOpponents(TEAMS_PER_TIER - 1, TIERS[tierIndex].strengthBase);
     const teams = [{ id: 'user', name: clubName, strength: null, isUser: true }, ...opponents];
     const fixtures = doubleRoundRobin(teams.map((t) => t.id));
     const standings = {};
@@ -561,7 +595,7 @@
 
   function ensureLeague(state, clubName, userSquad) {
     if (!state.league) {
-      state.league = freshLeague(state.tierIndex, clubName);
+      state.league = freshLeague(state.tierIndex, clubName, state);
       state.league.userSquadSnapshot = userSquad;
     }
     return state.league;
