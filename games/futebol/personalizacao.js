@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { loadSquad, renameClub } = window.WSPSquad;
+  const { loadSquad, renameClub, POSITIONS } = window.WSPSquad;
   const { loadClub, unlockPremium, saveCustomization, PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS } = window.WSPClub;
 
   const squad = loadSquad();
@@ -169,7 +169,7 @@
       previewWrap.innerHTML = '';
       const shape = document.createElement('div');
       shape.className = 'crest-shape ' + club.crest.shape;
-      shape.style.background = club.colors.primary;
+      shape.style.background = club.crest.color || club.colors.primary;
       shape.style.setProperty('--detail', club.colors.detail);
       const span = document.createElement('span');
       span.textContent = club.crest.emblem;
@@ -177,6 +177,30 @@
       previewWrap.appendChild(shape);
     }
     renderPreview();
+
+    const crestColorRow = document.createElement('div');
+    crestColorRow.className = 'field-row';
+    const crestColorLabel = document.createElement('label');
+    crestColorLabel.textContent = 'Cor do escudo';
+    crestColorRow.appendChild(crestColorLabel);
+    const crestColorInput = document.createElement('input');
+    crestColorInput.type = 'color';
+    crestColorInput.value = club.crest.color || club.colors.primary;
+    crestColorInput.addEventListener('input', () => {
+      saveCustomization(club, { crest: { color: crestColorInput.value } });
+      renderPreview();
+    });
+    crestColorRow.appendChild(crestColorInput);
+    const resetCrestColorBtn = document.createElement('button');
+    resetCrestColorBtn.className = 'save-btn';
+    resetCrestColorBtn.textContent = 'Usar cor do uniforme';
+    resetCrestColorBtn.addEventListener('click', () => {
+      saveCustomization(club, { crest: { color: null } });
+      crestColorInput.value = club.colors.primary;
+      renderPreview();
+    });
+    crestColorRow.appendChild(resetCrestColorBtn);
+    section.appendChild(crestColorRow);
 
     const shapeRow = document.createElement('div');
     shapeRow.className = 'shape-row';
@@ -242,22 +266,44 @@
     section.className = 'custom-section';
     section.innerHTML = '<h2>Editar Jogadores</h2>';
 
-    squad.players
-      .slice()
-      .sort((a, b) => a.number - b.number)
-      .forEach((p) => {
+    const BUCKET_LABEL = { GK: 'Goleiros', DEF: 'Zaga', MID: 'Meio-campo', ATT: 'Ataque' };
+    const BUCKET_ORDER = ['GK', 'DEF', 'MID', 'ATT'];
+
+    BUCKET_ORDER.forEach((bucket) => {
+      const players = squad.players
+        .filter((p) => p.bucket === bucket)
+        .sort((a, b) => a.number - b.number);
+      if (!players.length) return;
+
+      const bucketTitle = document.createElement('div');
+      bucketTitle.className = 'exclusive-emblem-title';
+      bucketTitle.textContent = BUCKET_LABEL[bucket];
+      section.appendChild(bucketTitle);
+
+      players.forEach((p) => {
         const row = document.createElement('div');
-        row.className = 'field-row';
+        row.className = 'field-row player-edit-row';
 
         const label = document.createElement('label');
         label.textContent = '#' + p.number;
         label.style.flex = '0 0 32px';
         row.appendChild(label);
 
+        const nameCol = document.createElement('div');
+        nameCol.style.flex = '1';
+        nameCol.style.minWidth = '0';
+
         const nameInput = document.createElement('input');
         nameInput.type = 'text';
         nameInput.value = p.name;
-        row.appendChild(nameInput);
+        nameCol.appendChild(nameInput);
+
+        const posLabel = document.createElement('div');
+        posLabel.className = 'player-edit-position';
+        posLabel.textContent = POSITIONS[p.position].label;
+        nameCol.appendChild(posLabel);
+
+        row.appendChild(nameCol);
 
         const numInput = document.createElement('input');
         numInput.type = 'text';
@@ -282,6 +328,7 @@
 
         section.appendChild(row);
       });
+    });
 
     return section;
   }

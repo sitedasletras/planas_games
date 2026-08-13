@@ -80,7 +80,7 @@
       const club = window.WSPClub.loadClub();
       const badge = document.getElementById('club-badge');
       badge.textContent = club.crest.emblem;
-      badge.style.background = club.colors.primary;
+      badge.style.background = window.WSPClub.crestColor(club);
       badge.style.borderColor = club.colors.detail;
     }
     if (window.WSPDaily) {

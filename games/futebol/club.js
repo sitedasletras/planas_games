@@ -22,7 +22,7 @@
     return {
       premiumUnlocked: false,
       colors: { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a' },
-      crest: { shape: 'escudo', emblem: '⚽' },
+      crest: { shape: 'escudo', emblem: '⚽', color: null },
       torcidaName: null,
       valorizacaoLevel: 0,
       exclusiveEmblemUnlocked: false,
@@ -181,6 +181,7 @@
         if (parsed.premiumUnlocked == null) parsed.premiumUnlocked = defaults.premiumUnlocked;
         if (!parsed.colors) parsed.colors = defaults.colors;
         if (!parsed.crest) parsed.crest = defaults.crest;
+        if (parsed.crest.color === undefined) parsed.crest.color = defaults.crest.color;
         if (parsed.torcidaName === undefined) parsed.torcidaName = defaults.torcidaName;
         if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
         if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
@@ -281,10 +282,14 @@
     saveClub(club);
   }
 
+  function crestColor(club) {
+    return (club.crest && club.crest.color) || club.colors.primary;
+  }
+
   window.WSPClub = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
     PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
-    CAMPUS_TIER_CAPS,
+    CAMPUS_TIER_CAPS, crestColor,
     upgradeCost, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,

@@ -1641,7 +1641,7 @@
   (() => {
     const tag = document.getElementById('team-tag-home');
     if (tag && homeClub) {
-      tag.style.background = homeColors.primary;
+      tag.style.background = (homeClub.crest && homeClub.crest.color) || homeColors.primary;
       tag.style.borderColor = homeColors.detail;
       tag.textContent = homeClub.crest.emblem;
     }

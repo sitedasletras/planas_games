@@ -71,6 +71,16 @@
   color: #ccc;
 }
 
+.player-edit-row {
+  align-items: flex-start;
+}
+
+.player-edit-position {
+  font-size: 0.68rem;
+  color: #9fd8b8;
+  margin-top: 3px;
+}
+
 .field-row input[type="text"] {
   flex: 1.4;
   background: #0e1c15;

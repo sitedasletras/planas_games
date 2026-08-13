@@ -2,7 +2,7 @@
   'use strict';
   const {
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES, careerStageFor,
-    loadSquad, releaseCost, generateCandidates, signPlayer, releasePlayer,
+    loadSquad, releaseCost, generateCandidates, signPlayer, releasePlayer, FULL_SQUAD_SIZE,
   } = window.WSPSquad;
   const { loadClub, saveClub } = window.WSPClub;
 
@@ -14,6 +14,17 @@
   const marketListEl = document.getElementById('market-list');
   const marketRerollBtn = document.getElementById('market-reroll');
   const sectionsEl = document.getElementById('elenco-sections');
+  const squadSizeHintEl = document.getElementById('squad-size-hint');
+
+  function renderSquadSizeHint() {
+    const missing = FULL_SQUAD_SIZE - squad.players.length;
+    if (missing > 0) {
+      squadSizeHintEl.textContent = 'Seu elenco tem ' + squad.players.length + ' jogadores. Contrate mais ' + missing + ' no mercado abaixo para ter um elenco completo (' + FULL_SQUAD_SIZE + ').';
+      squadSizeHintEl.classList.remove('hidden');
+    } else {
+      squadSizeHintEl.classList.add('hidden');
+    }
+  }
 
   const FOOT_LABEL = {};
   FEET.forEach((f) => { FOOT_LABEL[f.key] = f.label; });
@@ -63,6 +74,7 @@
 
   function render() {
     budgetPillEl.textContent = formatMoney(club.budget);
+    renderSquadSizeHint();
     renderMarket();
     renderSquad();
   }

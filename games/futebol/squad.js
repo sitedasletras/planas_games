@@ -129,11 +129,12 @@
   ];
 
   const SQUAD_PLAN = [
-    ...rep('goleiro', 3),
-    ...rep('zagueiro', 3), ...rep('lateral', 2), ...rep('lateral_ala', 1), ...rep('libero_adiantado', 1), ...rep('quarto_zagueiro', 1),
-    ...rep('volante', 2), ...rep('meia_ofensivo', 2), ...rep('meia_defensivo', 1), ...rep('segundo_volante', 1), ...rep('motorzinho', 1),
-    ...rep('centro_avante', 2), ...rep('atacante_pontas', 2), ...rep('segundo_atacante', 1),
+    ...rep('goleiro', 2),
+    ...rep('zagueiro', 2), ...rep('lateral', 2), ...rep('lateral_ala', 1), ...rep('quarto_zagueiro', 1),
+    ...rep('volante', 2), ...rep('meia_ofensivo', 1), ...rep('meia_defensivo', 1),
+    ...rep('centro_avante', 2), ...rep('atacante_pontas', 1), ...rep('segundo_atacante', 1),
   ];
+  const FULL_SQUAD_SIZE = 23; // tamanho recomendado de um elenco completo
   function rep(key, n) { return Array(n).fill(key); }
 
   function weightedPick(list) {
@@ -380,7 +381,7 @@
 
   window.WSPSquad = {
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
-    MARKET_VALUE_MIN, MARKET_VALUE_MAX,
+    MARKET_VALUE_MIN, MARKET_VALUE_MAX, FULL_SQUAD_SIZE,
     careerStageFor, generateSquad, loadSquad, saveSquad,
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
     renamePlayer, renumberPlayer, renameClub, advanceSeason, applyValorizacao,

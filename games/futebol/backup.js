@@ -2,6 +2,7 @@
   'use strict';
 
   const KEYS = ['wsp_squad_v2', 'wsp_club_v1', 'wsp_season_v1'];
+  const RESET_KEYS = KEYS.concat(['wsp_daily_v1', 'wsp_trail_v1', 'wsp_season_pending', 'wsp_season_result']);
 
   function buildExportPayload() {
     const data = {};
@@ -216,6 +217,18 @@
     cloudLogoutBtn.addEventListener('click', async () => {
       await window.WSPCloud.signOut();
       cloudActionStatusEl.textContent = '';
+    });
+  }
+
+  // ---------- Zerar dados ----------
+  const resetBtn = document.getElementById('reset-btn');
+  const resetStatusEl = document.getElementById('reset-status');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (!confirm('Isso vai apagar TODO o progresso deste aparelho (elenco, clube, temporada, recompensas e trilha) e recomeçar do zero com R$ 100.000. Essa ação não pode ser desfeita. Continuar?')) return;
+      RESET_KEYS.forEach((k) => localStorage.removeItem(k));
+      resetStatusEl.textContent = 'Dados apagados! Recomeçando...';
+      setTimeout(() => { window.location.href = 'index.html'; }, 1000);
     });
   }
 

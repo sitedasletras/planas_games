@@ -75,7 +75,7 @@
 
   // ---------- Crests ----------
   homeCrestEl.textContent = club.crest.emblem;
-  homeCrestEl.style.background = club.colors.primary;
+  homeCrestEl.style.background = window.WSPClub.crestColor(club);
   homeCrestEl.style.borderColor = club.colors.detail;
   homeNameEl.textContent = squad.clubName;
 
