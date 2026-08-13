@@ -284,11 +284,6 @@
         const row = document.createElement('div');
         row.className = 'field-row player-edit-row';
 
-        const label = document.createElement('label');
-        label.textContent = '#' + p.number;
-        label.style.flex = '0 0 32px';
-        row.appendChild(label);
-
         const nameCol = document.createElement('div');
         nameCol.style.flex = '1';
         nameCol.style.minWidth = '0';
@@ -308,6 +303,8 @@
         const numInput = document.createElement('input');
         numInput.type = 'text';
         numInput.value = p.number;
+        numInput.placeholder = 'Nº';
+        numInput.title = 'Número da camisa';
         numInput.style.flex = '0 0 44px';
         row.appendChild(numInput);
 
@@ -320,8 +317,6 @@
           if (!result.ok && result.reason === 'taken') {
             alert('Já existe um jogador com esse número.');
             numInput.value = p.number;
-          } else if (result.ok) {
-            label.textContent = '#' + p.number;
           }
         });
         row.appendChild(btn);
