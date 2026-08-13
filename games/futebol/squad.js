@@ -169,6 +169,20 @@
     return Math.round(Math.max(35, Math.min(99, base + variance)));
   }
 
+  // Potencial: teto de crescimento do jogador, numa escala 0-200 (separado da nota
+  // atual). No primeiro torneio (bairro), o elenco/mercado normal fica entre 2 e 10;
+  // raramente aparece uma "joia" jovem com potencial até 15, bem mais cara de contratar.
+  // Escala reservada até 200 para ligas mais avançadas no futuro (estilo Elifoot).
+  const POTENTIAL_GEM_CHANCE = 0.08;
+  function randomPotential(age) {
+    const stage = careerStageFor(age);
+    const isYoung = stage === 'promessa' || stage === 'ascensao';
+    if (isYoung && Math.random() < POTENTIAL_GEM_CHANCE) {
+      return 11 + Math.floor(Math.random() * 5); // joia: 11-15
+    }
+    return 2 + Math.floor(Math.random() * 9); // normal: 2-10
+  }
+
   // O passe (valor de mercado) é independente do salário: fica sempre entre MARKET_VALUE_MIN
   // e MARKET_VALUE_MAX — um clube do bairro só encontra jogadores nessa faixa modesta.
   const MARKET_VALUE_MIN = 500, MARKET_VALUE_MAX = 3000;
@@ -189,7 +203,12 @@
   }
 
   function transferFee(player) {
-    return player.marketValue || MARKET_VALUE_MIN;
+    const base = player.marketValue || MARKET_VALUE_MIN;
+    const potential = player.potential || 5;
+    // acima do teto "normal" (10), cada ponto de potencial encarece bastante a contratação —
+    // pagar por uma joia é uma aposta cara para o orçamento de um clube iniciante
+    const premium = potential > 10 ? 1 + (potential - 10) * 0.35 : 1;
+    return Math.max(MARKET_VALUE_MIN, Math.round((base * premium) / 50) * 50);
   }
 
   // Aplicada quando o clube conquista um título: o elenco atual "recebe valorização" —
@@ -243,6 +262,7 @@
       avatar: generateAvatar(age),
       salary: randomSalary(bucket, age),
       rating,
+      potential: randomPotential(age),
       marketValue: randomMarketValue(bucket, age, rating),
       careerGoals: 0,
       careerAssists: 0,
@@ -362,6 +382,7 @@
           if (p.marketValue == null) { p.marketValue = randomMarketValue(p.bucket, p.age, p.rating); changed = true; }
           if (p.careerGoals == null) { p.careerGoals = 0; changed = true; }
           if (p.careerAssists == null) { p.careerAssists = 0; changed = true; }
+          if (p.potential == null) { p.potential = randomPotential(p.age); changed = true; }
         });
         if (changed) saveSquad(parsed);
         return parsed;
@@ -384,8 +405,10 @@
       p.age += 1;
       const newStage = careerStageFor(p.age);
 
-      if ((oldStage === 'promessa' || oldStage === 'ascensao') && bonus > 0 && Math.random() < bonus) {
-        const bump = 1 + Math.floor(Math.random() * 3);
+      const potential = p.potential || 5;
+      const evolveChance = bonus > 0 ? bonus * (0.5 + potential / 20) : 0;
+      if ((oldStage === 'promessa' || oldStage === 'ascensao') && Math.random() < evolveChance) {
+        const bump = 1 + Math.floor(Math.random() * (1 + Math.floor(potential / 4)));
         p.rating = Math.min(99, (p.rating || 60) + bump);
         changes.push({ id: p.id, name: p.name, type: 'evolucao', rating: p.rating, bump });
       } else if (newStage === 'declinio' && Math.random() < 0.35) {

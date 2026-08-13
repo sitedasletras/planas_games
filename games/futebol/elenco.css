@@ -158,6 +158,8 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .player-position {
@@ -188,6 +190,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .rating-chip {
@@ -202,6 +205,18 @@ html, body {
 .rating-chip.high { background: #6fcf7d; }
 .rating-chip.mid { background: #ffd54a; }
 .rating-chip.low { background: #b0b0b0; }
+
+.rating-chip.potential {
+  background: #3a3f47;
+  color: #c9d1d9;
+  border: 1px solid #5c6470;
+}
+
+.rating-chip.potential.gem {
+  background: linear-gradient(135deg, #8a6d00, #3a2f0e);
+  color: #ffd54a;
+  border: 1px solid #ffd54a;
+}
 
 .reroll-btn {
   background: #0e1c15;

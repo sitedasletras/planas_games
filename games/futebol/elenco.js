@@ -51,6 +51,14 @@
     return chip;
   }
 
+  function potentialChip(potential) {
+    const chip = document.createElement('span');
+    chip.className = 'rating-chip potential' + (potential > 10 ? ' gem' : '');
+    chip.title = 'Potencial';
+    chip.textContent = 'POT ' + potential;
+    return chip;
+  }
+
   function hairShape(style, color) {
     if (style === 'curto') return `<path d="M2 17 A18 17 0 0 1 38 17 L38 9 A18 13 0 0 0 2 9 Z" fill="${color}"/>`;
     if (style === 'moicano') return `<rect x="16" y="0" width="8" height="15" rx="3" fill="${color}"/>`;
@@ -103,6 +111,7 @@
       name.textContent = c.name + ' ' + (nat ? nat.flag : '');
       nameRow.appendChild(name);
       nameRow.appendChild(ratingChip(c.rating));
+      nameRow.appendChild(potentialChip(c.potential));
       info.appendChild(nameRow);
       const pos = document.createElement('div');
       pos.className = 'player-position';
@@ -168,6 +177,7 @@
         name.textContent = p.name + ' ' + (nat ? nat.flag : '');
         nameRow.appendChild(name);
         nameRow.appendChild(ratingChip(p.rating));
+        nameRow.appendChild(potentialChip(p.potential));
         info.appendChild(nameRow);
 
         const stageKey = careerStageFor(p.age);
