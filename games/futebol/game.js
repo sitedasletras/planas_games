@@ -10,7 +10,6 @@
   const CLAMP_Y_MIN = 16, CLAMP_Y_MAX = FIELD_H - 16;
   const CLAMP_X_MIN = 16, CLAMP_X_MAX = FIELD_W - 16;
 
-  const USER_SPEED = 145;      // px/sec, controlled player
   const TEAMMATE_SPEED = 105;  // px/sec, AI support
   const CHASER_SPEED = 120;    // px/sec, AI chasing ball
   const GK_SPEED = 90;
@@ -240,11 +239,6 @@
   const narrationClose = document.getElementById('narration-close');
   const sponsorStripEl = document.getElementById('sponsor-strip');
   const tickerEl = document.getElementById('ticker');
-  const controlsHintEl = document.getElementById('controls-hint');
-  const controlsHintCloseBtn = document.getElementById('controls-hint-close');
-  const joystickZone = document.getElementById('joystick-zone');
-  const joystickKnob = document.getElementById('joystick-knob');
-  const kickBtn = document.getElementById('kick-btn');
   const sideInstructionsListEl = document.getElementById('side-instructions-list');
 
   // ---------- State ----------
@@ -255,7 +249,6 @@
   let speedMultiplier = 1;
   let matchOver = false;
   let stopPause = 0; // ms remaining while play is stopped (goal/falta/cartão/impedimento)
-  let controlled = null;
   let lastFrame = null;
   let homeTactic = 'quatroTresTres';
   let awayTactic = 'quatroTresTres';
@@ -510,55 +503,6 @@
     narrate('Bola rolando para o 2º tempo!');
   }
 
-  // ---------- Input ----------
-  const keys = new Set();
-  window.addEventListener('keydown', (e) => {
-    keys.add(e.key.toLowerCase());
-    if (e.key === ' ') { e.preventDefault(); doKick(); }
-  });
-  window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
-
-  let joyVec = { x: 0, y: 0 };
-  let joyActive = false, joyId = null, joyCenter = { x: 0, y: 0 };
-
-  function joyStart(id, clientX, clientY) {
-    const rect = joystickZone.getBoundingClientRect();
-    joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    joyActive = true; joyId = id;
-    joyMove(clientX, clientY);
-  }
-  function joyMove(clientX, clientY) {
-    if (!joyActive) return;
-    const dx = clientX - joyCenter.x, dy = clientY - joyCenter.y;
-    const dist = Math.min(40, Math.hypot(dx, dy));
-    const angle = Math.atan2(dy, dx);
-    const kx = Math.cos(angle) * dist, ky = Math.sin(angle) * dist;
-    joystickKnob.style.left = 28 + kx + 'px';
-    joystickKnob.style.top = 28 + ky + 'px';
-    joyVec = dist > 6 ? { x: kx / 40, y: ky / 40 } : { x: 0, y: 0 };
-  }
-  function joyEnd() {
-    joyActive = false; joyId = null; joyVec = { x: 0, y: 0 };
-    joystickKnob.style.left = '28px';
-    joystickKnob.style.top = '28px';
-  }
-
-  joystickZone.addEventListener('pointerdown', (e) => { joystickZone.setPointerCapture(e.pointerId); joyStart(e.pointerId, e.clientX, e.clientY); });
-  joystickZone.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) joyMove(e.clientX, e.clientY); });
-  joystickZone.addEventListener('pointerup', (e) => { if (e.pointerId === joyId) joyEnd(); });
-  joystickZone.addEventListener('pointercancel', () => joyEnd());
-
-  kickBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); doKick(); });
-
-  const CONTROLS_HINT_KEY = 'wsp_controls_hint_dismissed';
-  try {
-    if (localStorage.getItem(CONTROLS_HINT_KEY)) controlsHintEl.classList.add('hidden');
-  } catch (e) { /* storage unavailable */ }
-  controlsHintCloseBtn.addEventListener('click', () => {
-    controlsHintEl.classList.add('hidden');
-    try { localStorage.setItem(CONTROLS_HINT_KEY, '1'); } catch (e) { /* storage unavailable */ }
-  });
-
   btnPause.addEventListener('click', () => {
     paused = !paused;
     btnPause.textContent = paused ? '▶' : '⏸';
@@ -762,17 +706,6 @@
   breakInstructionsBtn.addEventListener('click', openInstructionsMenu);
   breakSubsBtn.addEventListener('click', openSubsMenu);
 
-  function inputVector() {
-    let x = joyVec.x, y = joyVec.y;
-    if (keys.has('arrowleft') || keys.has('a')) x -= 1;
-    if (keys.has('arrowright') || keys.has('d')) x += 1;
-    if (keys.has('arrowup') || keys.has('w')) y -= 1;
-    if (keys.has('arrowdown') || keys.has('s')) y += 1;
-    const len = Math.hypot(x, y);
-    if (len > 1) { x /= len; y /= len; }
-    return { x, y };
-  }
-
   // ---------- Helpers ----------
   function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function clampPlayer(p) {
@@ -864,29 +797,6 @@
     kick(p, pass.target.x, pass.target.y, pass.power);
   }
 
-  function doKick() {
-    if (matchOver || stopPause > 0) return;
-    if (!ball.owner || ball.owner !== controlled) return;
-    const p = controlled;
-    const bonus = !!ball.freeKickBonus;
-    ball.freeKickBonus = false;
-    const nearGoal = p.team === 'home' ? p.y < 260 : p.y > FIELD_H - 260;
-    if (nearGoal) { attemptShoot(p, bonus); return; }
-    const pass = pickPassTarget(p);
-    if (pass) attemptPass(p, pass);
-    else attemptShoot(p, bonus);
-  }
-
-  // ---------- AI / control selection ----------
-  function pickControlled(homeOutfield) {
-    let best = homeOutfield[0], bestD = dist(homeOutfield[0], ball);
-    for (const p of homeOutfield) {
-      const d = dist(p, ball);
-      if (d < bestD) { best = p; bestD = d; }
-    }
-    controlled = best;
-  }
-
   function updatePlayer(p, dt, teamOutfield, oppOutfield) {
     if (p.staggerMs > 0) {
       p.staggerMs -= dt * 1000;
@@ -903,12 +813,7 @@
       }
       fatigueMult = 1 - p.fatigue * FATIGUE_SPEED_PENALTY;
     }
-    if (p === controlled) {
-      const v = inputVector();
-      p.vx = v.x * USER_SPEED;
-      p.vy = v.y * USER_SPEED;
-      if (v.x || v.y) p.facing = { x: v.x, y: v.y };
-    } else if (p.role === 'GK') {
+    if (p.role === 'GK') {
       const ownGoalY = p.team === 'home' ? FIELD_H - 20 : 20;
       const targetX = Math.max(GOAL_L + 14, Math.min(GOAL_R - 14, ball.x));
       const dx = targetX - p.x, dy = ownGoalY - p.y;
@@ -978,19 +883,22 @@
     return best;
   }
 
-  function awayAIAct(dt) {
+  function ballCarrierAIAct(dt) {
     if (ball.aiCooldown > 0) ball.aiCooldown -= dt * 1000;
 
-    if (ball.owner && ball.owner.team === 'away' && ball.owner.role !== 'GK') {
+    if (ball.owner && ball.owner.role !== 'GK') {
       const p = ball.owner;
-      if (p.y > FIELD_H - 260) {
-        attemptShoot(p, false);
+      const nearGoal = p.team === 'home' ? p.y < 260 : p.y > FIELD_H - 260;
+      if (nearGoal) {
+        const bonus = !!ball.freeKickBonus;
+        ball.freeKickBonus = false;
+        attemptShoot(p, bonus);
       } else if (ball.aiCooldown <= 0) {
         const pass = pickPassTarget(p);
         if (pass && Math.random() < 0.6) {
           attemptPass(p, pass);
         } else {
-          p.facing = { x: 0, y: 1 };
+          p.facing = { x: 0, y: p.team === 'home' ? -1 : 1 };
         }
         ball.aiCooldown = AI_DECISION_MIN_MS + Math.random() * (AI_DECISION_MAX_MS - AI_DECISION_MIN_MS);
       }
@@ -1112,7 +1020,6 @@
   function sendOff(p) {
     const idx = players.indexOf(p);
     if (idx >= 0) players.splice(idx, 1);
-    if (controlled === p) controlled = null;
     if (ball.owner === p) ball.owner = null;
   }
 
@@ -1125,7 +1032,6 @@
     newPlayer.baseY = outPlayer.baseY;
     newPlayer.instruction = outPlayer.instruction;
     players[idx] = newPlayer;
-    if (controlled === outPlayer) controlled = newPlayer;
     if (ball.owner === outPlayer) ball.owner = newPlayer;
     narrate('Mudança em ' + teamLabel(outPlayer.team) + ': entra ' + displayName(newPlayer) + ', sai ' + displayName(outPlayer) + '.');
     return newPlayer;
@@ -1594,24 +1500,41 @@
   function drawPlayer(p) {
     let fill = p.team === 'home' ? homeColors.primary : '#b02c2c';
     if (p.role === 'GK') fill = p.team === 'home' ? '#7a3fa0' : '#a05a2c';
+    const outline = p.team === 'home' && p.role !== 'GK' ? homeColors.secondary : '#fff';
 
-    if (p === controlled) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y - 22, 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffd54a';
-      ctx.fill();
-    }
-
+    // shadow
     ctx.beginPath();
-    ctx.arc(p.x, p.y, PLAYER_R, 0, Math.PI * 2);
+    ctx.ellipse(p.x, p.y + 12, 9, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fill();
+
+    // legs
+    ctx.fillStyle = '#1c1c1c';
+    ctx.fillRect(p.x - 5, p.y + 4, 3, 8);
+    ctx.fillRect(p.x + 2, p.y + 4, 3, 8);
+
+    // torso
+    const tw = 16, th = 14, tx = p.x - tw / 2, ty = p.y - 6;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(tx, ty, tw, th, 4);
+    else ctx.rect(tx, ty, tw, th);
     ctx.fillStyle = fill;
     ctx.fill();
-    ctx.strokeStyle = p.team === 'home' && p.role !== 'GK' ? homeColors.secondary : '#fff';
+    ctx.strokeStyle = outline;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
+    // head
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 10, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#e0b28a';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px Arial';
+    ctx.font = 'bold 9px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(p.number, p.x, p.y + 1);
@@ -1698,13 +1621,12 @@
             if (p.role === 'GK') continue;
             (p.team === 'home' ? homeOutfield : awayOutfield).push(p);
           }
-          pickControlled(homeOutfield);
           for (const p of players) {
             const teamOutfield = p.team === 'home' ? homeOutfield : awayOutfield;
             const oppOutfield = p.team === 'home' ? awayOutfield : homeOutfield;
             updatePlayer(p, dt, teamOutfield, oppOutfield);
           }
-          awayAIAct(dt);
+          ballCarrierAIAct(dt);
           updateBall(dt);
 
           displaySeconds += dt * CLOCK_SCALE;
