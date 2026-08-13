@@ -111,6 +111,13 @@ html, body {
   font-weight: bold;
 }
 
+.side-instr-pending {
+  margin-top: 4px;
+  font-size: 0.62rem;
+  color: #9db8ab;
+  font-style: italic;
+}
+
 .topbar {
   width: 100%;
   max-width: 400px;
@@ -234,6 +241,21 @@ html, body {
   padding: 2px 8px;
   border-radius: 10px;
   white-space: nowrap;
+}
+
+.crowd-strip {
+  --crowd-dot-color: #ffd54a;
+  --crowd-dot-opacity: 0.1;
+  --crowd-dot-size: 15px;
+  height: 14px;
+  width: 100%;
+  max-width: 400px;
+  flex-shrink: 0;
+  background-color: #0a1a14;
+  background-image: radial-gradient(circle, var(--crowd-dot-color) 1.3px, transparent 1.4px);
+  background-size: var(--crowd-dot-size) var(--crowd-dot-size);
+  background-position: 4px 4px;
+  opacity: var(--crowd-dot-opacity);
 }
 
 canvas {

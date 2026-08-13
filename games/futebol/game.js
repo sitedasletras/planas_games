@@ -238,6 +238,7 @@
   const narrationList = document.getElementById('narration-list');
   const narrationClose = document.getElementById('narration-close');
   const sponsorStripEl = document.getElementById('sponsor-strip');
+  const crowdStripEl = document.getElementById('crowd-strip');
   const tickerEl = document.getElementById('ticker');
   const sideInstructionsListEl = document.getElementById('side-instructions-list');
 
@@ -292,6 +293,18 @@
   const homeSquad = window.WSPSquad ? window.WSPSquad.loadSquad() : null;
   const homeClub = window.WSPClub ? window.WSPClub.loadClub() : null;
 
+  function renderCrowdStrip() {
+    if (!crowdStripEl) return;
+    const level = (homeClub && homeClub.departments && homeClub.departments.torcida) || 0;
+    const spacing = 15 - level * 1.6; // px entre "cabeças" — mais gente, mais junto
+    const opacity = 0.08 + level * 0.16;
+    const color = (homeClub && homeClub.colors && homeClub.colors.detail) || '#ffd54a';
+    crowdStripEl.style.setProperty('--crowd-dot-color', color);
+    crowdStripEl.style.setProperty('--crowd-dot-opacity', opacity);
+    crowdStripEl.style.setProperty('--crowd-dot-size', spacing + 'px');
+  }
+  renderCrowdStrip();
+
   function renderSponsorStrip() {
     if (!homeClub || !homeClub.sponsors || !window.WSPClub) return;
     const slots = window.WSPClub.SPONSOR_SLOTS;
@@ -329,7 +342,7 @@
       team, role, number, x, y, vx: 0, vy: 0,
       facing: { x: 0, y: team === 'home' ? -1 : 1 },
       baseX: x, baseY: y,
-      instruction: 'zona', markTarget: null,
+      instruction: 'zona', pendingInstruction: null, markTarget: null,
       name: (extra && extra.name) || null,
       foot: (extra && extra.foot) || 'destro',
       traits: (extra && extra.traits) || [],
@@ -583,6 +596,7 @@
         b.textContent = opt.label;
         b.addEventListener('click', () => {
           p.instruction = opt.key;
+          p.pendingInstruction = null;
           if (opt.key !== 'individual') p.markTarget = null;
           renderInstructionsList();
         });
@@ -603,20 +617,28 @@
       name.className = 'side-instr-name';
       name.textContent = '#' + p.number + ' ' + displayNameFor(p);
       row.appendChild(name);
+      const activeKey = p.pendingInstruction || p.instruction || 'zona';
       const btnWrap = document.createElement('div');
       btnWrap.className = 'side-instr-btns';
       INSTRUCTIONS.forEach((opt) => {
         const b = document.createElement('button');
-        b.className = 'side-instr-btn' + ((p.instruction || 'zona') === opt.key ? ' active' : '');
+        b.className = 'side-instr-btn' + (activeKey === opt.key ? ' active' : '');
         b.textContent = opt.label;
         b.addEventListener('click', () => {
-          p.instruction = opt.key;
-          if (opt.key !== 'individual') p.markTarget = null;
+          // não muda o jogador no meio do lance — só passa a valer na próxima
+          // bola parada (lateral, escanteio, tiro de meta, falta) ou após um gol
+          p.pendingInstruction = opt.key;
           renderSideInstructions();
         });
         btnWrap.appendChild(b);
       });
       row.appendChild(btnWrap);
+      if (p.pendingInstruction != null && p.pendingInstruction !== p.instruction) {
+        const hint = document.createElement('div');
+        hint.className = 'side-instr-pending';
+        hint.textContent = 'Muda na próxima bola parada';
+        row.appendChild(hint);
+      }
       sideInstructionsListEl.appendChild(row);
     });
   }
@@ -1032,6 +1054,7 @@
   }
 
   function onGoal(scoringTeam, viaPenalty) {
+    applyPendingInstructions();
     score[scoringTeam]++;
     updateScoreUI();
     if (lastShooter && lastShooter.team === scoringTeam) {
@@ -1143,7 +1166,18 @@
     showStoppage('TIRO DE META', teamLabel(team) + ' vai repor.');
   }
 
+  function applyPendingInstructions() {
+    players.forEach((p) => {
+      if (p.pendingInstruction != null) {
+        p.instruction = p.pendingInstruction;
+        if (p.instruction !== 'individual') p.markTarget = null;
+        p.pendingInstruction = null;
+      }
+    });
+  }
+
   function awardFreeKick(team, spot) {
+    applyPendingInstructions();
     ball.x = spot.x; ball.y = spot.y;
     ball.vx = 0; ball.vy = 0;
     ball.owner = null; ball.kickerImmune = null; ball.kickCooldown = 0;
