@@ -121,6 +121,88 @@ html, body {
   border-radius: 8px;
 }
 
+.calendar-ad-btn {
+  margin-top: 6px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: #16281f;
+  border: 1px solid #ffd54a;
+  color: #ffd54a;
+  font-weight: bold;
+  font-size: 0.8rem;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.calendar-ad-btn.hidden { display: none; }
+
+.ad-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  padding: 16px;
+}
+
+.ad-overlay.hidden { display: none; }
+
+.ad-card {
+  background: #16281f;
+  border: 2px solid #ffd54a;
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+  color: white;
+  max-width: 360px;
+  width: 100%;
+}
+
+.ad-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffd54a;
+  margin-bottom: 10px;
+}
+
+.ad-sub {
+  font-size: 0.85rem;
+  color: #cfeede;
+  margin-bottom: 14px;
+}
+
+.ad-bar-track {
+  height: 8px;
+  background: #0e1c15;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.ad-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #2f9e44;
+  transition: width 0.2s linear;
+}
+
+.ad-close-btn {
+  width: 100%;
+  padding: 10px;
+  background: #2f9e44;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.ad-close-btn.hidden { display: none; }
+
 .news-list {
   padding: 0 14px;
   display: flex;

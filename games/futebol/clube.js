@@ -17,9 +17,14 @@
   const calendarLabelEl = document.getElementById('calendar-label');
   const calendarValueEl = document.getElementById('calendar-value');
   const calendarPlayBtnEl = document.getElementById('calendar-play-btn');
+  const calendarAdBtnEl = document.getElementById('calendar-ad-btn');
   const newsSectionEl = document.getElementById('news-section');
   const newsListEl = document.getElementById('news-list');
   const activityMedicoEl = document.getElementById('activity-medico');
+  const adOverlayEl = document.getElementById('ad-overlay');
+  const adSubEl = document.getElementById('ad-sub');
+  const adBarFillEl = document.getElementById('ad-bar-fill');
+  const adCloseBtnEl = document.getElementById('ad-close-btn');
 
   function renderMedicoBadge() {
     if (!activityMedicoEl || !window.WSPSquad) return;
@@ -230,10 +235,12 @@
       calendarLabelEl.textContent = 'Partida';
       calendarValueEl.textContent = 'Disponível agora';
       calendarPlayBtnEl.classList.remove('hidden');
+      calendarAdBtnEl.classList.add('hidden');
     } else {
       calendarLabelEl.textContent = 'Próxima partida libera em';
       calendarValueEl.textContent = window.WSPCalendar.formatCountdown(window.WSPCalendar.msUntilNextMatch(cal));
       calendarPlayBtnEl.classList.add('hidden');
+      calendarAdBtnEl.classList.toggle('hidden', !window.WSPCalendar.canWatchAdToSkipDay(cal));
     }
 
     newsListEl.innerHTML = '';
@@ -335,6 +342,44 @@
 
       card.appendChild(info);
       sponsorListEl.appendChild(card);
+    });
+  }
+
+  // ---------- Assistir vídeo pra adiantar 1 dia ----------
+  // por enquanto simula o anúncio com uma barra de progresso — quando o
+  // provedor de vídeo recompensado for integrado, troca só o miolo dessa
+  // função pela chamada real do SDK, o resto do fluxo já fica pronto
+  let adWatchTimer = null;
+  function openAdOverlay() {
+    adSubEl.textContent = 'Carregando vídeo...';
+    adBarFillEl.style.width = '0%';
+    adCloseBtnEl.classList.add('hidden');
+    adOverlayEl.classList.remove('hidden');
+    const durationMs = 4000, stepMs = 100;
+    let progress = 0;
+    clearInterval(adWatchTimer);
+    adWatchTimer = setInterval(() => {
+      progress += stepMs;
+      adBarFillEl.style.width = Math.min(100, (progress / durationMs) * 100) + '%';
+      if (progress >= durationMs) {
+        clearInterval(adWatchTimer);
+        adSubEl.textContent = 'Vídeo concluído!';
+        adCloseBtnEl.classList.remove('hidden');
+      } else {
+        adSubEl.textContent = 'Exibindo anúncio... ' + Math.ceil((durationMs - progress) / 1000) + 's';
+      }
+    }, stepMs);
+  }
+
+  if (calendarAdBtnEl) {
+    calendarAdBtnEl.addEventListener('click', openAdOverlay);
+  }
+  if (adCloseBtnEl) {
+    adCloseBtnEl.addEventListener('click', () => {
+      const cal = window.WSPCalendar.loadCalendar();
+      window.WSPCalendar.watchAdToSkipDay(cal);
+      adOverlayEl.classList.add('hidden');
+      renderCalendar();
     });
   }
 

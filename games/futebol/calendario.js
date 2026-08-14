@@ -11,7 +11,7 @@
   const MAX_HEADLINES = 10;
 
   function freshCalendar() {
-    return { nextMatchAt: null, lastMatch: null, headlines: [] };
+    return { nextMatchAt: null, lastMatch: null, headlines: [], lastAdSkipDay: null };
   }
 
   function loadCalendar() {
@@ -45,6 +45,22 @@
     if (ms <= 0) return 'Disponível agora';
     const days = gameDaysRemaining(ms);
     return days === 1 ? '1 dia' : days + ' dias';
+  }
+
+  // ---------- Assistir vídeo pra adiantar um dia ----------
+  // limitado a 1 vez por dia real (não de jogo) — senão dava pra encadear
+  // vídeos e zerar o cooldown inteiro entre partidas de uma vez
+  function canWatchAdToSkipDay(cal) {
+    if (isMatchAvailable(cal)) return false;
+    return cal.lastAdSkipDay !== new Date().toDateString();
+  }
+
+  function watchAdToSkipDay(cal) {
+    if (!canWatchAdToSkipDay(cal)) return { ok: false };
+    cal.nextMatchAt = Math.max(Date.now(), cal.nextMatchAt - GAME_DAY_REAL_MS);
+    cal.lastAdSkipDay = new Date().toDateString();
+    saveCalendar(cal);
+    return { ok: true };
   }
 
   // ---------- Manchetes e opinião da torcida ----------
@@ -126,5 +142,6 @@
     loadCalendar, saveCalendar, freshCalendar,
     isMatchAvailable, msUntilNextMatch, formatCountdown, gameDaysRemaining,
     generateHeadlines, registerMatchResult,
+    canWatchAdToSkipDay, watchAdToSkipDay,
   };
 })();
