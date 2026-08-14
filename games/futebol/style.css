@@ -619,10 +619,12 @@ canvas {
 
 .instr-row .num {
   font-weight: bold;
-  width: 24px;
+  min-width: 24px;
   flex-shrink: 0;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
+  color: #ffd54a;
+  white-space: nowrap;
 }
 
 .instr-btns {

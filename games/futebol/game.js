@@ -53,7 +53,7 @@
   const PENALTY_GOAL_CHANCE = 0.76;
   const PENALTY_STOPPAGE_MS = 1800;
   const VAR_REVIEW_MS = 1900;
-  const GREAT_SAVE_CHANCE = 0.35; // nem toda defesa vira "lance de perigo" com pausa — só as mais vistosas
+  const GREAT_SAVE_CHANCE = 0.18; // nem toda defesa vira "lance de perigo" com pausa — só as mais vistosas
   const GREAT_SAVE_STOPPAGE_MS = 1600;
 
   // ---------- Fadiga / lesão ----------
@@ -163,6 +163,24 @@
   function instructionSetFor(p) {
     const group = p.position && POSITION_INSTRUCTION_GROUP[p.position];
     return (group && INSTRUCTION_SETS[group]) || INSTRUCTIONS;
+  }
+
+  // pra não misturar zagueiro/lateral/volante/etc numa ordem qualquer nas
+  // listas de instrução e substituição — o slot tático não segue a posição
+  // real do jogador (o usuário pode escalar qualquer um em qualquer slot),
+  // então listar "por ordem de escalação" ficava embaralhado e confuso
+  const POSITION_GROUP_ORDER = ['goleiro', 'zagueiro', 'lateral', 'volante', 'meia', 'ponta', 'atacante'];
+  const POSITION_GROUP_ABBR = { goleiro: 'GOL', zagueiro: 'ZAG', lateral: 'LAT', volante: 'VOL', meia: 'MEI', ponta: 'PON', atacante: 'ATA' };
+  function positionGroupFor(p) {
+    if (p.role === 'GK') return 'goleiro';
+    return (p.position && POSITION_INSTRUCTION_GROUP[p.position]) || null;
+  }
+  function sortByPositionGroup(list) {
+    return list.slice().sort((a, b) => {
+      const ia = POSITION_GROUP_ORDER.indexOf(positionGroupFor(a));
+      const ib = POSITION_GROUP_ORDER.indexOf(positionGroupFor(b));
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
   }
 
   // ---------- Tactics ----------
@@ -500,6 +518,8 @@
   let duelCooldownMs = 0;
   let duelVisibleMs = 0;
   const DUEL_COOLDOWN_MS = 6000;
+  let greatSaveCooldownMs = 0;
+  const GREAT_SAVE_COOLDOWN_MS = 25000; // evita DEFESAÇO em sequência
   const DUEL_VISIBLE_MS = 1600;
 
   function showDuel(winner, loser) {
@@ -866,13 +886,14 @@
 
   function renderInstructionsList() {
     instructionsList.innerHTML = '';
-    const outfield = players.filter(p => p.team === 'home' && p.role !== 'GK');
+    const outfield = sortByPositionGroup(players.filter(p => p.team === 'home' && p.role !== 'GK'));
     outfield.forEach((p) => {
       const row = document.createElement('div');
       row.className = 'instr-row';
       const num = document.createElement('span');
       num.className = 'num';
-      num.textContent = '#' + p.number;
+      const posAbbr = POSITION_GROUP_ABBR[positionGroupFor(p)];
+      num.textContent = '#' + p.number + (posAbbr ? ' ' + posAbbr : '');
       row.appendChild(num);
       const btnWrap = document.createElement('div');
       btnWrap.className = 'instr-btns';
@@ -894,14 +915,15 @@
   }
   function renderSideInstructions() {
     if (!sideInstructionsListEl) return;
-    const outfield = players.filter(p => p.team === 'home' && p.role !== 'GK');
+    const outfield = sortByPositionGroup(players.filter(p => p.team === 'home' && p.role !== 'GK'));
     sideInstructionsListEl.innerHTML = '';
     outfield.forEach((p) => {
       const row = document.createElement('div');
       row.className = 'side-instr-row';
       const name = document.createElement('div');
       name.className = 'side-instr-name';
-      name.textContent = '#' + p.number + ' ' + displayNameFor(p);
+      const posAbbr = POSITION_GROUP_ABBR[positionGroupFor(p)];
+      name.textContent = '#' + p.number + (posAbbr ? ' ' + posAbbr : '') + ' ' + displayNameFor(p);
       row.appendChild(name);
       const activeKey = p.pendingInstruction || p.instruction || 'zona';
       const btnWrap = document.createElement('div');
@@ -978,7 +1000,7 @@
       : (subOutSelected ? 'Agora escolha quem entra' : 'Toque em quem sai, depois em quem entra');
 
     subsOnfieldEl.innerHTML = '';
-    const onField = players.filter(p => p.team === 'home').sort((a, b) => a.number - b.number);
+    const onField = sortByPositionGroup(players.filter(p => p.team === 'home'));
     onField.forEach((p) => {
       const btn = document.createElement('button');
       btn.className = 'sub-player' + (subOutSelected === p ? ' selected' : '');
@@ -998,7 +1020,7 @@
       empty.textContent = 'Banco vazio';
       subsBenchEl.appendChild(empty);
     }
-    homeBench.slice().sort((a, b) => a.number - b.number).forEach((bp) => {
+    sortByPositionGroup(homeBench).forEach((bp) => {
       const btn = document.createElement('button');
       btn.className = 'sub-player';
       btn.innerHTML = '<span class="num">' + bp.number + '</span><span class="pos">' + positionAbbrevFor(bp) + '</span><span class="nm">' + bp.name + '</span>';
@@ -1341,8 +1363,10 @@
         else p.facing = { x: 0, y: p.team === 'home' ? -1 : 1 };
         return;
       }
-      // finalizador arrisca o chute de mais longe em vez de só perto do gol
-      const shootRange = p.instruction === 'finalizador' ? 300 : 260;
+      // alcance apertado: só dispara o chute perto de verdade do gol (senão
+      // qualquer bola que chega no terço final virava chute na hora, gerando
+      // dezenas de finalizações por partida); finalizador arrisca um pouco mais
+      const shootRange = p.instruction === 'finalizador' ? 175 : 150;
       const nearGoal = p.team === 'home' ? p.y < shootRange : p.y > FIELD_H - shootRange;
       if (nearGoal) {
         const bonus = !!ball.freeKickBonus;
@@ -1882,7 +1906,8 @@
   // uma fração vira pausa+replay, senão toda defesa de rotina interromperia
   // o jogo
   function triggerGreatSave(keeper, shooter) {
-    if (Math.random() > GREAT_SAVE_CHANCE) return;
+    if (greatSaveCooldownMs > 0 || Math.random() > GREAT_SAVE_CHANCE) return;
+    greatSaveCooldownMs = GREAT_SAVE_COOLDOWN_MS;
     narrate('DEFESAÇO! ' + displayName(keeper) + ' faz uma grande defesa em cima de ' + displayName(shooter) + '!');
     stopPause = Math.max(stopPause, GREAT_SAVE_STOPPAGE_MS);
     showStoppage('DEFESAÇO!', displayName(keeper) + ' evita o gol de ' + displayName(shooter) + '!');
@@ -2871,6 +2896,7 @@
     }
 
     if (duelCooldownMs > 0) duelCooldownMs -= dt * 1000;
+    if (greatSaveCooldownMs > 0) greatSaveCooldownMs -= dt * 1000;
     if (duelVisibleMs > 0) {
       duelVisibleMs -= dt * 1000;
       if (duelVisibleMs <= 0) duelPopupEl.classList.add('hidden');
