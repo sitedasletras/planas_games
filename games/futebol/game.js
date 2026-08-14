@@ -2159,11 +2159,12 @@
     ctx.strokeRect(GOAL_L - 40, 10, GOAL_W + 80, 90);
     ctx.strokeRect(GOAL_L - 40, FIELD_H - 100, GOAL_W + 80, 90);
 
-    // gols — o campo já ocupa a altura toda do canvas, então a rede não
-    // cabe "atrás" da linha (ficaria cortada); desenha o caixote pra
-    // DENTRO do campo, logo depois da linha, pra ficar visível de verdade
-    drawGoalNet(0, GOAL_NET_DEPTH);
-    drawGoalNet(FIELD_H, -GOAL_NET_DEPTH);
+    // gols — a boca do gol fica em cima da linha de fundo de verdade (a
+    // borda do retângulo do campo, em y=10/FIELD_H-10) e a rede se estende
+    // pra FORA do campo, como um gol de verdade; o canvas tem uma margem
+    // extra (GOAL_NET_DEPTH em cima e embaixo, ver render()) pra isso caber
+    drawGoalNet(10, -GOAL_NET_DEPTH);
+    drawGoalNet(FIELD_H - 10, GOAL_NET_DEPTH);
   }
 
   // frontY = linha do gol; depthSign = pra onde a rede "entra" no campo
@@ -2328,6 +2329,9 @@
 
     const zoomScale = currentGoalZoomScale();
     ctx.save();
+    // desloca tudo pra baixo, abrindo uma margem em cima (canvas é mais alto
+    // que FIELD_H só pra caber a rede dos gols atrás das linhas de fundo)
+    ctx.translate(0, GOAL_NET_DEPTH);
     if (zoomScale !== 1) {
       ctx.translate(FIELD_W / 2, FIELD_H / 2);
       ctx.scale(zoomScale, zoomScale);
