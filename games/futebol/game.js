@@ -386,6 +386,8 @@
   const overlayTitle = document.getElementById('overlay-title');
   const overlaySub = document.getElementById('overlay-sub');
   const overlayRestart = document.getElementById('overlay-restart');
+  const replayCanvas = document.getElementById('replay-canvas');
+  const replayCtx = replayCanvas ? replayCanvas.getContext('2d') : null;
   const pressOverlay = document.getElementById('press-overlay');
   const pressQuestionEl = document.getElementById('press-question');
   const pressAnswersEl = document.getElementById('press-answers');
@@ -1852,8 +1854,139 @@
     const m = Math.floor(s / 60), sec = s % 60;
     return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
   }
+  // ---------- Replay 2D de perfil ----------
+  // desenho simples "boneco de palito" visto de lado — usado nos replays
+  // de lance (gol, e depois confusão), pra dar uma cara diferente do
+  // gramado visto de cima que já ocupa a tela toda no resto do tempo
+  function drawSideFigure(rctx, x, groundY, color, pose) {
+    rctx.strokeStyle = color;
+    rctx.fillStyle = color;
+    rctx.lineWidth = 4;
+    rctx.lineCap = 'round';
+    const headY = groundY - 40;
+    rctx.beginPath();
+    rctx.arc(x, headY, 7, 0, Math.PI * 2);
+    rctx.fill();
+    rctx.beginPath();
+    rctx.moveTo(x, headY + 7);
+    rctx.lineTo(x - 1, groundY - 18);
+    rctx.stroke();
+    if (pose === 'chute') {
+      rctx.beginPath();
+      rctx.moveTo(x - 1, groundY - 18);
+      rctx.lineTo(x - 8, groundY);
+      rctx.moveTo(x - 1, groundY - 18);
+      rctx.lineTo(x + 20, groundY - 10);
+      rctx.stroke();
+      rctx.beginPath();
+      rctx.moveTo(x, headY + 12);
+      rctx.lineTo(x - 10, groundY - 26);
+      rctx.moveTo(x, headY + 12);
+      rctx.lineTo(x + 9, headY + 24);
+      rctx.stroke();
+    } else if (pose === 'goleiro') {
+      // goleiro batido, esticado no chão tentando alcançar
+      rctx.save();
+      rctx.translate(x, groundY - 10);
+      rctx.rotate(-0.5);
+      rctx.beginPath();
+      rctx.arc(0, -30, 7, 0, Math.PI * 2);
+      rctx.fill();
+      rctx.beginPath();
+      rctx.moveTo(0, -23);
+      rctx.lineTo(2, 0);
+      rctx.moveTo(2, 0);
+      rctx.lineTo(-6, 14);
+      rctx.moveTo(2, 0);
+      rctx.lineTo(12, 10);
+      rctx.moveTo(0, -18);
+      rctx.lineTo(18, -24);
+      rctx.stroke();
+      rctx.restore();
+    } else {
+      // parado, torcendo/observando
+      rctx.beginPath();
+      rctx.moveTo(x - 1, groundY - 18);
+      rctx.lineTo(x - 6, groundY);
+      rctx.moveTo(x - 1, groundY - 18);
+      rctx.lineTo(x + 6, groundY);
+      rctx.moveTo(x, headY + 12);
+      rctx.lineTo(x - 9, headY + 22);
+      rctx.moveTo(x, headY + 12);
+      rctx.lineTo(x + 9, headY + 22);
+      rctx.stroke();
+    }
+  }
+
+  function drawGoalReplay(scoringTeam) {
+    if (!replayCtx) return;
+    const w = replayCanvas.width, h = replayCanvas.height;
+    const groundY = h - 22;
+    replayCtx.clearRect(0, 0, w, h);
+    replayCtx.fillStyle = '#153020';
+    replayCtx.fillRect(0, 0, w, h);
+    replayCtx.fillStyle = '#2f9e44';
+    replayCtx.fillRect(0, groundY, w, h - groundY);
+    replayCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+    replayCtx.lineWidth = 2;
+    replayCtx.beginPath();
+    replayCtx.moveTo(0, groundY);
+    replayCtx.lineTo(w, groundY);
+    replayCtx.stroke();
+
+    // moldura do gol vista de lado: trave, travessão inclinado e rede
+    const postX = w - 66, postTopY = groundY - 86, crossX = w - 20, crossY = postTopY + 16;
+    replayCtx.fillStyle = 'rgba(255,255,255,0.12)';
+    replayCtx.beginPath();
+    replayCtx.moveTo(postX, groundY);
+    replayCtx.lineTo(postX, postTopY);
+    replayCtx.lineTo(crossX, crossY);
+    replayCtx.lineTo(crossX, groundY);
+    replayCtx.closePath();
+    replayCtx.fill();
+    replayCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+    replayCtx.lineWidth = 1;
+    replayCtx.beginPath();
+    for (let i = 1; i < 6; i++) {
+      const t = i / 6;
+      const x1 = postX + (crossX - postX) * t, y1 = postTopY + (crossY - postTopY) * t;
+      replayCtx.moveTo(x1, y1);
+      replayCtx.lineTo(x1, groundY);
+    }
+    for (let gy = postTopY + 12; gy < groundY; gy += 12) {
+      replayCtx.moveTo(postX, gy);
+      replayCtx.lineTo(crossX, gy);
+    }
+    replayCtx.stroke();
+    replayCtx.strokeStyle = '#fff';
+    replayCtx.lineWidth = 4;
+    replayCtx.beginPath();
+    replayCtx.moveTo(postX, groundY);
+    replayCtx.lineTo(postX, postTopY);
+    replayCtx.lineTo(crossX, crossY);
+    replayCtx.stroke();
+
+    // goleiro batido perto do gol, batedor com a perna do chute esticada
+    drawSideFigure(replayCtx, postX - 24, groundY, '#a05a2c', 'goleiro');
+    const shooterColor = scoringTeam === 'home' ? homeColors.primary : '#b02c2c';
+    drawSideFigure(replayCtx, 60, groundY, shooterColor, 'chute');
+
+    // bola já estufando a rede
+    replayCtx.fillStyle = '#fff';
+    replayCtx.beginPath();
+    replayCtx.arc(crossX - 18, groundY - 36, 6, 0, Math.PI * 2);
+    replayCtx.fill();
+    replayCtx.strokeStyle = 'rgba(0,0,0,0.3)';
+    replayCtx.lineWidth = 1;
+    replayCtx.stroke();
+  }
+
   function showGoal(team) {
     showStoppage('GOL!', teamLabel(team) + ' marcou!');
+    if (replayCanvas) {
+      drawGoalReplay(team);
+      replayCanvas.classList.remove('hidden');
+    }
   }
   function showStoppage(title, sub) {
     overlayTitle.textContent = title;
@@ -1861,6 +1994,7 @@
     overlayRestart.classList.add('hidden');
     breakActionsEl.classList.add('hidden');
     ratingsSectionEl.classList.add('hidden');
+    if (replayCanvas) replayCanvas.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
   function hideOverlay() { overlay.classList.add('hidden'); }

@@ -415,6 +415,20 @@ canvas {
   cursor: pointer;
 }
 
+.replay-canvas {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  margin: 4px auto 14px;
+  border-radius: 10px;
+  background: #1b3a24;
+}
+
+.replay-canvas.hidden {
+  display: none;
+}
+
 .overlay-btn.hidden {
   display: none;
 }
