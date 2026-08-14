@@ -468,6 +468,7 @@
   let awaySubWindowIdx = 0;
   let awayPostureAppliedMinute = -1;
   let matchHadConfusion = false; // pra entrevista pós-jogo perguntar sobre o climão
+  let lastShotOrigin = 'jogo'; // 'jogo' | 'falta' | 'penalti' — pra escolher a cena certa no replay do gol
 
   // narração
   let narrationLog = [];
@@ -1318,6 +1319,7 @@
         ball.restartKind = null;
         const golOlimpico = Math.random() < 0.07;
         if (golOlimpico) {
+          lastShotOrigin = 'jogo';
           attemptShoot(p, false);
         } else {
           const pass = pickPassTarget(p);
@@ -1340,6 +1342,7 @@
       if (nearGoal) {
         const bonus = !!ball.freeKickBonus;
         ball.freeKickBonus = false;
+        lastShotOrigin = bonus ? 'falta' : 'jogo';
         attemptShoot(p, bonus);
       } else if (ball.aiCooldown <= 0) {
         const pass = pickPassTarget(p);
@@ -1845,6 +1848,7 @@
     if (scored) {
       narrate('GOL DE PÊNALTI! ' + takerName + ' não desperdiça! ' + teamLabel(team) + ' marca.');
       taker.matchGoals++;
+      lastShotOrigin = 'penalti';
       onGoal(team, true);
       return;
     }
@@ -2004,7 +2008,11 @@
     drawReferee(replayCtx, 226, groundY, extraCardColor || '#ffd54a');
   }
 
-  function drawGoalReplay(scoringTeam) {
+  let replayAnimId = null;
+
+  // t vai de 0 (bola ainda no pé do batedor) a 1 (bola na rede) — chamada a
+  // cada frame da animação em vez de desenhar só o quadro final parado
+  function drawGoalReplayFrame(scoringTeam, origin, t) {
     if (!replayCtx) return;
     const w = replayCanvas.width, h = replayCanvas.height;
     const groundY = h - 22;
@@ -2034,8 +2042,8 @@
     replayCtx.lineWidth = 1;
     replayCtx.beginPath();
     for (let i = 1; i < 6; i++) {
-      const t = i / 6;
-      const x1 = postX + (crossX - postX) * t, y1 = postTopY + (crossY - postTopY) * t;
+      const tt = i / 6;
+      const x1 = postX + (crossX - postX) * tt, y1 = postTopY + (crossY - postTopY) * tt;
       replayCtx.moveTo(x1, y1);
       replayCtx.lineTo(x1, groundY);
     }
@@ -2052,26 +2060,54 @@
     replayCtx.lineTo(crossX, crossY);
     replayCtx.stroke();
 
+    // pênalti: batedor bem mais perto, sozinho com o goleiro, sem barreira.
+    // falta: barreira de 2 jogadores do time que sofreu o gol entre o
+    // batedor e o gol. jogo aberto: batedor mais longe, sem barreira
+    const shooterX = origin === 'penalti' ? crossX - 100 : 60;
+    if (origin === 'falta') {
+      const wallColor = scoringTeam === 'home' ? '#b02c2c' : homeColors.primary;
+      drawSideFigure(replayCtx, shooterX + 55, groundY, wallColor, 'parado');
+      drawSideFigure(replayCtx, shooterX + 72, groundY, wallColor, 'parado');
+    }
+
     // goleiro batido perto do gol, batedor com a perna do chute esticada
     drawSideFigure(replayCtx, postX - 24, groundY, '#a05a2c', 'goleiro');
     const shooterColor = scoringTeam === 'home' ? homeColors.primary : '#b02c2c';
-    drawSideFigure(replayCtx, 60, groundY, shooterColor, 'chute');
+    drawSideFigure(replayCtx, shooterX, groundY, shooterColor, 'chute');
 
-    // bola já estufando a rede
+    // bola viaja do pé do batedor até a rede, conforme o progresso t
+    const ballStartX = shooterX + 20, ballStartY = groundY - 6;
+    const ballEndX = crossX - 18, ballEndY = groundY - 36;
+    const arcLift = Math.sin(Math.min(1, t) * Math.PI) * 18; // sobe um pouco no meio do caminho
+    const ballX = ballStartX + (ballEndX - ballStartX) * t;
+    const ballY = ballStartY + (ballEndY - ballStartY) * t - arcLift;
     replayCtx.fillStyle = '#fff';
     replayCtx.beginPath();
-    replayCtx.arc(crossX - 18, groundY - 36, 6, 0, Math.PI * 2);
+    replayCtx.arc(ballX, ballY, 6, 0, Math.PI * 2);
     replayCtx.fill();
     replayCtx.strokeStyle = 'rgba(0,0,0,0.3)';
     replayCtx.lineWidth = 1;
     replayCtx.stroke();
   }
 
+  function animateGoalReplay(scoringTeam, origin) {
+    if (!replayCtx) return;
+    if (replayAnimId) cancelAnimationFrame(replayAnimId);
+    const duration = 650;
+    const start = performance.now();
+    function step(ts) {
+      const t = Math.min(1, (ts - start) / duration);
+      drawGoalReplayFrame(scoringTeam, origin, t);
+      replayAnimId = t < 1 ? requestAnimationFrame(step) : null;
+    }
+    replayAnimId = requestAnimationFrame(step);
+  }
+
   function showGoal(team) {
     showStoppage('GOL!', teamLabel(team) + ' marcou!');
     if (replayCanvas) {
-      drawGoalReplay(team);
       replayCanvas.classList.remove('hidden');
+      animateGoalReplay(team, lastShotOrigin);
     }
   }
   function showStoppage(title, sub) {
@@ -2081,6 +2117,7 @@
     breakActionsEl.classList.add('hidden');
     ratingsSectionEl.classList.add('hidden');
     if (replayCanvas) replayCanvas.classList.add('hidden');
+    if (replayAnimId) { cancelAnimationFrame(replayAnimId); replayAnimId = null; }
     overlay.classList.remove('hidden');
   }
   function hideOverlay() { overlay.classList.add('hidden'); }
