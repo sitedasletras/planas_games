@@ -409,6 +409,7 @@
   const overlayTitle = document.getElementById('overlay-title');
   const overlaySub = document.getElementById('overlay-sub');
   const overlayRestart = document.getElementById('overlay-restart');
+  const reportBtnEl = document.getElementById('report-btn');
   const replayWrapEl = document.getElementById('replay-wrap');
   const replayCanvas = document.getElementById('replay-canvas');
   const replayCtx = replayCanvas ? replayCanvas.getContext('2d') : null;
@@ -850,6 +851,11 @@
   overlayRestart.addEventListener('click', () => {
     openPressConference();
   });
+  if (reportBtnEl) {
+    reportBtnEl.addEventListener('click', () => {
+      openNarrationMenu();
+    });
+  }
 
   let pausedByMenu = false;
   function pauseForMenu() {
@@ -2035,7 +2041,7 @@
     const minute = Math.floor(displaySeconds / 60);
     const label = half + 'T ' + minute + "'";
     narrationLog.push({ label, text });
-    if (narrationLog.length > 60) narrationLog.shift();
+    if (narrationLog.length > 200) narrationLog.shift();
     tickerEl.textContent = '📢 ' + label + ' — ' + text;
     if (!narrationOverlay.classList.contains('hidden')) renderNarrationList();
   }
@@ -2278,6 +2284,7 @@
     overlayTitle.textContent = title;
     overlaySub.textContent = sub || '';
     overlayRestart.classList.add('hidden');
+    if (reportBtnEl) reportBtnEl.classList.add('hidden');
     breakActionsEl.classList.add('hidden');
     ratingsSectionEl.classList.add('hidden');
     if (replayWrapEl) replayWrapEl.classList.add('hidden');
@@ -2549,6 +2556,7 @@
     renderMatchRatings();
     ratingsSectionEl.classList.remove('hidden');
     overlayRestart.classList.remove('hidden');
+    if (reportBtnEl) reportBtnEl.classList.remove('hidden');
     breakActionsEl.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
@@ -2558,6 +2566,7 @@
   function showBreak() {
     overlayTitle.textContent = breakKind === 'halftime' ? 'INTERVALO' : 'PARADA TÉCNICA';
     overlayRestart.classList.add('hidden');
+    if (reportBtnEl) reportBtnEl.classList.add('hidden');
     breakActionsEl.classList.remove('hidden');
     ratingsSectionEl.classList.add('hidden');
     overlay.classList.remove('hidden');

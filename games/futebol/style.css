@@ -450,6 +450,12 @@ canvas {
   display: none;
 }
 
+.overlay-btn.secondary {
+  background: #16281f;
+  border: 1px solid #345c48;
+  margin-bottom: 8px;
+}
+
 .press-answers {
   display: flex;
   flex-direction: column;
