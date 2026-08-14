@@ -53,6 +53,8 @@
   const PENALTY_GOAL_CHANCE = 0.76;
   const PENALTY_STOPPAGE_MS = 1800;
   const VAR_REVIEW_MS = 1900;
+  const GREAT_SAVE_CHANCE = 0.35; // nem toda defesa vira "lance de perigo" com pausa — só as mais vistosas
+  const GREAT_SAVE_STOPPAGE_MS = 1600;
 
   // ---------- Fadiga / lesão ----------
   const FATIGUE_RATE_PER_SEC = 0.0032;
@@ -1426,6 +1428,11 @@
     }
     if (pickupCandidate) {
       if (!ball.owner) {
+        // goleiro pegando a bola direto de um chute do adversário — pode
+        // virar um "lance de perigo" com pausa e replay de defesaço
+        if (pickupCandidate.role === 'GK' && lastShooter && ball.lastToucher === lastShooter && lastShooter.team !== pickupCandidate.team) {
+          triggerGreatSave(pickupCandidate, lastShooter);
+        }
         ball.owner = pickupCandidate;
         ball.lastToucher = pickupCandidate;
         if (ball.assistCandidate && (ball.assistCandidate === pickupCandidate || ball.assistCandidate.team !== pickupCandidate.team)) {
@@ -1869,6 +1876,80 @@
 
     // árbitro parado de frente pro monitor, mão no fone
     drawSideFigure(replayCtx, monitorX - 46, groundY, '#111', 'parado');
+  }
+
+  // lance de perigo: goleiro pega um chute perigoso do adversário — só
+  // uma fração vira pausa+replay, senão toda defesa de rotina interromperia
+  // o jogo
+  function triggerGreatSave(keeper, shooter) {
+    if (Math.random() > GREAT_SAVE_CHANCE) return;
+    narrate('DEFESAÇO! ' + displayName(keeper) + ' faz uma grande defesa em cima de ' + displayName(shooter) + '!');
+    stopPause = Math.max(stopPause, GREAT_SAVE_STOPPAGE_MS);
+    showStoppage('DEFESAÇO!', displayName(keeper) + ' evita o gol de ' + displayName(shooter) + '!');
+    if (replayCtx) {
+      drawSaveReplay(keeper, shooter);
+      replayWrapEl.classList.remove('hidden');
+    }
+  }
+
+  function drawSaveReplay(keeper, shooter) {
+    if (!replayCtx) return;
+    const w = replayCanvas.width, h = replayCanvas.height;
+    const groundY = h - 22;
+    replayCtx.clearRect(0, 0, w, h);
+    replayCtx.fillStyle = '#153020';
+    replayCtx.fillRect(0, 0, w, h);
+    replayCtx.fillStyle = '#2f9e44';
+    replayCtx.fillRect(0, groundY, w, h - groundY);
+    replayCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+    replayCtx.lineWidth = 2;
+    replayCtx.beginPath();
+    replayCtx.moveTo(0, groundY);
+    replayCtx.lineTo(w, groundY);
+    replayCtx.stroke();
+
+    const postX = w - 66, postTopY = groundY - 86, crossX = w - 20, crossY = postTopY + 16;
+    replayCtx.fillStyle = 'rgba(255,255,255,0.12)';
+    replayCtx.beginPath();
+    replayCtx.moveTo(postX, groundY);
+    replayCtx.lineTo(postX, postTopY);
+    replayCtx.lineTo(crossX, crossY);
+    replayCtx.lineTo(crossX, groundY);
+    replayCtx.closePath();
+    replayCtx.fill();
+    replayCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+    replayCtx.lineWidth = 1;
+    replayCtx.beginPath();
+    for (let i = 1; i < 6; i++) {
+      const tt = i / 6;
+      const x1 = postX + (crossX - postX) * tt, y1 = postTopY + (crossY - postTopY) * tt;
+      replayCtx.moveTo(x1, y1);
+      replayCtx.lineTo(x1, groundY);
+    }
+    for (let gy = postTopY + 12; gy < groundY; gy += 12) {
+      replayCtx.moveTo(postX, gy);
+      replayCtx.lineTo(crossX, gy);
+    }
+    replayCtx.stroke();
+    replayCtx.strokeStyle = '#fff';
+    replayCtx.lineWidth = 4;
+    replayCtx.beginPath();
+    replayCtx.moveTo(postX, groundY);
+    replayCtx.lineTo(postX, postTopY);
+    replayCtx.lineTo(crossX, crossY);
+    replayCtx.stroke();
+
+    const shooterColor = shooter.team === 'home' ? homeColors.primary : '#b02c2c';
+    drawSideFigure(replayCtx, 60, groundY, shooterColor, 'chute');
+    // goleiro espalmando — a bola para na altura da mão dele, não dentro da rede
+    drawSideFigure(replayCtx, postX - 22, groundY, '#a05a2c', 'goleiro');
+    replayCtx.fillStyle = '#fff';
+    replayCtx.beginPath();
+    replayCtx.arc(postX - 6, groundY - 44, 6, 0, Math.PI * 2);
+    replayCtx.fill();
+    replayCtx.strokeStyle = 'rgba(0,0,0,0.3)';
+    replayCtx.lineWidth = 1;
+    replayCtx.stroke();
   }
 
   function awardPenalty(team) {
