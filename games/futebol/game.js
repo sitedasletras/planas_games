@@ -90,13 +90,74 @@
     return 1 - (1 - c / 100) * CONDITION_SPEED_SPAN;
   }
 
+  // conjunto genérico — só usado como último recurso quando o time reserva
+  // não tem elenco carregado (sem posição de verdade pra cada jogador)
   const INSTRUCTIONS = [
     { key: 'zona', label: 'Zona' },
-    { key: 'individual', label: 'Marc.' },
+    { key: 'individual', label: 'Individual' },
     { key: 'ataque', label: 'Atk+' },
     { key: 'defesa', label: 'Def+' },
-    { key: 'acompanhar', label: 'Acomp' },
   ];
+
+  // instruções específicas por posição — cada opção tem um efeito real no
+  // motor de movimento/decisão (ver updatePlayer, pickPassTarget,
+  // attemptShoot e o roubo de bola em updateBall)
+  const INSTRUCTION_SETS = {
+    zagueiro: [
+      { key: 'zona', label: 'Marc. Zona' },
+      { key: 'individual', label: 'Individual' },
+      { key: 'sobra', label: 'Sobra' },
+      { key: 'marcar_frente', label: 'Marcar à Frente' },
+    ],
+    lateral: [
+      { key: 'zona', label: 'Padrão' },
+      { key: 'apoiador', label: 'Apoiador' },
+      { key: 'defensivo', label: 'Defensivo' },
+      { key: 'por_dentro', label: 'Por Dentro' },
+      { key: 'aberto', label: 'Aberto' },
+    ],
+    volante: [
+      { key: 'mais_marcacao', label: 'Marcação' },
+      { key: 'saida_rapida', label: 'Saída Rápida' },
+      { key: 'classico', label: 'Clássico' },
+      { key: 'racudo', label: 'Raçudo' },
+    ],
+    meia: [
+      { key: 'dez_classico', label: '10 Clássico' },
+      { key: 'fazedor_tabela', label: 'Tabela' },
+      { key: 'lancamento_preciso', label: 'Lançamento' },
+      { key: 'zona', label: 'Padrão' },
+    ],
+    ponta: [
+      { key: 'facao', label: 'Facão' },
+      { key: 'aberto', label: 'Aberto' },
+      { key: 'forca', label: 'Força' },
+      { key: 'habilidade', label: 'Habilidade' },
+    ],
+    atacante: [
+      { key: 'driblador', label: '1x1' },
+      { key: 'cabeceio', label: 'Cabeceio' },
+      { key: 'fazedor_tabela', label: 'Tabela' },
+      { key: 'finalizador', label: 'Finalizador' },
+      { key: 'chute_forte', label: 'Chute Forte' },
+    ],
+  };
+
+  // mapeia a posição do elenco (squad.js) pro conjunto de instruções certo
+  const POSITION_INSTRUCTION_GROUP = {
+    zagueiro: 'zagueiro', beque_central: 'zagueiro', quarto_zagueiro: 'zagueiro',
+    libero_adiantado: 'zagueiro', libero_retaguarda: 'zagueiro', lateral_zagueiro: 'zagueiro',
+    lateral: 'lateral', lateral_ala: 'lateral',
+    volante: 'volante', segundo_volante: 'volante', meia_defensivo: 'volante',
+    meia_ofensivo: 'meia', motorzinho: 'meia',
+    atacante_pontas: 'ponta',
+    segundo_atacante: 'atacante', centro_avante: 'atacante',
+  };
+
+  function instructionSetFor(p) {
+    const group = p.position && POSITION_INSTRUCTION_GROUP[p.position];
+    return (group && INSTRUCTION_SETS[group]) || INSTRUCTIONS;
+  }
 
   // ---------- Tactics ----------
   // d = distance from own goal line (0 = own goal, FIELD_H = opponent's goal)
@@ -552,6 +613,7 @@
       traits: (extra && extra.traits) || [],
       improvised: !!(extra && extra.improvised),
       squadId: (extra && extra.squadId) || null,
+      position: (extra && extra.position) || null,
       yellowCards: 0, redCard: false, staggerMs: 0,
       fatigue: 0, fatigueNarrated: false,
       rating: (extra && extra.rating) || 60,
@@ -608,12 +670,12 @@
       const fromLineup = (homeLineup && tacticKey === homeLineupTacticKey) ? selectStartersFromLineup(homeSquad, homeLineup) : null;
       const { gk, outfield, bench } = fromLineup || selectStarters(homeSquad, tacticKey);
       homeBench = bench;
-      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits, squadId: gk.id, rating: gk.rating, condition: gk.condition } : null;
+      const gkExtra = gk ? { name: gk.name, foot: gk.foot, traits: gk.traits, squadId: gk.id, rating: gk.rating, condition: gk.condition, position: gk.position } : null;
       const list = [makePlayer('home', 'GK', gk ? gk.number : 1, 200, gkY, gkExtra)];
       tactic.slots.forEach((slot, i) => {
         const { x, y } = slotToXY('home', slot);
         const entry = outfield[i];
-        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id, rating: entry.player.rating, condition: entry.player.condition } : null;
+        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id, rating: entry.player.rating, condition: entry.player.condition, position: entry.player.position } : null;
         list.push(makePlayer('home', 'OUT', entry ? entry.player.number : i + 2, x, y, extra));
       });
       return list;
@@ -801,7 +863,7 @@
       row.appendChild(num);
       const btnWrap = document.createElement('div');
       btnWrap.className = 'instr-btns';
-      INSTRUCTIONS.forEach((opt) => {
+      instructionSetFor(p).forEach((opt) => {
         const b = document.createElement('button');
         b.className = 'instr-btn' + ((p.instruction || 'zona') === opt.key ? ' active' : '');
         b.textContent = opt.label;
@@ -831,7 +893,7 @@
       const activeKey = p.pendingInstruction || p.instruction || 'zona';
       const btnWrap = document.createElement('div');
       btnWrap.className = 'side-instr-btns';
-      INSTRUCTIONS.forEach((opt) => {
+      instructionSetFor(p).forEach((opt) => {
         const b = document.createElement('button');
         b.className = 'side-instr-btn' + (activeKey === opt.key ? ' active' : '');
         b.textContent = opt.label;
@@ -995,13 +1057,20 @@
 
     // pontua cada companheiro por avanço + espaço livre (marcação), penalizando
     // levemente passes muito longos — bem melhor que "sempre o mais adiantado",
-    // que ignorava se o cara estava marcado ou impedido
+    // que ignorava se o cara estava marcado ou impedido. A instrução de quem
+    // está passando ajusta os pesos: lançamento aceita passe mais longo,
+    // saída rápida e tabela preferem opção curta e segura por perto
+    let advW = 0.55, openW = 1.3, distPenaltyW = 0.4, distPenaltyFree = 220;
+    if (p.instruction === 'lancamento_preciso') { distPenaltyW = 0.15; advW = 0.75; }
+    else if (p.instruction === 'saida_rapida') { advW = 0.3; openW = 1.6; distPenaltyW = 0.7; distPenaltyFree = 130; }
+    else if (p.instruction === 'fazedor_tabela') { distPenaltyW = 0.9; distPenaltyFree = 90; openW = 1.5; }
+
     function scoreFor(m) {
       const advancement = forward < 0 ? (FIELD_H - m.y) : m.y;
       const marker = nearestTo(opponents, m);
       const openness = marker ? dist(m, marker) : 200;
       const distFromPasser = dist(p, m);
-      return advancement * 0.55 + openness * 1.3 - Math.max(0, distFromPasser - 220) * 0.4;
+      return advancement * advW + openness * openW - Math.max(0, distFromPasser - distPenaltyFree) * distPenaltyW;
     }
 
     const onside = mates.filter((m) => !isPassOffside(p, m));
@@ -1011,7 +1080,8 @@
       const s = scoreFor(m);
       if (s > bestScore) { bestScore = s; target = m; }
     }
-    const power = Math.min(260, Math.max(150, dist(p, target) * 0.9 + 70));
+    let power = Math.min(260, Math.max(150, dist(p, target) * 0.9 + 70));
+    if (p.instruction === 'lancamento_preciso') power = Math.min(270, power * 1.08);
     return { target, power };
   }
 
@@ -1040,7 +1110,12 @@
     lastAssistCandidate = ball.assistCandidate; // captura antes do próprio chute limpar ball.assistCandidate
     const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
     const accuracyMult = 1.3 - ((p.rating || 60) / 100) * 0.6;
-    const missChance = bonus ? 0.03 : Math.max(0.03, Math.min(0.3, 0.35 - (p.rating || 60) / 200));
+    let missChance = bonus ? 0.03 : Math.max(0.03, Math.min(0.3, 0.35 - (p.rating || 60) / 200));
+    let powerMult = bonus ? 1.15 : 1;
+    // finalizador/cabeceio: bem mais frio na hora de definir; chute forte:
+    // bate mais forte, mas perde um pouco de precisão em troca
+    if (p.instruction === 'finalizador' || p.instruction === 'cabeceio') missChance *= 0.75;
+    if (p.instruction === 'chute_forte') { powerMult *= 1.12; missChance = Math.min(0.4, missChance * 1.15); }
     let spread;
     if (Math.random() < missChance) {
       // chute mal ajustado, vai claramente para fora do gol
@@ -1050,7 +1125,7 @@
       spread = (Math.random() - 0.5) * (bonus ? 14 : 32) * accuracyMult;
     }
     spread += footBias(p.foot);
-    kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * (bonus ? 1.15 : 1));
+    kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * powerMult);
   }
 
   function attemptPass(p, pass) {
@@ -1112,7 +1187,13 @@
             steerX = (awayX / oppDist) * (1 - oppDist / DRIBBLE_PRESSURE_R);
           }
         }
-        let tx = p.x + steerX * 70;
+        // driblador/habilidade escapam melhor da marcação; facão/aberto
+        // puxam o drible pra dentro ou pra linha lateral, respectivamente
+        const evasionMult = (p.instruction === 'driblador' || p.instruction === 'habilidade') ? 1.6 : 1;
+        let lateralPull = 0;
+        if (p.instruction === 'facao') lateralPull = (p.x > FIELD_W / 2 ? -1 : 1) * 18;
+        else if (p.instruction === 'aberto') lateralPull = (p.x > FIELD_W / 2 ? 1 : -1) * 18;
+        let tx = p.x + steerX * 70 * evasionMult + lateralPull;
         let ty = p.y + forward * 90;
         tx = Math.max(CLAMP_X_MIN + 10, Math.min(CLAMP_X_MAX - 10, tx));
         const dx = tx - p.x, dy = ty - p.y;
@@ -1146,11 +1227,29 @@
           }
         } else {
           const baseDrift = TACTICS[p.team === 'home' ? homeTactic : awayTactic].drift;
-          const drift = instr === 'acompanhar' ? Math.min(0.65, baseDrift + 0.3)
-            : instr === 'defesa' ? Math.max(0.1, baseDrift - 0.15)
-            : baseDrift;
-          const yBias = instr === 'ataque' ? forward * 55 : instr === 'defesa' ? -forward * 55 : 0;
-          tx = p.baseX + (ball.x - 200) * drift;
+          // cada instrução específica de posição empurra o jogador de um jeito
+          // diferente: mais/menos pra frente (driftDelta/yBiasExtra) ou mais
+          // pro centro/pra linha lateral (xBiasSign)
+          let driftDelta = 0, yBiasExtra = 0, xBiasSign = 0;
+          switch (instr) {
+            case 'ataque': yBiasExtra = forward * 55; break;
+            case 'defesa': driftDelta = -0.15; yBiasExtra = -forward * 55; break;
+            case 'sobra': driftDelta = -0.12; yBiasExtra = -forward * 35; break;
+            case 'marcar_frente': driftDelta = 0.15; yBiasExtra = forward * 30; break;
+            case 'apoiador': driftDelta = 0.28; yBiasExtra = forward * 45; break;
+            case 'defensivo': driftDelta = -0.15; yBiasExtra = -forward * 30; break;
+            case 'por_dentro': xBiasSign = -1; break;
+            case 'aberto': xBiasSign = 1; break;
+            case 'facao': xBiasSign = -1; yBiasExtra = forward * 15; break;
+            case 'mais_marcacao': driftDelta = -0.12; yBiasExtra = -forward * 25; break;
+            case 'racudo': driftDelta = 0.08; break;
+            case 'dez_classico': driftDelta = 0.15; break;
+            default: break; // zona/padrão/clássico/individual-fallback/etc.
+          }
+          const drift = Math.max(0.05, Math.min(0.7, baseDrift + driftDelta));
+          const yBias = yBiasExtra;
+          const xBiasAmount = xBiasSign !== 0 ? xBiasSign * (40 + advancement * 20) : 0;
+          tx = p.baseX + (ball.x - 200) * drift + xBiasAmount;
           ty = p.baseY + (ball.y - p.baseY) * 0.15 + yBias;
 
           // sem a bola no pé, o time ainda se move: quem tem a bola ganha apoio
@@ -1228,14 +1327,17 @@
         else p.facing = { x: 0, y: p.team === 'home' ? -1 : 1 };
         return;
       }
-      const nearGoal = p.team === 'home' ? p.y < 260 : p.y > FIELD_H - 260;
+      // finalizador arrisca o chute de mais longe em vez de só perto do gol
+      const shootRange = p.instruction === 'finalizador' ? 300 : 260;
+      const nearGoal = p.team === 'home' ? p.y < shootRange : p.y > FIELD_H - shootRange;
       if (nearGoal) {
         const bonus = !!ball.freeKickBonus;
         ball.freeKickBonus = false;
         attemptShoot(p, bonus);
       } else if (ball.aiCooldown <= 0) {
         const pass = pickPassTarget(p);
-        if (pass && Math.random() < 0.6) {
+        const passChance = p.instruction === 'finalizador' ? 0.45 : 0.6;
+        if (pass && Math.random() < passChance) {
           attemptPass(p, pass);
         } else {
           p.facing = { x: 0, y: p.team === 'home' ? -1 : 1 };
@@ -1321,13 +1423,18 @@
         // defensor mais bem avaliado rouba mais, driblador mais bem avaliado resiste mais
         const ratingDiff = (pickupCandidate.rating || 60) - (ball.owner.rating || 60);
         let stealChance = Math.max(0.015, Math.min(0.16, STEAL_CHANCE + ratingDiff * 0.0015));
+        // força/habilidade seguram mais a bola; raçudo rouba mais (mas comete mais faltas)
+        if (ball.owner.instruction === 'forca' || ball.owner.instruction === 'habilidade') stealChance *= 0.8;
+        let foulChance = FOUL_CHANCE;
+        if (pickupCandidate.instruction === 'racudo') { stealChance *= 1.25; foulChance *= 1.4; }
         const moraleAdj = moraleStealAdjust();
         if (pickupCandidate.team === 'home') stealChance = Math.max(0.01, stealChance + moraleAdj);
         else if (ball.owner.team === 'home') stealChance = Math.max(0.01, stealChance - moraleAdj);
-        if (roll < FOUL_CHANCE) {
+        stealChance = Math.max(0.01, Math.min(0.2, stealChance));
+        if (roll < foulChance) {
           commitFoul(pickupCandidate, ball.owner);
           return;
-        } else if (roll < FOUL_CHANCE + stealChance) {
+        } else if (roll < foulChance + stealChance) {
           const previousOwner = ball.owner;
           ball.owner = pickupCandidate;
           ball.lastToucher = pickupCandidate;
@@ -1394,7 +1501,7 @@
   function substitutePlayer(outPlayer, inData) {
     const idx = players.indexOf(outPlayer);
     if (idx < 0) return null;
-    const extra = { name: inData.name, foot: inData.foot, traits: inData.traits || [], squadId: inData.id || null, rating: inData.rating, condition: inData.condition };
+    const extra = { name: inData.name, foot: inData.foot, traits: inData.traits || [], squadId: inData.id || null, rating: inData.rating, condition: inData.condition, position: inData.position };
     const newPlayer = makePlayer(outPlayer.team, outPlayer.role, inData.number, outPlayer.x, outPlayer.y, extra);
     newPlayer.baseX = outPlayer.baseX;
     newPlayer.baseY = outPlayer.baseY;

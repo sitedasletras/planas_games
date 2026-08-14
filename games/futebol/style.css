@@ -596,17 +596,19 @@ canvas {
 
 .instr-btns {
   display: flex;
+  flex-wrap: wrap;
   gap: 3px;
   flex: 1;
 }
 
 .instr-btn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 44px;
   background: #0e1c15;
   color: #ccc;
   border: 1px solid transparent;
   border-radius: 4px;
-  padding: 5px 2px;
+  padding: 5px 4px;
   font-size: 0.62rem;
   font-weight: bold;
   cursor: pointer;
