@@ -5,6 +5,7 @@
   const FIELD_W = 400, FIELD_H = 711;
   const GOAL_W = 120;
   const GOAL_L = (FIELD_W - GOAL_W) / 2, GOAL_R = GOAL_L + GOAL_W;
+  const GOAL_NET_DEPTH = 24; // profundidade visual do "caixote" da rede, desenhado pra dentro do campo
   const WALL_MIN = 14, WALL_MAX = FIELD_W - 14;
   const PLAYER_R = 13, BALL_R = 7;
   const CLAMP_Y_MIN = 16, CLAMP_Y_MAX = FIELD_H - 16;
@@ -24,7 +25,7 @@
   // ---------- Clock ----------
   // Each half shows 46 game-minutes on the scoreboard, compressed into
   // HALF_REAL_SECONDS of actual wall-clock play.
-  const HALF_REAL_SECONDS = 110; // 1:50
+  const HALF_REAL_SECONDS = 170; // 2:50 — mais devagar, dá tempo de acompanhar faltas/barreiras
   const HALF_DISPLAY_MINUTES = 46;
   const HALF_DISPLAY_SECONDS = HALF_DISPLAY_MINUTES * 60;
   const CLOCK_SCALE = HALF_DISPLAY_SECONDS / HALF_REAL_SECONDS; // game-seconds per real-second
@@ -40,11 +41,11 @@
   const YELLOW_CHANCE_HARD = 0.25;
   const RED_CHANCE_HARD = 0.03;
   const STAGGER_MS = 900;          // hard foul knocks the fouled player down briefly
-  const CLOSE_FK_RANGE = 150, LONG_FK_RANGE = 280;
+  const CLOSE_FK_RANGE = 150, LONG_FK_RANGE = 320;
   const WALL_MIN_DIST = 55; // minimum distance defenders are pushed back on a free kick
   const MAX_SUBS = 5;
   const STOPPAGE_MS = 1100;
-  const WALL_STOPPAGE_BONUS_MS = 900; // tempo extra pra dar pra ver a barreira se formando
+  const WALL_STOPPAGE_BONUS_MS = 1400; // tempo extra pra dar pra ver a barreira se formando
   const SIDE_STOPPAGE_MS = 700;
   const PENALTY_VAR_CONFIRM_CHANCE = 0.75;
   const PENALTY_GOAL_CHANCE = 0.76;
@@ -2158,11 +2159,45 @@
     ctx.strokeRect(GOAL_L - 40, 10, GOAL_W + 80, 90);
     ctx.strokeRect(GOAL_L - 40, FIELD_H - 100, GOAL_W + 80, 90);
 
-    // goals
+    // gols — o campo já ocupa a altura toda do canvas, então a rede não
+    // cabe "atrás" da linha (ficaria cortada); desenha o caixote pra
+    // DENTRO do campo, logo depois da linha, pra ficar visível de verdade
+    drawGoalNet(0, GOAL_NET_DEPTH);
+    drawGoalNet(FIELD_H, -GOAL_NET_DEPTH);
+  }
+
+  // frontY = linha do gol; depthSign = pra onde a rede "entra" no campo
+  function drawGoalNet(frontY, depthSign) {
+    const backY = frontY + depthSign;
+    const top = Math.min(frontY, backY), bottom = Math.max(frontY, backY);
+
+    const grad = ctx.createLinearGradient(0, frontY, 0, backY);
+    grad.addColorStop(0, 'rgba(255,255,255,0.32)');
+    grad.addColorStop(1, 'rgba(255,255,255,0.05)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(GOAL_L, top, GOAL_W, bottom - top);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = GOAL_L; x <= GOAL_R; x += 12) {
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+    }
+    for (let y = top; y <= bottom; y += 8) {
+      ctx.moveTo(GOAL_L, y);
+      ctx.lineTo(GOAL_R, y);
+    }
+    ctx.stroke();
+
     ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(GOAL_L, top, GOAL_W, bottom - top);
     ctx.lineWidth = 4;
-    ctx.strokeRect(GOAL_L, -14, GOAL_W, 14);
-    ctx.strokeRect(GOAL_L, FIELD_H, GOAL_W, 14);
+    ctx.beginPath();
+    ctx.moveTo(GOAL_L, frontY);
+    ctx.lineTo(GOAL_R, frontY);
+    ctx.stroke();
   }
 
   function drawOffsideLine() {
