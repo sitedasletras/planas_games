@@ -46,6 +46,8 @@
   const MAX_SUBS = 5;
   const STOPPAGE_MS = 1100;
   const WALL_STOPPAGE_BONUS_MS = 1400; // tempo extra pra dar pra ver a barreira se formando
+  const CONFUSION_CHANCE = 0.18;   // chance de virar confusão após falta dura com cartão
+  const CONFUSION_BONUS_MS = 1300; // tempo extra de pausa pra mostrar a confusão
   const SIDE_STOPPAGE_MS = 700;
   const PENALTY_VAR_CONFIRM_CHANCE = 0.75;
   const PENALTY_GOAL_CHANCE = 0.76;
@@ -465,6 +467,7 @@
   let awaySubMinutes = [12 + Math.random() * 10, 24 + Math.random() * 8, 34 + Math.random() * 8];
   let awaySubWindowIdx = 0;
   let awayPostureAppliedMinute = -1;
+  let matchHadConfusion = false; // pra entrevista pós-jogo perguntar sobre o climão
 
   // narração
   let narrationLog = [];
@@ -763,6 +766,7 @@
 
   function resetMatch() {
     matchParticipants = [];
+    matchHadConfusion = false;
     awayTactic = TACTIC_KEYS[Math.floor(Math.random() * TACTIC_KEYS.length)];
     resetPositions(false);
     score = { home: 0, away: 0 };
@@ -1733,13 +1737,37 @@
       (cardResult ? ' ' + (cardResult === 'yellow' ? 'Cartão amarelo' : cardResult === 'red' ? 'Cartão vermelho' : '2º amarelo, vermelho!') + ' p/ ' + displayName(defender) + '.' : ''));
 
     checkInjury(hard, attackerWithBall);
+
+    // falta dura com cartão às vezes esquenta o ânimo dos dois times — vira
+    // confusão, com chance de mais um jogador ser advertido e uma pausa
+    // maior pra mostrar o climão (fica registrado pra pauta da entrevista)
+    const triggerConfusion = hard && !!cardResult && Math.random() < CONFUSION_CHANCE;
+    let confusionExtraCardColor = null;
+    if (triggerConfusion) {
+      matchHadConfusion = true;
+      const bystanders = players.filter((p) => p.role !== 'GK' && p !== defender && p !== attackerWithBall && p.staggerMs <= 0);
+      const extra = bystanders.length ? bystanders[Math.floor(Math.random() * bystanders.length)] : null;
+      const extraResult = extra ? bookPlayer(extra, false) : null;
+      if (extraResult) {
+        confusionExtraCardColor = extraResult === 'yellow' ? '#ffd54a' : '#b02c2c';
+        narrate('Confusão generalizada! Jogadores dos dois times se estranham após o lance. Cartão amarelo também p/ ' + displayName(extra) + '.');
+      } else {
+        narrate('Confusão generalizada! Jogadores dos dois times se estranham após o lance.');
+      }
+      sub += ' — confusão em campo';
+    }
+
     const wallFormed = awardFreeKick(attackerWithBall.team, spot);
     if (wallFormed) {
       narrate(teamLabel(defender.team) + ' monta a barreira.');
       sub += ' — barreira montada';
     }
-    stopPause = wallFormed ? STOPPAGE_MS + WALL_STOPPAGE_BONUS_MS : STOPPAGE_MS;
+    stopPause = STOPPAGE_MS + (wallFormed ? WALL_STOPPAGE_BONUS_MS : 0) + (triggerConfusion ? CONFUSION_BONUS_MS : 0);
     showStoppage(hard ? 'FALTA DURA!' : 'FALTA!', sub);
+    if (triggerConfusion) {
+      drawConfusionReplay(confusionExtraCardColor);
+      if (replayCanvas) replayCanvas.classList.remove('hidden');
+    }
   }
 
   function commitPenaltyFoul(defender, attackerWithBall, spot) {
@@ -1903,6 +1931,18 @@
       rctx.lineTo(18, -24);
       rctx.stroke();
       rctx.restore();
+    } else if (pose === 'confusao') {
+      // pernas fincadas, braços erguidos discutindo/empurrando
+      rctx.beginPath();
+      rctx.moveTo(x - 1, groundY - 18);
+      rctx.lineTo(x - 7, groundY);
+      rctx.moveTo(x - 1, groundY - 18);
+      rctx.lineTo(x + 7, groundY);
+      rctx.moveTo(x, headY + 12);
+      rctx.lineTo(x - 14, headY);
+      rctx.moveTo(x, headY + 12);
+      rctx.lineTo(x + 14, headY);
+      rctx.stroke();
     } else {
       // parado, torcendo/observando
       rctx.beginPath();
@@ -1916,6 +1956,52 @@
       rctx.lineTo(x + 9, headY + 22);
       rctx.stroke();
     }
+  }
+
+  function drawReferee(rctx, x, groundY, cardColor) {
+    rctx.strokeStyle = '#111';
+    rctx.fillStyle = '#111';
+    rctx.lineWidth = 4;
+    rctx.lineCap = 'round';
+    const headY = groundY - 40;
+    rctx.beginPath();
+    rctx.arc(x, headY, 7, 0, Math.PI * 2);
+    rctx.fill();
+    rctx.beginPath();
+    rctx.moveTo(x, headY + 7);
+    rctx.lineTo(x, groundY - 18);
+    rctx.moveTo(x, groundY - 18);
+    rctx.lineTo(x - 6, groundY);
+    rctx.moveTo(x, groundY - 18);
+    rctx.lineTo(x + 6, groundY);
+    rctx.moveTo(x, headY + 10);
+    rctx.lineTo(x + 4, headY - 22);
+    rctx.stroke();
+    rctx.fillStyle = cardColor;
+    rctx.fillRect(x - 2, headY - 34, 10, 14);
+  }
+
+  function drawConfusionReplay(extraCardColor) {
+    if (!replayCtx) return;
+    const w = replayCanvas.width, h = replayCanvas.height;
+    const groundY = h - 22;
+    replayCtx.clearRect(0, 0, w, h);
+    replayCtx.fillStyle = '#153020';
+    replayCtx.fillRect(0, 0, w, h);
+    replayCtx.fillStyle = '#2f9e44';
+    replayCtx.fillRect(0, groundY, w, h - groundY);
+    replayCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+    replayCtx.lineWidth = 2;
+    replayCtx.beginPath();
+    replayCtx.moveTo(0, groundY);
+    replayCtx.lineTo(w, groundY);
+    replayCtx.stroke();
+
+    drawSideFigure(replayCtx, 80, groundY, homeColors.primary, 'confusao');
+    drawSideFigure(replayCtx, 106, groundY, '#b02c2c', 'confusao');
+    drawSideFigure(replayCtx, 136, groundY, homeColors.primary, 'confusao');
+    drawSideFigure(replayCtx, 162, groundY, '#b02c2c', 'confusao');
+    drawReferee(replayCtx, 226, groundY, extraCardColor || '#ffd54a');
   }
 
   function drawGoalReplay(scoringTeam) {
@@ -2129,6 +2215,17 @@
         answers: [
           { text: 'Vamos cuidar dele com calma no departamento médico, sem pressa.', delta: 1, reaction: 'Postura responsável com a saúde do elenco é bem vista.' },
           { text: 'É um desfalque sensível, vamos sentir a falta dele.', delta: -1, reaction: 'A preocupação pública deixa o grupo um pouco tenso.' },
+          { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
+        ],
+      });
+    }
+
+    if (matchHadConfusion) {
+      topics.push({
+        question: 'Rolou confusão em campo hoje — como o senhor avalia o climão entre os times?',
+        answers: [
+          { text: 'Faz parte do jogo, o importante é manter o foco na bola.', delta: 1, reaction: 'Resposta serena, passa tranquilidade pro grupo.' },
+          { text: 'O outro time provocou, meus jogadores só reagiram.', delta: -1, reaction: 'Declaração inflamada pode esquentar ainda mais o clima pro próximo confronto.' },
           { text: 'Prefiro não comentar agora.', delta: 0, reaction: 'Você evita a entrevista. Nem bem nem mal — só passou batido.' },
         ],
       });
