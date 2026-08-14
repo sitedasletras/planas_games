@@ -11,7 +11,7 @@
   const MAX_HEADLINES = 10;
 
   function freshCalendar() {
-    return { nextMatchAt: null, lastMatch: null, headlines: [], lastAdSkipDay: null };
+    return { nextMatchAt: null, lastMatch: null, headlines: [] };
   }
 
   function loadCalendar() {
@@ -48,17 +48,18 @@
   }
 
   // ---------- Assistir vídeo pra adiantar um dia ----------
-  // limitado a 1 vez por dia real (não de jogo) — senão dava pra encadear
-  // vídeos e zerar o cooldown inteiro entre partidas de uma vez
+  // sem limite de "1x por dia real" — o próprio cooldown (3 dias de jogo)
+  // já limita a no máximo 3 vídeos seguidos até a partida liberar. Quem
+  // trava o "assistir 3 de uma vez sem sentir nada" é a tela de clube.js,
+  // que exige passar por um resumo do dia (treino/preparação/etc.) entre
+  // um vídeo e outro antes de deixar assistir o próximo
   function canWatchAdToSkipDay(cal) {
-    if (isMatchAvailable(cal)) return false;
-    return cal.lastAdSkipDay !== new Date().toDateString();
+    return !isMatchAvailable(cal);
   }
 
   function watchAdToSkipDay(cal) {
     if (!canWatchAdToSkipDay(cal)) return { ok: false };
     cal.nextMatchAt = Math.max(Date.now(), cal.nextMatchAt - GAME_DAY_REAL_MS);
-    cal.lastAdSkipDay = new Date().toDateString();
     saveCalendar(cal);
     return { ok: true };
   }

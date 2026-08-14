@@ -25,6 +25,10 @@
   const adSubEl = document.getElementById('ad-sub');
   const adBarFillEl = document.getElementById('ad-bar-fill');
   const adCloseBtnEl = document.getElementById('ad-close-btn');
+  const dayReportOverlayEl = document.getElementById('day-report-overlay');
+  const dayReportTextEl = document.getElementById('day-report-text');
+  const dayReportExtraEl = document.getElementById('day-report-extra');
+  const dayReportContinueBtnEl = document.getElementById('day-report-continue-btn');
 
   function renderMedicoBadge() {
     if (!activityMedicoEl || !window.WSPSquad) return;
@@ -371,6 +375,34 @@
     }, stepMs);
   }
 
+  // depois de cada vídeo, mostra um resumo do dia (treino/preparação/etc.)
+  // em vez de já liberar o próximo vídeo direto — assim dá pra encadear
+  // vários dias sem virar "clique 3x seguido sem sentir nada acontecer"
+  const DAY_EVENTS = [
+    'O elenco fez um treino tático leve durante o dia.',
+    'Sessão de vídeo com a comissão técnica pra estudar o próximo adversário.',
+    'Departamento médico acompanhou de perto a recuperação dos machucados.',
+    'Preparação física trabalhou o condicionamento do grupo.',
+    'Reapresentação no CT, com atividades regenerativas pro elenco.',
+    'Comissão técnica revisou os últimos resultados com o time.',
+  ];
+
+  function showDayReport() {
+    dayReportTextEl.textContent = DAY_EVENTS[Math.floor(Math.random() * DAY_EVENTS.length)];
+    dayReportExtraEl.textContent = '';
+    if (window.WSPSquad) {
+      const squad = window.WSPSquad.loadSquad();
+      const fisicaLevel = (club.departments && club.departments.preparador_fisico) || 0;
+      window.WSPSquad.applyConditionRecovery(squad, fisicaLevel);
+      window.WSPSquad.saveSquad(squad);
+      if (squad.players.length) {
+        const avgCondition = Math.round(squad.players.reduce((s, p) => s + (p.condition || 100), 0) / squad.players.length);
+        dayReportExtraEl.textContent = 'Condicionamento médio do elenco: ' + avgCondition + '%.';
+      }
+    }
+    dayReportOverlayEl.classList.remove('hidden');
+  }
+
   if (calendarAdBtnEl) {
     calendarAdBtnEl.addEventListener('click', openAdOverlay);
   }
@@ -379,6 +411,13 @@
       const cal = window.WSPCalendar.loadCalendar();
       window.WSPCalendar.watchAdToSkipDay(cal);
       adOverlayEl.classList.add('hidden');
+      calendarAdBtnEl.classList.add('hidden'); // só reaparece depois de confirmar o resumo do dia
+      showDayReport();
+    });
+  }
+  if (dayReportContinueBtnEl) {
+    dayReportContinueBtnEl.addEventListener('click', () => {
+      dayReportOverlayEl.classList.add('hidden');
       renderCalendar();
     });
   }
