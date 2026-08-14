@@ -415,18 +415,35 @@ canvas {
   cursor: pointer;
 }
 
+.replay-wrap {
+  position: relative;
+  max-width: 300px;
+  margin: 4px auto 14px;
+}
+
+.replay-wrap.hidden {
+  display: none;
+}
+
 .replay-canvas {
   display: block;
   width: 100%;
-  max-width: 300px;
   height: auto;
-  margin: 4px auto 14px;
   border-radius: 10px;
   background: #1b3a24;
 }
 
-.replay-canvas.hidden {
-  display: none;
+.replay-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 4px;
 }
 
 .overlay-btn.hidden {

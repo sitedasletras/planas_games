@@ -52,6 +52,7 @@
   const PENALTY_VAR_CONFIRM_CHANCE = 0.75;
   const PENALTY_GOAL_CHANCE = 0.76;
   const PENALTY_STOPPAGE_MS = 1800;
+  const VAR_REVIEW_MS = 1900;
 
   // ---------- Fadiga / lesão ----------
   const FATIGUE_RATE_PER_SEC = 0.0032;
@@ -388,6 +389,7 @@
   const overlayTitle = document.getElementById('overlay-title');
   const overlaySub = document.getElementById('overlay-sub');
   const overlayRestart = document.getElementById('overlay-restart');
+  const replayWrapEl = document.getElementById('replay-wrap');
   const replayCanvas = document.getElementById('replay-canvas');
   const replayCtx = replayCanvas ? replayCanvas.getContext('2d') : null;
   const pressOverlay = document.getElementById('press-overlay');
@@ -488,6 +490,7 @@
     return 1;
   }
   let pendingPenalty = null; // { team, taker, takerName } enquanto uma cobrança de pênalti está em andamento
+  let pendingVarReview = null; // { defender, attackerWithBall, spot } enquanto o VAR está revendo o lance
   let pendingKickoffReset = false; // adia o reposicionamento pro kickoff até o fim da comemoração do gol
   let matchParticipants = []; // todo jogador que entrou em campo na partida, pra nota pós-jogo
   let matchInjuriesThisGame = []; // { name, label } — lesões persistentes sofridas nesta partida, pra coletiva
@@ -1769,7 +1772,7 @@
     showStoppage(hard ? 'FALTA DURA!' : 'FALTA!', sub);
     if (triggerConfusion) {
       drawConfusionReplay(confusionExtraCardColor);
-      if (replayCanvas) replayCanvas.classList.remove('hidden');
+      if (replayWrapEl) replayWrapEl.classList.remove('hidden');
     }
   }
 
@@ -1779,6 +1782,20 @@
       ? 'Falta na área! A torcida grita por pênalti!'
       : 'Falta na área... muita reclamação, a torcida da casa fica apreensiva.');
     narrate('O árbitro vai rever o lance no VAR...');
+
+    pendingVarReview = { defender, attackerWithBall, spot };
+    stopPause = VAR_REVIEW_MS;
+    showStoppage('REVISÃO NO VAR', 'O árbitro está revendo o lance...');
+    if (replayCtx) {
+      drawVarReplay();
+      replayWrapEl.classList.remove('hidden');
+    }
+  }
+
+  function resolveVarReview() {
+    const { defender, attackerWithBall, spot } = pendingVarReview;
+    pendingVarReview = null;
+    const benefitsHome = attackerWithBall.team === 'home';
 
     const confirmed = Math.random() < PENALTY_VAR_CONFIRM_CHANCE;
     if (!confirmed) {
@@ -1811,6 +1828,47 @@
     narrate('PÊNALTI CONFIRMADO' + (benefitsHome ? '! A torcida vibra!' : ' contra o ' + teamLabel('home') + '...') + cardNote);
     checkInjury(hard, attackerWithBall);
     awardPenalty(attackerWithBall.team);
+  }
+
+  // cena de perfil do árbitro checando o lance no monitor à beira do campo
+  function drawVarReplay() {
+    if (!replayCtx) return;
+    const w = replayCanvas.width, h = replayCanvas.height;
+    const groundY = h - 22;
+    replayCtx.clearRect(0, 0, w, h);
+    replayCtx.fillStyle = '#153020';
+    replayCtx.fillRect(0, 0, w, h);
+    replayCtx.fillStyle = '#2f9e44';
+    replayCtx.fillRect(0, groundY, w, h - groundY);
+    replayCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+    replayCtx.lineWidth = 2;
+    replayCtx.beginPath();
+    replayCtx.moveTo(0, groundY);
+    replayCtx.lineTo(w, groundY);
+    replayCtx.stroke();
+
+    // monitor do VAR: uma tela pequena numa haste, com um "X" de estática
+    const monitorX = w / 2 + 30, monitorY = groundY - 70;
+    replayCtx.strokeStyle = '#ccc';
+    replayCtx.lineWidth = 3;
+    replayCtx.beginPath();
+    replayCtx.moveTo(monitorX, groundY);
+    replayCtx.lineTo(monitorX, monitorY + 24);
+    replayCtx.stroke();
+    replayCtx.fillStyle = '#0e1c15';
+    replayCtx.fillRect(monitorX - 20, monitorY - 16, 40, 30);
+    replayCtx.strokeStyle = '#ffd54a';
+    replayCtx.lineWidth = 2;
+    replayCtx.strokeRect(monitorX - 20, monitorY - 16, 40, 30);
+    replayCtx.beginPath();
+    replayCtx.moveTo(monitorX - 14, monitorY - 10);
+    replayCtx.lineTo(monitorX + 14, monitorY + 8);
+    replayCtx.moveTo(monitorX + 14, monitorY - 10);
+    replayCtx.lineTo(monitorX - 14, monitorY + 8);
+    replayCtx.stroke();
+
+    // árbitro parado de frente pro monitor, mão no fone
+    drawSideFigure(replayCtx, monitorX - 46, groundY, '#111', 'parado');
   }
 
   function awardPenalty(team) {
@@ -2105,8 +2163,8 @@
 
   function showGoal(team) {
     showStoppage('GOL!', teamLabel(team) + ' marcou!');
-    if (replayCanvas) {
-      replayCanvas.classList.remove('hidden');
+    if (replayCtx) {
+      replayWrapEl.classList.remove('hidden');
       animateGoalReplay(team, lastShotOrigin);
     }
   }
@@ -2116,7 +2174,7 @@
     overlayRestart.classList.add('hidden');
     breakActionsEl.classList.add('hidden');
     ratingsSectionEl.classList.add('hidden');
-    if (replayCanvas) replayCanvas.classList.add('hidden');
+    if (replayWrapEl) replayWrapEl.classList.add('hidden');
     if (replayAnimId) { cancelAnimationFrame(replayAnimId); replayAnimId = null; }
     overlay.classList.remove('hidden');
   }
@@ -2642,7 +2700,8 @@
             goalZoomActive = false;
             if (pendingKickoffReset) { resetPositions(true); pendingKickoffReset = false; }
             hideOverlay();
-            if (pendingPenalty) resolvePenalty();
+            if (pendingVarReview) resolveVarReview();
+            else if (pendingPenalty) resolvePenalty();
           }
         } else if (breakKind) {
           breakTimer -= dt * 1000;
