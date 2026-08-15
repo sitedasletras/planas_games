@@ -20,6 +20,12 @@
   .driver-edit-row { display: flex; gap: 6px; }
   .driver-edit-row input[type="text"] { flex: 1; min-width: 0; background: #0e1c15; border: 1px solid #345c48; border-radius: 6px; padding: 6px 8px; color: white; font-size: 0.8rem; }
   .driver-edit-row input.number-input { max-width: 56px; text-align: center; }
+  .driver-role-row { display: flex; gap: 6px; }
+  .driver-role-row button {
+    flex: 1; padding: 7px 4px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0e1c15; color: #cfeede; font-size: 0.68rem; font-weight: bold; cursor: pointer; text-align: center;
+  }
+  .driver-role-row button.active { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
 </style>
 </head>
 <body>
@@ -91,6 +97,21 @@
           + '<span>🏆 ' + (d.careerVitorias || 0) + ' vitórias</span><span>📊 ' + (d.careerPoints || 0) + ' pts carreira</span>'
           + '<span>💪 ' + Math.round(d.condition == null ? 100 : d.condition) + '% condição</span>';
         card.appendChild(stats);
+
+        const roleRow = document.createElement('div');
+        roleRow.className = 'driver-role-row';
+        Object.keys(P.ROLES).forEach((roleKey) => {
+          const btn = document.createElement('button');
+          btn.className = roleKey === d.role ? 'active' : '';
+          btn.textContent = P.ROLES[roleKey].label;
+          btn.addEventListener('click', () => {
+            if (roleKey === d.role) return;
+            P.setDriverRole(equipe, d.id, roleKey);
+            render();
+          });
+          roleRow.appendChild(btn);
+        });
+        card.appendChild(roleRow);
 
         const editRow = document.createElement('div');
         editRow.className = 'driver-edit-row';

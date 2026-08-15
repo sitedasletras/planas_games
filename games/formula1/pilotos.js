@@ -271,6 +271,22 @@
     return { ok: true };
   }
 
+  // troca de função entre pilotos — o jogador escolhe quem é 1º piloto,
+  // 2º piloto e reserva. Faz um swap de verdade: quem já tinha a função
+  // pedida herda a função antiga do piloto que está mudando, então nunca
+  // fica com dois pilotos na mesma função nem uma função vaga
+  function setDriverRole(equipe, driverId, newRole) {
+    if (!ROLES[newRole]) return { ok: false, reason: 'invalid' };
+    const driver = equipe.drivers.find((d) => d.id === driverId);
+    if (!driver) return { ok: false, reason: 'notfound' };
+    if (driver.role === newRole) return { ok: true };
+    const other = equipe.drivers.find((d) => d.id !== driverId && d.role === newRole);
+    if (other) other.role = driver.role;
+    driver.role = newRole;
+    saveEquipe(equipe);
+    return { ok: true };
+  }
+
   function renameClub(equipe, newName) {
     const name = (newName || '').trim();
     if (!name) return { ok: false, reason: 'empty' };
@@ -394,7 +410,7 @@
     MARKET_VALUE_MIN, MARKET_VALUE_MAX,
     careerStageFor, generateSquad, loadSquad, saveSquad: saveEquipe,
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
-    renamePlayer, renumberPlayer, renameClub, advanceSeason, applyValorizacao,
+    renamePlayer, renumberPlayer, renameClub, setDriverRole, advanceSeason, applyValorizacao,
     isInjured, setInjury, clearInjury, reduceInjuryBy,
     applyConditionRecovery, applyMatchConditionDrop,
   };

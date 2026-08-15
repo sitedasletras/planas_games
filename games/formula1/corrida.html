@@ -147,6 +147,7 @@
 
     <div id="strategy-panel" class="panel">
       <h2 id="strategy-title">Estratégia de largada</h2>
+      <p id="strategy-drivers" style="color:#ffd54a; font-weight:bold;"></p>
       <p id="strategy-hint">Escolha o composto de pneu pra largada. Fique de olho no céu — o tempo pode mudar.</p>
       <div class="compound-row" id="compound-row"></div>
       <div id="refuel-block" class="hidden">
@@ -258,6 +259,16 @@
     document.getElementById('session-tag').textContent = isPractice ? 'Treino Livre' : (sessionType === 'sprint' ? 'Corrida Sprint' : 'Corrida');
     if (isPractice) {
       document.getElementById('strategy-title').textContent = 'Pneu do treino';
+    }
+
+    // deixa explícito pra quais pilotos essa estratégia vale — os dois
+    // carros do jogador usam o mesmo composto/combustível/estilo escolhidos
+    // aqui (não dá pra configurar cada carro separado ainda)
+    if (window.WSPF1Pilotos) {
+      const equipe = window.WSPF1Pilotos.loadSquad();
+      const titulares = equipe.drivers.filter((d) => d.role !== 'reserva').map((d) => d.name);
+      const el = document.getElementById('strategy-drivers');
+      if (el && titulares.length) el.textContent = '🏎️ Estratégia para: ' + titulares.join(' e ') + ' (os dois carros usam a mesma escolha)';
     }
 
     if (weekend) renderCircuitInfo(weekend);
