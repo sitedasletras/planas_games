@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>WSP Fórmula 1 — Pilotos</title>
+<script>
+  // se o navegador restaurar essa página do cache de voltar/avançar
+  // (bfcache), os dados podem estar velhos (ex: orçamento/temporada
+  // mudou em outra aba) — recarrega pra pegar o localStorage atual
+  window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
