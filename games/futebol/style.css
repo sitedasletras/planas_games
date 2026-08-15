@@ -5,7 +5,7 @@ html, body {
   background: #0a1a14;
   overflow: hidden;
   touch-action: none;
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   user-select: none;
 }
 
@@ -125,7 +125,9 @@ html, body {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  background: #16281f;
+  background: rgba(22, 40, 31, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 213, 74, 0.15);
   color: white;
   flex-shrink: 0;
 }
@@ -142,9 +144,12 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #0e1c15;
+  background: linear-gradient(135deg, #0e1c15, #162820);
+  border: 1px solid rgba(255, 213, 74, 0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   padding: 4px 10px;
   border-radius: 8px;
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
   font-weight: bold;
   font-size: 1.1rem;
 }
@@ -169,10 +174,21 @@ html, body {
   background: #0e1c15;
   padding: 4px 8px;
   border-radius: 8px;
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
   font-weight: bold;
   color: #ffd54a;
   white-space: nowrap;
   font-size: 0.85rem;
+}
+
+.timer.stoppage-time {
+  animation: timerPulse 1s ease infinite;
+  color: #ff6b6b;
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 #half-label {
@@ -211,8 +227,15 @@ html, body {
   transition: width 0.6s ease;
 }
 
-.pressure-fill-home { background: #2f7d4a; }
-.pressure-fill-away { background: #b02c2c; }
+.pressure-fill-home {
+  background: linear-gradient(90deg, #1a5c2e, #2f7d4a);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.pressure-fill-away {
+  background: linear-gradient(90deg, #b02c2c, #8c2222);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+}
 
 .pressure-label-home, .pressure-label-away {
   position: absolute;
@@ -233,7 +256,7 @@ html, body {
   display: block;
   width: 100%;
   max-width: 400px;
-  background: #0e1c15;
+  background: linear-gradient(90deg, #0e1c15, #162820, #0e1c15);
   color: #ffd54a;
   font-size: 0.68rem;
   font-family: inherit;
@@ -247,6 +270,7 @@ html, body {
   text-overflow: ellipsis;
   flex-shrink: 0;
   min-height: 1.4em;
+  transition: color 0.3s ease;
 }
 
 .sponsor-strip {
@@ -289,6 +313,12 @@ html, body {
   background-size: var(--crowd-dot-size) var(--crowd-dot-size);
   background-position: 4px 4px;
   opacity: var(--crowd-dot-opacity);
+  animation: crowdWave 2s ease-in-out infinite;
+}
+
+@keyframes crowdWave {
+  0%, 100% { --crowd-dot-opacity: 0.1; }
+  50% { --crowd-dot-opacity: 0.18; }
 }
 
 canvas {

@@ -1167,6 +1167,7 @@
     }
     spread += footBias(p.foot);
     kick(p, 200 + spread, attackingGoalY, SHOOT_POWER * powerMult);
+    spawnParticles(ball.x, ball.y, '#ffffff', 8, 3);
   }
 
   function attemptPass(p, pass) {
@@ -1520,6 +1521,7 @@
     }
     lastAssistCandidate = null;
     lastShooter = null;
+    spawnParticles(ball.x, ball.y, '#ffd54a', 30, 8);
     showGoal(scoringTeam);
     pendingKickoffReset = true;
     stopPause = 1400;
@@ -1755,6 +1757,7 @@
 
   function commitFoul(defender, attackerWithBall) {
     const spot = { x: ball.x, y: ball.y };
+    spawnParticles(spot.x, spot.y, '#ff4444', 12, 4);
     if (isInPenaltyBox(spot, attackerWithBall.team)) {
       commitPenaltyFoul(defender, attackerWithBall, spot);
       return;
@@ -2579,11 +2582,19 @@
 
   // ---------- Render ----------
   function drawField() {
-    ctx.fillStyle = '#2f9e44';
-    ctx.fillRect(0, 0, FIELD_W, FIELD_H);
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    for (let i = 0; i < 10; i++) {
-      if (i % 2 === 0) ctx.fillRect(0, (FIELD_H / 10) * i, FIELD_W, FIELD_H / 10);
+    // faixas de corte de grama, mais visíveis que o degradê quase invisível
+    // de antes (0.04 de opacidade sumia contra o verde de fundo)
+    for (let i = 0; i < 14; i++) {
+      ctx.fillStyle = i % 2 === 0 ? '#2d9440' : '#34a84c';
+      ctx.fillRect(0, (FIELD_H / 14) * i, FIELD_W, FIELD_H / 14);
+    }
+
+    // granulação sutil de grama — quebra o aspecto "chapado" das faixas
+    ctx.fillStyle = 'rgba(255,255,255,0.02)';
+    for (let i = 0; i < 160; i++) {
+      const gx = Math.random() * FIELD_W;
+      const gy = Math.random() * FIELD_H;
+      ctx.fillRect(gx, gy, 1, 2);
     }
 
     ctx.strokeStyle = 'rgba(255,255,255,0.85)';
@@ -2596,9 +2607,44 @@
     ctx.arc(FIELD_W / 2, FIELD_H / 2, 55, 0, Math.PI * 2);
     ctx.stroke();
 
-    // penalty boxes
+    // marca do meio-campo
+    ctx.beginPath();
+    ctx.arc(FIELD_W / 2, FIELD_H / 2, 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fill();
+
+    // marcas de pênalti
+    ctx.beginPath();
+    ctx.arc(FIELD_W / 2, 65, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(FIELD_W / 2, FIELD_H - 65, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // arcos de escanteio
+    const cornerR = 12;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(10, 10, cornerR, 0, Math.PI / 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(FIELD_W - 10, 10, cornerR, Math.PI / 2, Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(10, FIELD_H - 10, cornerR, -Math.PI / 2, 0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(FIELD_W - 10, FIELD_H - 10, cornerR, Math.PI, Math.PI * 1.5); ctx.stroke();
+
+    // meia-lua da grande área
+    ctx.beginPath();
+    ctx.arc(FIELD_W / 2, 100, 40, 0, Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(FIELD_W / 2, FIELD_H - 100, 40, Math.PI, 0);
+    ctx.stroke();
+
+    // penalty boxes (grande área)
     ctx.strokeRect(GOAL_L - 40, 10, GOAL_W + 80, 90);
     ctx.strokeRect(GOAL_L - 40, FIELD_H - 100, GOAL_W + 80, 90);
+
+    // pequena área
+    const smallBoxW = 60, smallBoxH = 30;
+    ctx.strokeRect(FIELD_W / 2 - smallBoxW / 2, 10, smallBoxW, smallBoxH);
+    ctx.strokeRect(FIELD_W / 2 - smallBoxW / 2, FIELD_H - 10 - smallBoxH, smallBoxW, smallBoxH);
 
     // gols — a boca do gol fica em cima da linha de fundo de verdade (a
     // borda do retângulo do campo, em y=10/FIELD_H-10) e a rede se estende
@@ -2614,27 +2660,42 @@
     const top = Math.min(frontY, backY), bottom = Math.max(frontY, backY);
 
     const grad = ctx.createLinearGradient(0, frontY, 0, backY);
-    grad.addColorStop(0, 'rgba(255,255,255,0.32)');
-    grad.addColorStop(1, 'rgba(255,255,255,0.05)');
+    grad.addColorStop(0, 'rgba(255,255,255,0.35)');
+    grad.addColorStop(0.5, 'rgba(200,200,200,0.15)');
+    grad.addColorStop(1, 'rgba(150,150,150,0.05)');
     ctx.fillStyle = grad;
     ctx.fillRect(GOAL_L, top, GOAL_W, bottom - top);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 1;
+    // rede com trama diagonal (mais parecida com rede de verdade que a
+    // grade reta de antes, que lembrava planilha)
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 0.5;
     ctx.beginPath();
-    for (let x = GOAL_L; x <= GOAL_R; x += 12) {
+    for (let x = GOAL_L - 20; x <= GOAL_R + 20; x += 8) {
       ctx.moveTo(x, top);
-      ctx.lineTo(x, bottom);
+      ctx.lineTo(x + (depthSign > 0 ? 8 : -8), bottom);
     }
-    for (let y = top; y <= bottom; y += 8) {
-      ctx.moveTo(GOAL_L, y);
-      ctx.lineTo(GOAL_R, y);
+    for (let x = GOAL_L - 20; x <= GOAL_R + 20; x += 8) {
+      ctx.moveTo(x, top);
+      ctx.lineTo(x - (depthSign > 0 ? 8 : -8), bottom);
     }
     ctx.stroke();
 
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
     ctx.strokeRect(GOAL_L, top, GOAL_W, bottom - top);
+
+    // traves com brilho metálico
+    const postGrad = ctx.createLinearGradient(GOAL_L - 2, 0, GOAL_L + 2, 0);
+    postGrad.addColorStop(0, '#ffffff');
+    postGrad.addColorStop(0.5, '#e0e0e0');
+    postGrad.addColorStop(1, '#cccccc');
+    ctx.fillStyle = postGrad;
+    ctx.fillRect(GOAL_L - 2, top, 4, bottom - top);
+    ctx.fillRect(GOAL_R - 2, top, 4, bottom - top);
+
+    // travessão
+    ctx.strokeStyle = '#fff';
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(GOAL_L, frontY);
@@ -2664,14 +2725,52 @@
     ctx.restore();
   }
 
+  // rastro atrás da bola quando ela está em movimento rápido (chute, passe forte)
+  function drawBallTrail() {
+    if (!ball.vx && !ball.vy) return;
+    const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    if (speed < 50) return;
+    const alpha = Math.min(0.4, speed / 800);
+    for (let i = 1; i <= 3; i++) {
+      const t = i * 0.08;
+      ctx.beginPath();
+      ctx.arc(ball.x - ball.vx * t, ball.y - ball.vy * t, BALL_R - i, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha / i})`;
+      ctx.fill();
+    }
+  }
+
   function drawBall() {
+    // brilho ao redor
+    const glowGrad = ctx.createRadialGradient(ball.x, ball.y, BALL_R - 2, ball.x, ball.y, BALL_R + 6);
+    glowGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
+    glowGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(ball.x - BALL_R - 6, ball.y - BALL_R - 6, (BALL_R + 6) * 2, (BALL_R + 6) * 2);
+
+    // bola com gradiente (em vez do branco chapado de antes)
+    const ballGrad = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_R);
+    ballGrad.addColorStop(0, '#ffffff');
+    ballGrad.addColorStop(1, '#d4d4d4');
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = ballGrad;
     ctx.fill();
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 0.8;
     ctx.stroke();
+
+    // pentágono central (identidade visual de bola de futebol)
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+      const px = ball.x + Math.cos(angle) * 3;
+      const py = ball.y + Math.sin(angle) * 3;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
   }
 
   const homeColors = (homeClub && homeClub.colors) || { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a' };
@@ -2695,47 +2794,102 @@
     pressureLabelAwayEl.textContent = awayPct + '%';
   }
 
+  // ---------- Helpers de cor pro redesenho dos jogadores ----------
+  function clamp255(v) { return Math.max(0, Math.min(255, v)); }
+  function shade(hex, amt) {
+    const h = hex.replace('#', '');
+    const num = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+    const r = clamp255(((num >> 16) & 0xff) + amt);
+    const g = clamp255(((num >> 8) & 0xff) + amt);
+    const b = clamp255((num & 0xff) + amt);
+    return `rgb(${r},${g},${b})`;
+  }
+  function lighten(hex, amt) { return shade(hex, amt); }
+  function darken(hex, amt) { return shade(hex, -amt); }
+
+  // paletas de tom de pele e cabelo — a escolha é determinística por
+  // jogador (baseada em número + time), não aleatória a cada frame, senão
+  // "piscaria" trocando de tom a cada render
+  const SKIN_TONES = ['#e0b28a', '#c88f66', '#8d5a3c', '#f0c9a0', '#a5714a'];
+  const HAIR_COLORS = ['#1c1c1c', '#3b2417', '#6b4423', '#0d0d0d', '#4a2e1a'];
+  function playerSeed(p) { return (p.number || 0) * 7 + (p.team === 'home' ? 0 : 3); }
+  function skinTone(p) { return SKIN_TONES[playerSeed(p) % SKIN_TONES.length]; }
+  function hairColor(p) { return HAIR_COLORS[(playerSeed(p) + 2) % HAIR_COLORS.length]; }
+  function getTeamColor(p) {
+    if (p.role === 'GK') return p.team === 'home' ? '#7a3fa0' : '#a05a2c';
+    return p.team === 'home' ? homeColors.primary : '#b02c2c';
+  }
+  function getOutlineColor(p) {
+    return p.team === 'home' && p.role !== 'GK' ? homeColors.secondary : '#fff';
+  }
+
   function drawPlayer(p) {
-    let fill = p.team === 'home' ? homeColors.primary : '#b02c2c';
-    if (p.role === 'GK') fill = p.team === 'home' ? '#7a3fa0' : '#a05a2c';
-    const outline = p.team === 'home' && p.role !== 'GK' ? homeColors.secondary : '#fff';
+    const fill = getTeamColor(p);
+    const outline = getOutlineColor(p);
 
-    // shadow
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y + 12, 9, 3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.fill();
+    ctx.save();
+    ctx.translate(p.x, p.y);
 
-    // legs
+    // sombra (gradiente radial, mais natural que a elipse plana de antes)
+    const shadowGrad = ctx.createRadialGradient(0, 13, 2, 0, 13, 12);
+    shadowGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
+    shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = shadowGrad;
+    ctx.fillRect(-12, 7, 24, 12);
+
+    // pernas com meião + chuteira
     ctx.fillStyle = '#1c1c1c';
-    ctx.fillRect(p.x - 5, p.y + 4, 3, 8);
-    ctx.fillRect(p.x + 2, p.y + 4, 3, 8);
+    ctx.fillRect(-5, 3, 3, 6);
+    ctx.fillRect(2, 3, 3, 6);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-5, 7, 3, 3);
+    ctx.fillRect(2, 7, 3, 3);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-6, 10, 5, 2);
+    ctx.fillRect(1, 10, 5, 2);
 
-    // torso
-    const tw = 16, th = 14, tx = p.x - tw / 2, ty = p.y - 6;
+    // torso com gradiente (dá profundidade em vez de cor chapada)
+    const torsoGrad = ctx.createLinearGradient(-8, -7, 8, 7);
+    torsoGrad.addColorStop(0, lighten(fill, 20));
+    torsoGrad.addColorStop(1, darken(fill, 15));
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(tx, ty, tw, th, 4);
-    else ctx.rect(tx, ty, tw, th);
-    ctx.fillStyle = fill;
+    if (ctx.roundRect) ctx.roundRect(-9, -7, 18, 15, 5);
+    else ctx.rect(-9, -7, 18, 15);
+    ctx.fillStyle = torsoGrad;
     ctx.fill();
     ctx.strokeStyle = outline;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // head
+    // ombros/braços (pequenos arcos laterais que faltavam no boneco antigo)
+    ctx.fillStyle = fill;
     ctx.beginPath();
-    ctx.arc(p.x, p.y - 10, 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#e0b28a';
+    ctx.ellipse(-10, -2, 3, 5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(10, -2, 3, 5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // cabeça com tom de pele variado + cabelo
+    ctx.beginPath();
+    ctx.arc(0, -10, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = skinTone(p);
     ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.3)';
     ctx.lineWidth = 1;
     ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, -11.3, 4.5, Math.PI, 0);
+    ctx.fillStyle = hairColor(p);
+    ctx.fill();
 
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 9px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(p.number, p.x, p.y + 1);
+    ctx.fillText(p.number, 0, 1);
+
+    ctx.restore();
 
     if (p.improvised) {
       ctx.beginPath();
@@ -2764,6 +2918,44 @@
     }
   }
 
+  // ---------- Partículas (gol, falta, chute) ----------
+  const particles = [];
+
+  function spawnParticles(x, y, color, count, spread) {
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * spread,
+        vy: (Math.random() - 0.5) * spread,
+        life: 1,
+        decay: 0.02 + Math.random() * 0.03,
+        color,
+        size: 2 + Math.random() * 3,
+      });
+    }
+  }
+
+  function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const pt = particles[i];
+      pt.x += pt.vx * dt * 60;
+      pt.y += pt.vy * dt * 60;
+      pt.life -= pt.decay;
+      if (pt.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function drawParticles() {
+    for (const pt of particles) {
+      ctx.globalAlpha = pt.life;
+      ctx.fillStyle = pt.color;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.size * pt.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function render() {
     ctx.fillStyle = '#2f9e44';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2781,7 +2973,9 @@
     drawField();
     drawOffsideLine();
     for (const p of players) drawPlayer(p);
+    drawBallTrail();
     drawBall();
+    drawParticles();
     ctx.restore();
   }
 
@@ -2852,6 +3046,7 @@
 
           displaySeconds += dt * CLOCK_SCALE;
           timerEl.textContent = formatClock(displaySeconds);
+          timerEl.classList.toggle('stoppage-time', displaySeconds >= 45 * 60);
 
           const minute = Math.floor(displaySeconds / 60);
           if (half === 2 && awaySubWindowIdx < awaySubMinutes.length && minute >= awaySubMinutes[awaySubWindowIdx]) {
@@ -2887,6 +3082,7 @@
     }
 
     try {
+      updateParticles(dt);
       render();
     } catch (err) {
       showErrorBanner(err);
