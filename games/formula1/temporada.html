@@ -33,6 +33,11 @@
   .weekend-meta { font-size: 0.78rem; color: #9fd8b8; margin-top: 4px; }
   .sprint-badge { display: inline-block; margin-top: 6px; font-size: 0.68rem; background: #1e3b2a; border: 1px solid #ffd54a; color: #ffd54a; padding: 2px 8px; border-radius: 8px; }
   .cooldown-note { margin-top: 10px; font-size: 0.8rem; color: #9fd8b8; }
+  .test-btn {
+    display: block; width: 100%; margin-top: 8px; padding: 10px; border-radius: 10px;
+    border: 1px dashed #9fd8b8; background: #0f231a; color: #9fd8b8; font-size: 0.8rem; font-weight: bold; cursor: pointer;
+  }
+  .test-btn.danger { border-color: #e63946; color: #ff8a94; }
 
   .session-steps { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
   .session-step { flex: 1 1 auto; text-align: center; font-size: 0.62rem; padding: 6px 4px; border-radius: 8px; background: #0f231a; color: #6f9382; }
@@ -83,12 +88,19 @@
       <div class="weekend-meta" id="weekend-meta"></div>
       <span class="sprint-badge hidden" id="sprint-badge">Fim de semana com Sprint</span>
       <p class="cooldown-note hidden" id="cooldown-note"></p>
+      <button class="test-btn hidden" id="skip-cooldown-btn">⏭️ Pular espera (teste)</button>
 
       <div class="session-steps" id="session-steps"></div>
 
       <button class="primary-btn hidden" id="instant-btn"></button>
       <a class="primary-btn hidden" id="race-link" href="corrida.html"></a>
       <button class="primary-btn hidden" id="new-season-btn">🏆 Iniciar nova temporada</button>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Teste</h2>
+      <p style="font-size:0.78rem; color:#9fd8b8; margin-bottom:10px;">Ferramentas só pra testar o jogo — apaga o progresso da temporada atual (não mexe no elenco nem na escuderia).</p>
+      <button class="test-btn danger" id="reset-season-btn">🗑️ Apagar temporada e recomeçar</button>
     </div>
 
     <div class="panel">
@@ -139,7 +151,9 @@
       newSeasonBtn.classList.add('hidden');
 
       const cooldownNote = document.getElementById('cooldown-note');
+      const skipCooldownBtn = document.getElementById('skip-cooldown-btn');
       cooldownNote.classList.add('hidden');
+      skipCooldownBtn.classList.add('hidden');
 
       if (!weekend) {
         document.getElementById('sprint-badge').classList.add('hidden');
@@ -153,6 +167,7 @@
           document.getElementById('weekend-meta').textContent = 'Trocando circuitos e fazendo testes de pré-temporada...';
           cooldownNote.textContent = '🏗️ Próxima temporada libera em ' + Cal.formatCountdown(Cal.msUntilNewSeason(state));
           cooldownNote.classList.remove('hidden');
+          skipCooldownBtn.classList.remove('hidden');
         }
       } else if (weekend.sessionIdx === 0 && !Cal.isWeekendAvailable(state)) {
         document.getElementById('weekend-title').textContent = weekend.circuit;
@@ -161,6 +176,7 @@
         document.getElementById('session-steps').innerHTML = '';
         cooldownNote.textContent = '⏳ Próximo GP libera em ' + Cal.formatCountdown(Cal.msUntilNextWeekend(state));
         cooldownNote.classList.remove('hidden');
+        skipCooldownBtn.classList.remove('hidden');
       } else {
         document.getElementById('weekend-title').textContent = weekend.circuit;
         document.getElementById('weekend-meta').textContent = weekend.pais + ' — ' + weekend.cidade + ' · ' + weekend.laps + ' voltas · ' + weekend.curves + ' curvas · clima ' + weekend.clima;
@@ -225,6 +241,17 @@
 
     document.getElementById('new-season-btn').addEventListener('click', () => {
       state = Cal.startNewSeason(state);
+      render();
+    });
+
+    document.getElementById('skip-cooldown-btn').addEventListener('click', () => {
+      state = Cal.skipCooldown(state);
+      render();
+    });
+
+    document.getElementById('reset-season-btn').addEventListener('click', () => {
+      if (!confirm('Apagar a temporada atual e recomeçar do zero? Isso não pode ser desfeito.')) return;
+      state = Cal.resetSeason();
       render();
     });
 

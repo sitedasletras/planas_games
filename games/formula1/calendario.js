@@ -234,6 +234,26 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
   }
 
+  // botão de teste: libera o próximo GP / a próxima temporada na hora,
+  // sem esperar o cooldown de verdade — só zera os timestamps, não mexe
+  // em mais nada do progresso da temporada
+  function skipCooldown(state) {
+    state.nextWeekendAt = null;
+    state.nextSeasonAt = null;
+    saveState(state);
+    return state;
+  }
+
+  // botão de teste: apaga a temporada atual e recomeça do zero (temporada
+  // 1, calendário novo, sem cooldown) — não mexe no grid de rivais nem no
+  // elenco/escuderia do jogador, só no progresso da temporada em si
+  function resetSeason() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* storage unavailable */ }
+    const fresh = freshState();
+    saveState(fresh);
+    return fresh;
+  }
+
   function currentWeekend(state) {
     if (state.weekendIndex >= state.weekends.length) return null;
     return state.weekends[state.weekendIndex];
@@ -368,5 +388,6 @@
     isWeekendAvailable, msUntilNextWeekend, isNewSeasonAvailable, msUntilNewSeason, formatCountdown,
     resolveFreePractice, resolveQualifying, recordSessionResult,
     driverStandings, constructorStandings, startNewSeason,
+    skipCooldown, resetSeason,
   };
 })();
