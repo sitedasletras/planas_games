@@ -17,6 +17,14 @@
     return Math.max(0, Math.min(0.08, (fuelKg / fullFuelKg) * 0.08));
   }
 
+  // velocidade "de telemetria" mostrada no velocímetro da tela de corrida —
+  // não é a mesma unidade da simulação (que roda em tempo real comprimido),
+  // é uma conversão cosmética pra km/h plausível de F1, usando os mesmos
+  // fatores multiplicativos (ritmo/aderência/desgaste/combustível) que já
+  // decidem quem vence a corrida, só trocando a escala de tempo comprimida
+  // por uma referência fixa de pico de F1
+  const SPEED_DISPLAY_BASE_KMH = 300;
+
   function nextStrategyCompound(current) {
     if (current === 'macio') return 'duro';
     if (current === 'duro') return 'medio';
@@ -74,6 +82,7 @@
         retired: false,
         retiredReason: null,
         finishedAt: null,
+        displaySpeedKmh: 0,
       };
     });
 
@@ -194,9 +203,11 @@
     applyWeatherTick(state);
 
     state.cars.forEach((car) => {
-      if (car.retired || car.finishedAt != null) return;
+      if (car.retired) { car.displaySpeedKmh = 0; return; }
+      if (car.finishedAt != null) return;
 
       if (car.pitting) {
+        car.displaySpeedKmh = 60;
         car.pitMsRemaining -= dtMs;
         if (car.pitMsRemaining <= 0) finishPit(car, state);
         return;
@@ -211,7 +222,9 @@
       const wearPenalty = distancePenaltyFromWear(car.tireWear);
       const fuelPenalty = distancePenaltyFromFuel(car.fuelKg, state.fullFuelKg);
       const variance = 1 + (Math.random() - 0.5) * 0.06;
-      const speed = state.baseSpeedPerMs * (car.pace / 75) * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance;
+      const speedFactor = (car.pace / 75) * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance;
+      const speed = state.baseSpeedPerMs * speedFactor;
+      car.displaySpeedKmh = Math.max(0, SPEED_DISPLAY_BASE_KMH * speedFactor);
 
       car.distance += speed * dtMs;
       const wearAdd = C() ? C().calcTireWear(car.tireCompound, dtMs / (state.raceRealMs / state.totalLaps), 1) : 0;

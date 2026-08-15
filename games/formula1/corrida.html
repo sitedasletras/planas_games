@@ -77,7 +77,12 @@
     50% { opacity: 0.55; }
   }
 
-  canvas#track { display: block; margin: 6px auto; background: radial-gradient(circle at 50% 40%, #123425, #0a1811 80%); border-radius: 14px; border: 1px solid #345c48; box-shadow: inset 0 0 30px rgba(0,0,0,0.5); }
+  .track-wrap { position: relative; width: 400px; max-width: 100%; margin: 6px auto; }
+  canvas#track { display: block; margin: 0 auto; background: radial-gradient(circle at 50% 40%, #123425, #0a1811 80%); border-radius: 14px; border: 1px solid #345c48; box-shadow: inset 0 0 30px rgba(0,0,0,0.5); }
+  canvas#minimap { position: absolute; left: 8px; bottom: 8px; width: 84px; height: 64px; background: rgba(8,18,13,0.85); border: 1px solid rgba(255,213,74,0.4); border-radius: 10px; }
+  .speedo-box { position: absolute; right: 8px; bottom: 8px; min-width: 64px; padding: 6px 8px; background: rgba(8,18,13,0.85); border: 1px solid rgba(255,213,74,0.4); border-radius: 10px; text-align: center; }
+  .speedo-value { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1.25rem; font-weight: 900; color: #ffd54a; line-height: 1; }
+  .speedo-label { font-size: 0.52rem; color: #9fd8b8; letter-spacing: 1.2px; margin-top: 2px; }
 
   .ticker {
     margin: 6px 14px; padding: 8px 12px; background: #0f231a; border-radius: 8px;
@@ -156,7 +161,14 @@
         <div class="hud-box"><div class="hud-label">Combustível</div><div class="hud-value" id="hud-fuel">-</div></div>
       </div>
 
-      <canvas id="track" width="400" height="280"></canvas>
+      <div class="track-wrap">
+        <canvas id="track" width="400" height="280"></canvas>
+        <canvas id="minimap" width="84" height="64"></canvas>
+        <div class="speedo-box">
+          <div class="speedo-value" id="speedo-value">0</div>
+          <div class="speedo-label">KM/H</div>
+        </div>
+      </div>
       <div class="ticker" id="ticker">Aguardando a largada...</div>
 
       <div class="leaderboard" id="leaderboard"></div>
@@ -465,14 +477,14 @@
       return Math.atan2(ry * Math.cos(angle), -rx * Math.sin(angle));
     }
 
-    let playerLiveryColor = '#ffd54a';
+    let playerLiveryColors = { primary: '#ffd54a', secondary: '#16281f', detail: '#ffffff', accent: '#ffd54a' };
     if (window.WSPF1Equipe) {
       const club = window.WSPF1Equipe.loadClub();
-      if (club.colors && club.colors.primary) playerLiveryColor = club.colors.primary;
+      if (club.colors) playerLiveryColors = Object.assign({}, playerLiveryColors, club.colors);
     }
 
     function teamColor(car) {
-      if (car.isPlayer) return playerLiveryColor;
+      if (car.isPlayer) return playerLiveryColors.primary;
       let hash = 0;
       for (let i = 0; i < car.teamId.length; i++) hash = (hash * 31 + car.teamId.charCodeAt(i)) & 0xffffffff;
       const hue = Math.abs(hash) % 360;
@@ -488,50 +500,80 @@
       return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
     }
 
-    // desenha um carrinho de F1 estilizado (corpo + capacete + pneus),
-    // orientado na direção da pista — em vez de uma bolinha genérica
+    // ajusta a luminosidade de uma cor hsl(H, S%, L%) — usado pra derivar
+    // asa/detalhe dos times rivais (que só têm 1 hue base) a partir da
+    // mesma cor principal, sem precisar guardar uma pintura de 4 cores pra
+    // cada rival
+    function hslShade(hslStr, deltaL) {
+      const m = /hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/.exec(hslStr);
+      if (!m) return hslStr;
+      const l = Math.max(6, Math.min(94, parseInt(m[3], 10) + deltaL));
+      return 'hsl(' + m[1] + ', ' + m[2] + '%, ' + l + '%)';
+    }
+
+    // pintura de 4 cores (corpo/asas/detalhe) por carro: o jogador usa a
+    // pintura de verdade escolhida na personalização, os rivais derivam
+    // asa/detalhe a partir do hue do time
+    function carLiveryColors(car) {
+      if (car.isPlayer) {
+        return {
+          body: playerLiveryColors.primary,
+          wing: playerLiveryColors.secondary || shadeColor(playerLiveryColors.primary, -50),
+          nose: playerLiveryColors.accent || playerLiveryColors.detail || '#ffffff',
+        };
+      }
+      const base = teamColor(car);
+      return { body: base, wing: hslShade(base, -18), nose: hslShade(base, 24) };
+    }
+
+    // sprite de carro em pixel art: grade 16x8 desenhada em blocos (sem
+    // curvas suaves), pra ler como um carrinho de F1 de cima mesmo minúsculo
+    // na tela — asa dianteira/traseira ('g'), rodas expostas nos quatro
+    // cantos ('w'), carroceria ('b'), cockpit/halo escuro ('c'), realce do
+    // bico ('n'). Nariz do carro fica na coluna mais à direita (+x local).
+    const CAR_PIXELS = [
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
+      ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
+      ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
+    ];
+    const CAR_ROWS = CAR_PIXELS.length, CAR_COLS = CAR_PIXELS[0].length;
+
     function drawCar(ctx, x, y, angle, car) {
       const isPlayer = car.isPlayer;
-      const color = teamColor(car);
-      const w = isPlayer ? 12 : 9.5, h = isPlayer ? 6 : 5;
+      const cell = isPlayer ? 0.95 : 0.74;
+      const colors = carLiveryColors(car);
+      const totalW = CAR_COLS * cell, totalH = CAR_ROWS * cell;
 
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(angle);
 
-      if (isPlayer) {
-        ctx.shadowColor = '#ffd54a';
-        ctx.shadowBlur = 7;
+      if (isPlayer) { ctx.shadowColor = '#ffd54a'; ctx.shadowBlur = 6; }
+
+      for (let row = 0; row < CAR_ROWS; row++) {
+        for (let col = 0; col < CAR_COLS; col++) {
+          const px = CAR_PIXELS[row][col];
+          if (px === '.') continue;
+          ctx.fillStyle = px === 'w' ? '#141414'
+            : px === 'c' ? 'rgba(8,8,8,0.9)'
+            : px === 'g' ? colors.wing
+            : px === 'n' ? colors.nose
+            : colors.body;
+          ctx.fillRect((col - CAR_COLS / 2) * cell, (row - CAR_ROWS / 2) * cell, cell + 0.4, cell + 0.4);
+        }
       }
-
-      // pneus (atrás do corpo)
-      ctx.fillStyle = '#161616';
-      ctx.fillRect(-w / 2 + 1, -h / 2 - 1.4, w * 0.32, 1.8);
-      ctx.fillRect(-w / 2 + 1, h / 2 - 0.4, w * 0.32, 1.8);
-      ctx.fillRect(w / 2 - w * 0.32 - 1, -h / 2 - 1.4, w * 0.32, 1.8);
-      ctx.fillRect(w / 2 - w * 0.32 - 1, h / 2 - 0.4, w * 0.32, 1.8);
-
-      // corpo do carro (bico afunilado pra frente, cauda reta)
-      const grad = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
-      grad.addColorStop(0, isPlayer ? '#fff3c4' : shadeColor(color.startsWith('#') ? color : '#c9c9c9', 35));
-      grad.addColorStop(1, color.startsWith('#') ? color : color);
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(w / 2, 0);
-      ctx.lineTo(w / 2 - w * 0.28, -h / 2);
-      ctx.lineTo(-w / 2, -h / 2);
-      ctx.lineTo(-w / 2, h / 2);
-      ctx.lineTo(w / 2 - w * 0.28, h / 2);
-      ctx.closePath();
-      ctx.fill();
-      if (isPlayer) { ctx.strokeStyle = 'white'; ctx.lineWidth = 0.8; ctx.stroke(); }
       ctx.shadowBlur = 0;
 
-      // capacete do piloto (cockpit)
-      ctx.fillStyle = 'rgba(10,10,10,0.75)';
-      ctx.beginPath();
-      ctx.ellipse(-w * 0.05, 0, w * 0.14, h * 0.28, 0, 0, Math.PI * 2);
-      ctx.fill();
+      if (isPlayer) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = 0.6;
+        ctx.strokeRect(-totalW / 2 - 0.5, -totalH / 2 - 0.5, totalW + 1, totalH + 1);
+      }
 
       ctx.restore();
     }
@@ -635,6 +677,46 @@
       renderHud();
       renderLeaderboard();
       renderTicker();
+      drawMinimap();
+      updateSpeedo();
+    }
+
+    // versão em miniatura da mesma pista, sobreposta no canto da tela
+    // principal, com um pontinho colorido por carro — pra dar noção de
+    // pelotão sem precisar rolar a lista de posições
+    function drawMinimap() {
+      const canvas = document.getElementById('minimap');
+      const ctx = canvas.getContext('2d');
+      const mcx = canvas.width / 2, mcy = canvas.height / 2;
+      const mrx = canvas.width / 2 - 9, mry = canvas.height / 2 - 9;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = 'rgba(159,216,184,0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(mcx, mcy, mrx, mry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      raceState.cars.forEach((car) => {
+        if (car.retired) return;
+        const t = car.distance / 100;
+        const p = pointOnTrack(t, mcx, mcy, mrx, mry);
+        ctx.fillStyle = teamColor(car);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, car.isPlayer ? 2.6 : 1.7, 0, Math.PI * 2);
+        ctx.fill();
+        if (car.isPlayer) {
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
+      });
+    }
+
+    function updateSpeedo() {
+      const player = raceState.cars.find((c) => c.isPlayer);
+      const el = document.getElementById('speedo-value');
+      el.textContent = player ? Math.round(player.displaySpeedKmh || 0) : '0';
     }
 
     function renderHud() {
@@ -660,6 +742,7 @@
         const pos = table.indexOf(car) + 1;
         const row = document.createElement('div');
         row.className = 'lb-row' + (car.isPlayer ? ' player' : '') + (car.retired ? ' lb-retired' : '');
+        row.style.borderLeft = '4px solid ' + teamColor(car);
         const compound = window.WSPF1Corrida.TIRE_COMPOUNDS[car.tireCompound];
         row.innerHTML = '<span class="lb-pos">' + pos + '</span>'
           + '<span class="lb-name">' + car.driverName + '<small>' + car.teamName + '</small></span>'
