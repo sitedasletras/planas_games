@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Fórmula 1 — Corrida</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: white;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+  .back-btn { color: #ffd54a; text-decoration: none; font-size: 1.3rem; font-weight: bold; }
+  .topbar h1 { font-size: 1.05rem; color: #ffd54a; flex: 1; }
+  .topbar .session-tag { font-size: 0.7rem; background: #16281f; border: 1px solid #ffd54a; color: #ffd54a; padding: 4px 8px; border-radius: 8px; }
+
+  .panel { margin: 10px 14px; padding: 14px; background: #16281f; border: 1px solid #345c48; border-radius: 12px; }
+  .panel h2 { font-size: 0.95rem; color: #ffd54a; margin-bottom: 10px; }
+  .panel p { font-size: 0.8rem; color: #9fd8b8; margin-bottom: 6px; }
+
+  .compound-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .compound-btn {
+    flex: 1 1 30%; min-width: 84px; padding: 10px 6px; border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.15); background: #0f231a; color: white;
+    font-size: 0.78rem; font-weight: bold; text-align: center; cursor: pointer;
+  }
+  .compound-btn.selected { border-color: #ffd54a; background: #1e3b2a; }
+  .compound-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+
+  .refuel-row { display: flex; gap: 8px; margin: 10px 0; }
+  .refuel-btn { flex: 1; padding: 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.15); background: #0f231a; color: white; font-size: 0.76rem; cursor: pointer; }
+  .refuel-btn.selected { border-color: #ffd54a; background: #1e3b2a; }
+
+  .primary-btn {
+    display: block; width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 12px;
+    background: linear-gradient(160deg, #2f8f4e, #14401f); border: 2px solid #ffd54a; color: white;
+    font-weight: bold; font-size: 1rem; cursor: pointer;
+  }
+  .primary-btn:active { transform: scale(0.98); }
+
+  .hud { display: flex; justify-content: space-between; gap: 8px; margin: 10px 14px; }
+  .hud-box { flex: 1; background: #16281f; border: 1px solid #345c48; border-radius: 10px; padding: 8px; text-align: center; }
+  .hud-label { font-size: 0.6rem; color: #9fd8b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .hud-value { font-size: 1rem; font-weight: bold; color: #ffd54a; }
+
+  canvas#track { display: block; margin: 6px auto; background: #0d1f17; border-radius: 14px; border: 1px solid #345c48; }
+
+  .ticker {
+    margin: 6px 14px; padding: 8px 12px; background: #0f231a; border-radius: 8px;
+    font-size: 0.74rem; color: #cfeede; min-height: 1.4em;
+  }
+
+  .leaderboard { margin: 8px 14px 14px; }
+  .lb-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; font-size: 0.78rem; }
+  .lb-row.player { background: #1e3b2a; border: 1px solid #ffd54a; }
+  .lb-pos { width: 22px; font-weight: bold; color: #ffd54a; }
+  .lb-name { flex: 1; }
+  .lb-name small { display: block; color: #9fd8b8; font-size: 0.65rem; }
+  .lb-tire { font-size: 0.9rem; }
+  .lb-retired { opacity: 0.45; text-decoration: line-through; }
+
+  .controls-row { display: flex; gap: 8px; margin: 4px 14px 14px; }
+  .controls-row button {
+    flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #ffd54a;
+    background: #16281f; color: #ffd54a; font-weight: bold; font-size: 0.85rem; cursor: pointer;
+  }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 18px; }
+  .overlay.hidden { display: none; }
+  .overlay-card { background: #16281f; border: 2px solid #ffd54a; border-radius: 16px; padding: 22px; max-width: 380px; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .overlay-title { font-size: 1.15rem; font-weight: bold; color: #ffd54a; margin-bottom: 10px; text-align: center; }
+  .result-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 6px 4px; border-bottom: 1px solid #234433; }
+  .result-row.player { color: #ffd54a; font-weight: bold; }
+  .points-line { text-align: center; margin: 12px 0; font-size: 0.95rem; color: #3fd67a; font-weight: bold; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="back-btn" href="temporada.html">←</a>
+      <h1 id="circuit-name">Circuito</h1>
+      <span class="session-tag" id="session-tag">Corrida</span>
+    </div>
+
+    <div id="strategy-panel" class="panel">
+      <h2>Estratégia de largada</h2>
+      <p id="strategy-hint">Escolha o composto de pneu pra largada. Fique de olho no céu — o tempo pode mudar.</p>
+      <div class="compound-row" id="compound-row"></div>
+      <div id="refuel-block" class="hidden">
+        <p>Reabastecimento (só na Sprint):</p>
+        <div class="refuel-row" id="refuel-row"></div>
+      </div>
+      <button class="primary-btn" id="start-btn">🏁 Largar</button>
+    </div>
+
+    <div id="race-view" class="hidden">
+      <div class="hud">
+        <div class="hud-box"><div class="hud-label">Posição</div><div class="hud-value" id="hud-pos">-</div></div>
+        <div class="hud-box"><div class="hud-label">Volta</div><div class="hud-value" id="hud-lap">0/0</div></div>
+        <div class="hud-box"><div class="hud-label">Pneu</div><div class="hud-value" id="hud-tire">-</div></div>
+        <div class="hud-box"><div class="hud-label">Combustível</div><div class="hud-value" id="hud-fuel">-</div></div>
+      </div>
+
+      <canvas id="track" width="380" height="260"></canvas>
+      <div class="ticker" id="ticker">Aguardando a largada...</div>
+
+      <div class="leaderboard" id="leaderboard"></div>
+
+      <div class="controls-row">
+        <button id="pit-btn">🔧 Chamar pro pit</button>
+        <button id="speed-btn">⏩ 2x</button>
+        <button id="pause-btn">⏸</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="result-overlay">
+    <div class="overlay-card">
+      <div class="overlay-title" id="result-title">Resultado</div>
+      <div id="result-list"></div>
+      <div class="points-line" id="points-line"></div>
+      <button class="primary-btn" id="result-continue-btn">Continuar</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="empty-overlay">
+    <div class="overlay-card">
+      <div class="overlay-title">Nada pra correr agora</div>
+      <p style="font-size:0.85rem; color:#9fd8b8; text-align:center; margin-bottom:14px;">A sessão pendente deste final de semana não é Sprint nem Corrida — resolva Treino Livre e Classificatória na tela de Temporada.</p>
+      <a class="primary-btn" style="display:block; text-align:center; text-decoration:none;" href="temporada.html">Ir pra Temporada</a>
+    </div>
+  </div>
+
+  <script src="pilotos.js"></script>
+  <script src="equipe.js"></script>
+  <script src="corrida.js"></script>
+  <script src="grid.js"></script>
+  <script src="calendario.js"></script>
+  <script src="corridamotor.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const NORMAL_RACE_REAL_MS = 320000;
+
+    const temporadaState = window.WSPF1Calendario.loadState();
+    const weekend = window.WSPF1Calendario.currentWeekend(temporadaState);
+    const sessionType = window.WSPF1Calendario.currentSessionType(temporadaState);
+
+    const strategyPanelEl = document.getElementById('strategy-panel');
+    const raceViewEl = document.getElementById('race-view');
+    const emptyOverlayEl = document.getElementById('empty-overlay');
+
+    if (!weekend || (sessionType !== 'sprint' && sessionType !== 'corrida')) {
+      emptyOverlayEl.classList.remove('hidden');
+      strategyPanelEl.classList.add('hidden');
+    } else {
+      initStrategy();
+    }
+
+    document.getElementById('circuit-name').textContent = weekend ? weekend.circuit : 'Circuito';
+    document.getElementById('session-tag').textContent = sessionType === 'sprint' ? 'Corrida Sprint' : 'Corrida';
+
+    let selectedCompound = 'medio';
+    let selectedRefuel = 'none';
+
+    function initStrategy() {
+      const isSprint = sessionType === 'sprint';
+      const compoundRow = document.getElementById('compound-row');
+      const compounds = window.WSPF1Corrida.TIRE_COMPOUNDS;
+      Object.keys(compounds).filter((k) => k === 'macio' || k === 'medio' || k === 'duro').forEach((key) => {
+        const c = compounds[key];
+        const btn = document.createElement('button');
+        btn.className = 'compound-btn' + (key === selectedCompound ? ' selected' : '');
+        btn.innerHTML = '<span class="compound-dot" style="background:' + c.color + '"></span>' + c.label;
+        btn.addEventListener('click', () => {
+          selectedCompound = key;
+          [...compoundRow.children].forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+        compoundRow.appendChild(btn);
+      });
+
+      if (isSprint) {
+        document.getElementById('refuel-block').classList.remove('hidden');
+        const refuelRow = document.getElementById('refuel-row');
+        [['none', 'Sem reabastecer — tanque cheio, mais pesado'], ['planned', 'Reabastecer — larga leve, para no meio']].forEach(([key, label]) => {
+          const btn = document.createElement('button');
+          btn.className = 'refuel-btn' + (key === selectedRefuel ? ' selected' : '');
+          btn.textContent = label;
+          btn.addEventListener('click', () => {
+            selectedRefuel = key;
+            [...refuelRow.children].forEach((b) => b.classList.remove('selected'));
+            btn.classList.add('selected');
+          });
+          refuelRow.appendChild(btn);
+        });
+      }
+
+      document.getElementById('start-btn').addEventListener('click', startRace);
+    }
+
+    // ---------- Corrida ao vivo ----------
+    let raceState = null;
+    let speedMultiplier = 1;
+    let paused = false;
+    let rafId = null;
+    let lastTs = null;
+    let entrantsMeta = {};
+
+    function buildEntrants() {
+      const all = window.WSPF1Grid.fullGrid();
+      entrantsMeta = {};
+      all.forEach((e) => { entrantsMeta[e.id] = e; });
+      const order = weekend.gridOrder;
+      if (order && order.length) {
+        const byId = {};
+        all.forEach((e) => { byId[e.id] = e; });
+        return order.map((id) => byId[id]).filter(Boolean);
+      }
+      return all.slice().sort((a, b) => b.pace - a.pace);
+    }
+
+    function startRace() {
+      const entrants = buildEntrants();
+      let pitStopMsByTeam = null;
+      if (window.WSPF1Equipe) {
+        const club = window.WSPF1Equipe.loadClub();
+        pitStopMsByTeam = { player: window.WSPF1Corrida.pitStopMsForClub(club) };
+      }
+      raceState = window.WSPF1Motor.createRaceState(entrants, {
+        isSprint: sessionType === 'sprint',
+        baseLaps: weekend.laps,
+        raceRealMs: NORMAL_RACE_REAL_MS,
+        hasFailureEvent: weekend.hasFailureEvent,
+        circuit: weekend.circuit,
+        startCompound: selectedCompound,
+        refuelPlan: selectedRefuel,
+        pitStopMsByTeam,
+      });
+      strategyPanelEl.classList.add('hidden');
+      raceViewEl.classList.remove('hidden');
+      lastTs = null;
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function loop(ts) {
+      if (lastTs == null) lastTs = ts;
+      const dt = Math.min(200, ts - lastTs) * speedMultiplier;
+      lastTs = ts;
+      if (!paused) {
+        window.WSPF1Motor.stepRace(raceState, dt);
+        render();
+      }
+      if (window.WSPF1Motor.isFinished(raceState)) {
+        finishRace();
+        return;
+      }
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function pointOnTrack(t, cx, cy, rx, ry) {
+      const angle = t * Math.PI * 2 - Math.PI / 2;
+      return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
+    }
+
+    function teamColor(car) {
+      if (car.isPlayer) return '#ffd54a';
+      let hash = 0;
+      for (let i = 0; i < car.teamId.length; i++) hash = (hash * 31 + car.teamId.charCodeAt(i)) & 0xffffffff;
+      const hue = Math.abs(hash) % 360;
+      return 'hsl(' + hue + ', 65%, 58%)';
+    }
+
+    function render() {
+      const canvas = document.getElementById('track');
+      const ctx = canvas.getContext('2d');
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+      const rx = canvas.width / 2 - 30, ry = canvas.height / 2 - 30;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = '#345c48';
+      ctx.lineWidth = 22;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      raceState.cars.forEach((car) => {
+        if (car.retired) return;
+        const t = car.distance / 100;
+        const p = pointOnTrack(t, cx, cy, rx, ry);
+        ctx.beginPath();
+        ctx.fillStyle = teamColor(car);
+        const radius = car.isPlayer ? 6 : 4;
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        if (car.isPlayer) {
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+        if (car.pitting) {
+          ctx.fillStyle = 'rgba(255,255,255,0.8)';
+          ctx.font = '9px Arial';
+          ctx.fillText('🔧', p.x + 6, p.y - 6);
+        }
+      });
+
+      renderHud();
+      renderLeaderboard();
+      renderTicker();
+    }
+
+    function renderHud() {
+      const table = window.WSPF1Motor.standings(raceState);
+      const playerIdx = table.findIndex((c) => c.isPlayer);
+      const player = playerIdx >= 0 ? table[playerIdx] : null;
+      document.getElementById('hud-pos').textContent = player ? (playerIdx + 1) + 'º' : '-';
+      document.getElementById('hud-lap').textContent = player ? player.lapsCompleted + '/' + raceState.totalLaps : '0/' + raceState.totalLaps;
+      document.getElementById('hud-tire').textContent = player ? (window.WSPF1Corrida.TIRE_COMPOUNDS[player.tireCompound].icon + ' ' + Math.round(player.tireWear) + '%') : '-';
+      document.getElementById('hud-fuel').textContent = player ? Math.round(player.fuelKg) + 'kg' : '-';
+    }
+
+    function renderLeaderboard() {
+      const table = window.WSPF1Motor.standings(raceState);
+      const box = document.getElementById('leaderboard');
+      box.innerHTML = '';
+      const top = table.slice(0, 6);
+      const playerOutsideTop = table.find((c) => c.isPlayer && !top.includes(c));
+      const rows = playerOutsideTop ? [...top, playerOutsideTop] : top;
+      rows.forEach((car) => {
+        const pos = table.indexOf(car) + 1;
+        const row = document.createElement('div');
+        row.className = 'lb-row' + (car.isPlayer ? ' player' : '') + (car.retired ? ' lb-retired' : '');
+        const compound = window.WSPF1Corrida.TIRE_COMPOUNDS[car.tireCompound];
+        row.innerHTML = '<span class="lb-pos">' + pos + '</span>'
+          + '<span class="lb-name">' + car.driverName + '<small>' + car.teamName + '</small></span>'
+          + '<span class="lb-tire">' + (car.retired ? '❌' : (compound ? compound.icon : '')) + '</span>';
+        box.appendChild(row);
+      });
+    }
+
+    function renderTicker() {
+      const el = document.getElementById('ticker');
+      if (raceState.log.length) el.textContent = raceState.log[0].text;
+    }
+
+    document.getElementById('pit-btn').addEventListener('click', () => {
+      if (!raceState) return;
+      const playerCar = raceState.cars.find((c) => c.isPlayer);
+      if (!playerCar) return;
+      const nextCompound = playerCar.tireCompound === 'macio' ? 'duro' : 'medio';
+      window.WSPF1Motor.requestPit(raceState, playerCar.id, nextCompound);
+    });
+
+    document.getElementById('speed-btn').addEventListener('click', (e) => {
+      speedMultiplier = speedMultiplier === 1 ? 2 : (speedMultiplier === 2 ? 4 : 1);
+      e.target.textContent = '⏩ ' + speedMultiplier + 'x';
+    });
+
+    document.getElementById('pause-btn').addEventListener('click', (e) => {
+      paused = !paused;
+      e.target.textContent = paused ? '▶' : '⏸';
+    });
+
+    function finishRace() {
+      if (rafId) cancelAnimationFrame(rafId);
+      const table = window.WSPF1Motor.standings(raceState);
+      const order = table.map((c) => c.id);
+      const result = window.WSPF1Calendario.recordSessionResult(temporadaState, order);
+
+      const pointsTable = sessionType === 'sprint' ? window.WSPF1Calendario.SPRINT_POINTS : window.WSPF1Calendario.RACE_POINTS;
+      let playerPoints = 0;
+      const listEl = document.getElementById('result-list');
+      listEl.innerHTML = '';
+      table.slice(0, 10).forEach((car, i) => {
+        const pts = i < pointsTable.length ? pointsTable[i] : 0;
+        if (car.isPlayer) playerPoints += pts;
+        const row = document.createElement('div');
+        row.className = 'result-row' + (car.isPlayer ? ' player' : '');
+        row.innerHTML = '<span>' + (i + 1) + '. ' + car.driverName + '</span><span>' + (pts ? '+' + pts + ' pts' : '') + '</span>';
+        listEl.appendChild(row);
+      });
+
+      document.getElementById('result-title').textContent = sessionType === 'sprint' ? 'Resultado da Sprint' : 'Resultado da Corrida';
+      document.getElementById('points-line').textContent = playerPoints > 0
+        ? 'Sua equipe somou ' + playerPoints + ' pontos!'
+        : 'Nenhum ponto dessa vez — vamos pra próxima.';
+      document.getElementById('result-overlay').classList.remove('hidden');
+
+      // reflexo no elenco: condição física cai um pouco, carreira do piloto some pontos/vitórias
+      if (window.WSPF1Pilotos && window.WSPF1Equipe) {
+        const equipe = window.WSPF1Pilotos.loadSquad();
+        const club = window.WSPF1Equipe.loadClub();
+        const fisicaLevel = (club.departments && club.departments.fisioterapia) || 0;
+        const playerIds = equipe.drivers.filter((d) => d.role !== 'reserva').map((d) => d.id);
+        window.WSPF1Pilotos.applyMatchConditionDrop(equipe, playerIds, fisicaLevel / 20);
+        table.forEach((car, i) => {
+          if (!car.isPlayer) return;
+          const driverId = car.id.replace('player_', '');
+          const driver = equipe.drivers.find((d) => d.id === driverId);
+          if (!driver) return;
+          const pts = i < pointsTable.length ? pointsTable[i] : 0;
+          driver.careerPoints = (driver.careerPoints || 0) + pts;
+          if (i === 0) driver.careerVitorias = (driver.careerVitorias || 0) + 1;
+        });
+        window.WSPF1Pilotos.saveSquad(equipe);
+      }
+    }
+
+    document.getElementById('result-continue-btn').addEventListener('click', () => {
+      window.location.href = 'temporada.html';
+    });
+  })();
+  </script>
+</body>
+</html>
