@@ -73,6 +73,7 @@
         fuelKg: startFuel,
         pitting: false,
         pitMsRemaining: 0,
+        pitTotalMs: 0,
         pitStopsDone: 0,
         plannedPitLap: refuelPlan === 'planned'
           ? Math.max(1, Math.floor(totalLaps / 2))
@@ -171,6 +172,7 @@
   function startPit(car, state, opts) {
     car.pitting = true;
     car.pitMsRemaining = pitStopMsForCar(car, opts) + (car.pendingRefuel ? 3000 : 0);
+    car.pitTotalMs = car.pitMsRemaining; // usado pela tela pra desenhar o carro andando no pit lane
     if (car.isPlayer) pushLog(state, '🔧 ' + car.driverName + ' entra nos boxes.');
   }
 

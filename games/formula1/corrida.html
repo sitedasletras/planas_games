@@ -249,6 +249,16 @@
 
     if (weekend) renderCircuitInfo(weekend);
 
+    // traçado determinístico por circuito: mesma forma sempre pro mesmo
+    // circuito (semente = nome), variando com os dados reais (curvas, tipo,
+    // sentido) em vez da elipse genérica de antes — ruas ficam mais
+    // angulosas e cheias de "esses" apertados, permanentes ficam mais lisas
+    let currentTrackShape = null, currentTrackSampled = null;
+    if (weekend) {
+      currentTrackShape = buildTrackShape(weekend.circuit, weekend.type, weekend.curves, weekend.sentido);
+      currentTrackSampled = sampleTrackShape(currentTrackShape);
+    }
+
     function renderCircuitInfo(w) {
       const panel = document.getElementById('circuit-info-panel');
       const grid = document.getElementById('circuit-data-grid');
@@ -465,16 +475,170 @@
       rafId = requestAnimationFrame(loop);
     }
 
-    function pointOnTrack(t, cx, cy, rx, ry) {
-      const angle = t * Math.PI * 2 - Math.PI / 2;
-      return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
+    // PRNG determinístico a partir de uma string (mesmo circuito -> mesma
+    // sequência sempre, sem precisar guardar coordenada nenhuma no save)
+    function seededRng(seedStr) {
+      let h = 1779033703 ^ (seedStr || '').length;
+      for (let i = 0; i < (seedStr || '').length; i++) {
+        h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+      }
+      return function () {
+        h = Math.imul(h ^ (h >>> 16), 2246822507);
+        h = Math.imul(h ^ (h >>> 13), 3266489909);
+        h ^= h >>> 16;
+        return (h >>> 0) / 4294967296;
+      };
     }
 
-    // direção de deslocamento no ponto t (tangente da elipse) — é o ângulo
-    // que o carrinho usa pra apontar pro sentido da pista, não só marcar posição
+    // gera o contorno do circuito como pontos normalizados num quadrado
+    // -1..1, a partir dos dados reais do circuito (número de curvas, tipo
+    // rua/misto/permanente). Rua = mais pontos, mais "dentes" pra dentro
+    // (chicanes), body angular (linha reta entre pontos). Permanente = menos
+    // perturbação, curvas suaves (Catmull-Rom).
+    function buildTrackShape(circuitName, circuitType, curveCount, sentido) {
+      const rng = seededRng((circuitName || 'circuito') + '|' + (circuitType || ''));
+      const n = Math.max(9, Math.min(16, Math.round((curveCount || 14) * 0.62)));
+      const isStreet = circuitType === 'rua';
+      const wobble = isStreet ? 0.36 : (circuitType === 'misto' ? 0.24 : 0.15);
+      const points = [];
+      for (let i = 0; i < n; i++) {
+        const angle = (i / n) * Math.PI * 2;
+        let radius = 1 - wobble / 2 + rng() * wobble;
+        if (isStreet && rng() < 0.3) radius *= 0.6; // chicane: dente mais fundo pra dentro
+        points.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius * 0.72 });
+      }
+      // sentido anti-horário: espelha o contorno no eixo x
+      if (sentido === 'anti-horário') points.forEach((p) => { p.x = -p.x; });
+      return { points, angular: isStreet };
+    }
+
+    function lerp2(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
+
+    function catmullRom(p0, p1, p2, p3, t) {
+      const t2 = t * t, t3 = t2 * t;
+      return {
+        x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+        y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
+      };
+    }
+
+    // amostra densa do contorno, com comprimento de arco acumulado — é o
+    // que permite andar no traçado por "t" (0..1 = 1 volta) em velocidade
+    // visualmente constante, igual a elipse fazia por matemática direta
+    function sampleTrackShape(shape) {
+      const pts = shape.points;
+      const n = pts.length;
+      const SAMPLES_PER_SEGMENT = 14;
+      const dense = [];
+      for (let i = 0; i < n; i++) {
+        const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+        for (let s = 0; s < SAMPLES_PER_SEGMENT; s++) {
+          const t = s / SAMPLES_PER_SEGMENT;
+          dense.push(shape.angular ? lerp2(p1, p2, t) : catmullRom(p0, p1, p2, p3, t));
+        }
+      }
+      let total = 0;
+      const withLen = dense.map((p, i) => {
+        const prev = dense[(i - 1 + dense.length) % dense.length];
+        const d = i === 0 ? 0 : Math.hypot(p.x - prev.x, p.y - prev.y);
+        total += d;
+        return { x: p.x, y: p.y, cum: total };
+      });
+      return { samples: withLen, total };
+    }
+
+    function pointAtT(sampled, t) {
+      const targetLen = (((t % 1) + 1) % 1) * sampled.total;
+      const arr = sampled.samples;
+      let lo = 0;
+      while (lo < arr.length - 1 && arr[lo + 1].cum < targetLen) lo++;
+      const a = arr[lo], b = arr[(lo + 1) % arr.length];
+      const segLen = ((b.cum - a.cum) + sampled.total) % sampled.total || 1;
+      const localT = segLen > 0 ? (targetLen - a.cum) / segLen : 0;
+      return lerp2(a, b, Math.max(0, Math.min(1, localT)));
+    }
+
+    function mapToCanvas(p, cx, cy, rx, ry) {
+      return { x: cx + p.x * rx, y: cy + p.y * ry };
+    }
+
+    function pointOnTrack(t, cx, cy, rx, ry) {
+      return mapToCanvas(pointAtT(currentTrackSampled, t), cx, cy, rx, ry);
+    }
+
+    // direção de deslocamento no ponto t (tangente do traçado real) — é o
+    // ângulo que o carrinho usa pra apontar pro sentido da pista
     function headingOnTrack(t, rx, ry) {
-      const angle = t * Math.PI * 2 - Math.PI / 2;
-      return Math.atan2(ry * Math.cos(angle), -rx * Math.sin(angle));
+      const eps = 0.004;
+      const p1 = pointAtT(currentTrackSampled, t - eps);
+      const p2 = pointAtT(currentTrackSampled, t + eps);
+      return Math.atan2((p2.y - p1.y) * ry, (p2.x - p1.x) * rx);
+    }
+
+    // desenha o contorno do traçado real (não mais uma elipse) — reusado
+    // pela pista principal e pelo minimapa, cada um com seu próprio cx/cy/rx/ry
+    function strokeTrackShape(ctx, cx, cy, rx, ry) {
+      const pts = currentTrackShape.points.map((p) => mapToCanvas(p, cx, cy, rx, ry));
+      const n = pts.length;
+      ctx.beginPath();
+      if (currentTrackShape.angular) {
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i <= n; i++) ctx.lineTo(pts[i % n].x, pts[i % n].y);
+      } else {
+        const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        const m0 = mid(pts[n - 1], pts[0]);
+        ctx.moveTo(m0.x, m0.y);
+        for (let i = 0; i < n; i++) {
+          const cur = pts[i], next = pts[(i + 1) % n];
+          const m = mid(cur, next);
+          ctx.quadraticCurveTo(cur.x, cur.y, m.x, m.y);
+        }
+        ctx.closePath();
+      }
+    }
+
+    // pit lane visual: uma faixa curta que se desprende da pista logo após
+    // a largada (t entre PIT_T_START e PIT_T_END), afastada pra dentro do
+    // traçado (PIT_INSET) — os carros em pit andam por ela em vez de sumir
+    const PIT_T_START = 0.012, PIT_T_END = 0.09;
+    const PIT_INSET = 18;
+
+    function pitLanePoint(t, cx, cy, rx, ry) {
+      return mapToCanvas(pointAtT(currentTrackSampled, t), cx, cy, rx - PIT_INSET, ry - PIT_INSET);
+    }
+
+    function drawPitLane(ctx, cx, cy, rx, ry) {
+      const steps = 10;
+      const pts = [];
+      for (let i = 0; i <= steps; i++) {
+        const t = PIT_T_START + (PIT_T_END - PIT_T_START) * (i / steps);
+        pts.push(pitLanePoint(t, cx, cy, rx, ry));
+      }
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,213,74,0.5)';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      pts.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+
+      const enter = pointOnTrack(PIT_T_START, cx, cy, rx, ry);
+      const exit = pointOnTrack(PIT_T_END, cx, cy, rx, ry);
+      ctx.strokeStyle = 'rgba(255,213,74,0.32)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(enter.x, enter.y); ctx.lineTo(pts[0].x, pts[0].y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(exit.x, exit.y); ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y); ctx.stroke();
+      ctx.setLineDash([]);
+
+      const mid = pts[Math.floor(pts.length / 2)];
+      ctx.fillStyle = '#ffd54a';
+      ctx.font = 'bold 9px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('PIT', mid.x, mid.y - 6);
+      ctx.textAlign = 'left';
+      ctx.restore();
     }
 
     let playerLiveryColors = { primary: '#ffd54a', secondary: '#16281f', detail: '#ffffff', accent: '#ffd54a' };
@@ -483,12 +647,20 @@
       if (club.colors) playerLiveryColors = Object.assign({}, playerLiveryColors, club.colors);
     }
 
+    // matiz igualmente espaçado por time — os teamId dos rivais são tipo
+    // "rival_0".."rival_8" (só o dígito final muda), e um hash polinomial
+    // simples dá matizes quase idênticos pra essas strings (todo mundo saía
+    // azul). Espaçando por ordem garante cores bem distintas entre si.
+    const teamHueMap = {};
+    if (window.WSPF1Grid) {
+      const rivalIds = [...new Set(window.WSPF1Grid.fullGrid().filter((e) => !e.isPlayer).map((e) => e.teamId))];
+      rivalIds.forEach((id, i) => { teamHueMap[id] = Math.round((i * 360) / rivalIds.length); });
+    }
+
     function teamColor(car) {
       if (car.isPlayer) return playerLiveryColors.primary;
-      let hash = 0;
-      for (let i = 0; i < car.teamId.length; i++) hash = (hash * 31 + car.teamId.charCodeAt(i)) & 0xffffffff;
-      const hue = Math.abs(hash) % 360;
-      return 'hsl(' + hue + ', 65%, 58%)';
+      const hue = teamHueMap[car.teamId] != null ? teamHueMap[car.teamId] : 0;
+      return 'hsl(' + hue + ', 68%, 56%)';
     }
 
     function shadeColor(hex, percent) {
@@ -620,18 +792,18 @@
       const trackGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       trackGradient.addColorStop(0, '#3a6650');
       trackGradient.addColorStop(1, '#22402f');
+      strokeTrackShape(ctx, cx, cy, rx, ry);
       ctx.strokeStyle = trackGradient;
       ctx.lineWidth = 22;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 8]);
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      strokeTrackShape(ctx, cx, cy, rx, ry);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      drawPitLane(ctx, cx, cy, rx, ry);
 
       // linha de largada/chegada (padrão quadriculado) no topo do traçado
       const startPoint = pointOnTrack(0, cx, cy, rx, ry);
@@ -653,7 +825,16 @@
       raceState.cars.forEach((car) => {
         if (car.retired) return;
         const t = car.distance / 100;
-        const p = pointOnTrack(t, cx, cy, rx, ry);
+        let p, heading;
+        if (car.pitting && car.pitTotalMs) {
+          const progress = Math.max(0, Math.min(1, 1 - Math.max(0, car.pitMsRemaining) / car.pitTotalMs));
+          const pitT = PIT_T_START + (PIT_T_END - PIT_T_START) * progress;
+          p = pitLanePoint(pitT, cx, cy, rx, ry);
+          heading = headingOnTrack(pitT, rx - PIT_INSET, ry - PIT_INSET);
+        } else {
+          p = pointOnTrack(t, cx, cy, rx, ry);
+          heading = headingOnTrack(t, rx, ry);
+        }
 
         if (car.finishedAt != null && !seenFinishers.has(car.id)) {
           seenFinishers.add(car.id);
@@ -664,7 +845,6 @@
           playerTrail.push({ x: p.x, y: p.y, life: 1 });
         }
 
-        const heading = headingOnTrack(t, rx, ry);
         drawCar(ctx, p.x, p.y, heading, car);
 
         if (car.pitting) {
@@ -693,8 +873,7 @@
 
       ctx.strokeStyle = 'rgba(159,216,184,0.5)';
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(mcx, mcy, mrx, mry, 0, 0, Math.PI * 2);
+      strokeTrackShape(ctx, mcx, mcy, mrx, mry);
       ctx.stroke();
 
       raceState.cars.forEach((car) => {
