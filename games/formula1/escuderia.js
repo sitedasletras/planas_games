@@ -5,13 +5,18 @@
     SPONSOR_SLOTS, acceptSponsor, rerollSponsor, dismissDepartment,
     FACILITY_GROUPS, TORCIDA_NAME_MAX, facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName,
     moraleLabel, MOTORES, CHASSIS, setMotorSupplier, setChassiSupplier, setTireSupplier, isSupplierLocked,
+    chassiPaceFactor,
   } = window.WSPF1Equipe;
   const TIRE_SUPPLIERS = window.WSPF1Corrida.TIRE_SUPPLIERS;
+  const motorSupplierFuelFactor = window.WSPF1Corrida.motorSupplierFuelFactor;
 
   const club = loadClub();
   // contrato de fornecedor trava até a pré-temporada seguinte — precisa
-  // saber em que temporada estamos pra decidir se ainda tá travado
-  const seasonNumber = window.WSPF1Calendario ? window.WSPF1Calendario.loadState().seasonNumber : 1;
+  // saber em que temporada estamos pra decidir se ainda tá travado, e o
+  // rendimento de potência do motor também é por temporada
+  const calState = window.WSPF1Calendario ? window.WSPF1Calendario.loadState() : null;
+  const seasonNumber = calState ? calState.seasonNumber : 1;
+  const motorPerformanceTable = calState ? calState.motorPerformance || {} : {};
   const budgetEl = document.getElementById('budget-value');
   const moraleFillEl = document.getElementById('morale-fill');
   const moraleValueEl = document.getElementById('morale-value');
@@ -267,7 +272,9 @@
     MOTORES.forEach((name) => {
       const opt = document.createElement('option');
       opt.value = name;
-      opt.textContent = name;
+      const potencia = motorPerformanceTable[name];
+      const consumo = Math.round(motorSupplierFuelFactor(name) * 100);
+      opt.textContent = name + ' (potência ' + (potencia != null ? potencia + '%' : '?') + ' · consumo ' + consumo + '%)';
       if (name === club.motorSupplier) opt.selected = true;
       motorSelectEl.appendChild(opt);
     });
@@ -278,7 +285,7 @@
     CHASSIS.forEach((name) => {
       const opt = document.createElement('option');
       opt.value = name;
-      opt.textContent = name;
+      opt.textContent = name + ' (ritmo ' + Math.round(chassiPaceFactor(name) * 100) + '%)';
       if (name === club.chassiSupplier) opt.selected = true;
       chassiSelectEl.appendChild(opt);
     });

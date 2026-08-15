@@ -252,6 +252,24 @@
     'Chassi Pacífico',
   ];
 
+  // cada construtor de chassi rende um pouquinho diferente de ritmo (banda
+  // apertada, ±3%, mesma filosofia dos outros fornecedores) — antes disso
+  // a escolha do chassi era só estética, sem efeito nenhum no jogo
+  const CHASSIS_PACE_PROFILES = {
+    'Chassi Flor de Lótus': 1.03,
+    'Chassi Lobo': 0.97,
+    'Chassi Flechas': 1.02,
+    'Chassi Março': 0.98,
+    'Chassi Ônix': 1.01,
+    'Chassi Águia': 0.99,
+    'Chassi Insígnia': 1.00,
+    'Chassi Pacífico': 1.00,
+  };
+
+  function chassiPaceFactor(name) {
+    return CHASSIS_PACE_PROFILES[name] != null ? CHASSIS_PACE_PROFILES[name] : 1;
+  }
+
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
   function randomProposal(slotKey, valorizacaoLevel) {
@@ -441,7 +459,7 @@
   window.WSPF1Equipe = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
     PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, LIVERY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
-    CAMPUS_TIER_CAPS, crestColor, MOTORES, CHASSIS,
+    CAMPUS_TIER_CAPS, crestColor, MOTORES, CHASSIS, CHASSIS_PACE_PROFILES, chassiPaceFactor,
     upgradeCost, effectiveUpgradeCost, groupForDept, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,

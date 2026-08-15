@@ -217,6 +217,25 @@
     return 0.97 + ((clamped - MOTOR_PERFORMANCE_MIN) / span) * 0.06; // ~0.97 a ~1.03
   }
 
+  // consumo de combustível é característica FIXA de cada fabricante de
+  // motor (diferente da potência, que oscila por temporada) — motor mais
+  // sedento não é necessariamente o mais potente nesta temporada, mais
+  // uma variável independente pro jogador pesar na escolha
+  const MOTOR_FUEL_PROFILES = {
+    'Motores Auge de Coventry': 1.05,
+    'Motores de Corrida Britânicos': 0.97,
+    'Motores Modernos': 0.95,
+    'Motores Vida': 1.03,
+    'Peças de Reposição Racing': 1.00,
+    'Motores Cervo': 0.98,
+    'Motores Sombra': 1.02,
+    'Motores Pégaso': 1.00,
+  };
+
+  function motorSupplierFuelFactor(name) {
+    return MOTOR_FUEL_PROFILES[name] != null ? MOTOR_FUEL_PROFILES[name] : 1;
+  }
+
   // ---------- Acerto do carro (treino livre) ----------
   // 3 ajustes com trade-off real: ganhar ritmo custa desgaste de pneu (ou
   // ---------- Estilo de pilotagem ----------
@@ -313,7 +332,7 @@
     FAILURE_TYPES, SEASON_FAILURE_EVENTS_MIN, SEASON_FAILURE_EVENTS_MAX,
     scheduleFailureEvents, failureChanceForRace, rollFailureType, pickAffectedEntrant,
     MOTOR_PERFORMANCE_MIN, MOTOR_PERFORMANCE_MAX, MOTOR_PERFORMANCE_STEP,
-    rollMotorPerformances, motorPerformanceFactor,
+    rollMotorPerformances, motorPerformanceFactor, MOTOR_FUEL_PROFILES, motorSupplierFuelFactor,
     CAR_SETUP_OPTIONS, defaultCarSetup, setupPaceFactor, setupWearFactor,
     ASPHALT_IDEAL_ALTURA, setupAsphaltMatchFactor,
     DRIVING_STYLES, defaultDrivingStyle, drivingStylePaceFactor, drivingStyleWearMult, drivingStyleFuelMult,

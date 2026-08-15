@@ -146,6 +146,7 @@
       const motorLevel = club.departments.motor || 0;
       const chassiLevel = club.departments.chassi || 0;
       const motorFactor = motorFactorFor(club.motorSupplier);
+      const chassiFactor = window.WSPF1Equipe.chassiPaceFactor(club.chassiSupplier);
       const setupFactor = setupFactorForPlayer();
       equipe.drivers.filter((d) => d.role !== 'reserva').forEach((d) => {
         entrants.push({
@@ -154,7 +155,7 @@
           teamName: equipe.teamName,
           driverName: d.name,
           isPlayer: true,
-          pace: Math.max(40, Math.min(99, teamPace + ((d.rating || 65) - 65) * 0.5) * motorFactor * setupFactor),
+          pace: Math.max(40, Math.min(99, teamPace + ((d.rating || 65) - 65) * 0.5) * motorFactor * chassiFactor * setupFactor),
           motorLevel, chassiLevel,
           motorSupplier: club.motorSupplier, tireSupplier: club.tireSupplier,
           traits: d.traits || [],
