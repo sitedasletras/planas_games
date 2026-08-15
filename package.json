@@ -1,0 +1,8 @@
+{
+  "name": "planas-games-devtools",
+  "private": true,
+  "description": "Ferramentas de desenvolvimento (testes automatizados) do World Special Player / Planas Games. Não faz parte do jogo em si, que continua puro HTML/CSS/JS sem build.",
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
