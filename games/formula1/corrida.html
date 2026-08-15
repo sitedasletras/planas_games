@@ -121,7 +121,7 @@
         <div class="hud-box"><div class="hud-label">Combustível</div><div class="hud-value" id="hud-fuel">-</div></div>
       </div>
 
-      <canvas id="track" width="380" height="260"></canvas>
+      <canvas id="track" width="400" height="280"></canvas>
       <div class="ticker" id="ticker">Aguardando a largada...</div>
 
       <div class="leaderboard" id="leaderboard"></div>
@@ -283,12 +283,76 @@
       return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
     }
 
+    // direção de deslocamento no ponto t (tangente da elipse) — é o ângulo
+    // que o carrinho usa pra apontar pro sentido da pista, não só marcar posição
+    function headingOnTrack(t, rx, ry) {
+      const angle = t * Math.PI * 2 - Math.PI / 2;
+      return Math.atan2(ry * Math.cos(angle), -rx * Math.sin(angle));
+    }
+
     function teamColor(car) {
       if (car.isPlayer) return '#ffd54a';
       let hash = 0;
       for (let i = 0; i < car.teamId.length; i++) hash = (hash * 31 + car.teamId.charCodeAt(i)) & 0xffffffff;
       const hue = Math.abs(hash) % 360;
       return 'hsl(' + hue + ', 65%, 58%)';
+    }
+
+    function shadeColor(hex, percent) {
+      // só funciona pra cores hex (times hsl usam a própria luminosidade do hsl)
+      if (!hex.startsWith('#')) return hex;
+      const num = parseInt(hex.slice(1), 16);
+      let r = (num >> 16) + percent, g = ((num >> 8) & 0xff) + percent, b = (num & 0xff) + percent;
+      r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
+      return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+    }
+
+    // desenha um carrinho de F1 estilizado (corpo + capacete + pneus),
+    // orientado na direção da pista — em vez de uma bolinha genérica
+    function drawCar(ctx, x, y, angle, car) {
+      const isPlayer = car.isPlayer;
+      const color = teamColor(car);
+      const w = isPlayer ? 12 : 9.5, h = isPlayer ? 6 : 5;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+
+      if (isPlayer) {
+        ctx.shadowColor = '#ffd54a';
+        ctx.shadowBlur = 7;
+      }
+
+      // pneus (atrás do corpo)
+      ctx.fillStyle = '#161616';
+      ctx.fillRect(-w / 2 + 1, -h / 2 - 1.4, w * 0.32, 1.8);
+      ctx.fillRect(-w / 2 + 1, h / 2 - 0.4, w * 0.32, 1.8);
+      ctx.fillRect(w / 2 - w * 0.32 - 1, -h / 2 - 1.4, w * 0.32, 1.8);
+      ctx.fillRect(w / 2 - w * 0.32 - 1, h / 2 - 0.4, w * 0.32, 1.8);
+
+      // corpo do carro (bico afunilado pra frente, cauda reta)
+      const grad = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+      grad.addColorStop(0, isPlayer ? '#fff3c4' : shadeColor(color.startsWith('#') ? color : '#c9c9c9', 35));
+      grad.addColorStop(1, color.startsWith('#') ? color : color);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(w / 2, 0);
+      ctx.lineTo(w / 2 - w * 0.28, -h / 2);
+      ctx.lineTo(-w / 2, -h / 2);
+      ctx.lineTo(-w / 2, h / 2);
+      ctx.lineTo(w / 2 - w * 0.28, h / 2);
+      ctx.closePath();
+      ctx.fill();
+      if (isPlayer) { ctx.strokeStyle = 'white'; ctx.lineWidth = 0.8; ctx.stroke(); }
+      ctx.shadowBlur = 0;
+
+      // capacete do piloto (cockpit)
+      ctx.fillStyle = 'rgba(10,10,10,0.75)';
+      ctx.beginPath();
+      ctx.ellipse(-w * 0.05, 0, w * 0.14, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
     }
 
     // rastro leve atrás do carro do jogador + faíscas na chegada dos 3
@@ -377,29 +441,13 @@
           playerTrail.push({ x: p.x, y: p.y, life: 1 });
         }
 
-        const radius = car.isPlayer ? 6 : 4;
-        const carGradient = ctx.createRadialGradient(p.x - 1, p.y - 1, 0.5, p.x, p.y, radius);
-        const baseColor = teamColor(car);
-        carGradient.addColorStop(0, car.isPlayer ? '#fff3c4' : baseColor);
-        carGradient.addColorStop(1, baseColor);
-        ctx.beginPath();
-        ctx.fillStyle = carGradient;
-        if (car.isPlayer) {
-          ctx.shadowColor = '#ffd54a';
-          ctx.shadowBlur = 8;
-        }
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        if (car.isPlayer) {
-          ctx.strokeStyle = 'white';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        }
+        const heading = headingOnTrack(t, rx, ry);
+        drawCar(ctx, p.x, p.y, heading, car);
+
         if (car.pitting) {
-          ctx.fillStyle = 'rgba(255,255,255,0.8)';
-          ctx.font = '9px Arial';
-          ctx.fillText('🔧', p.x + 6, p.y - 6);
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.font = '10px Arial';
+          ctx.fillText('🔧', p.x + 7, p.y - 7);
         }
       });
 
