@@ -24,6 +24,8 @@
       colors: { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a' },
       crest: { shape: 'escudo', emblem: '🏎️', color: null },
       torcidaName: null,
+      motorSupplier: null,
+      chassiSupplier: null,
       valorizacaoLevel: 0,
       exclusiveEmblemUnlocked: false,
       exclusiveJerseyUnlocked: false,
@@ -136,6 +138,20 @@
     return { ok: true };
   }
 
+  function setMotorSupplier(club, name) {
+    if (!MOTORES.includes(name)) return { ok: false, reason: 'invalid' };
+    club.motorSupplier = name;
+    saveClub(club);
+    return { ok: true };
+  }
+
+  function setChassiSupplier(club, name) {
+    if (!CHASSIS.includes(name)) return { ok: false, reason: 'invalid' };
+    club.chassiSupplier = name;
+    saveClub(club);
+    return { ok: true };
+  }
+
   const BASE_MATCH_REVENUE = 600;
   const REVENUE_PER_TORCIDA_LEVEL = 300;
 
@@ -155,11 +171,36 @@
   };
 
   const SPONSOR_NAMES = {
-    carroceria_principal: ['TechBank', 'Cerveja Serra Alta', 'Voa Linhas Aéreas', 'Construtora Horizonte', 'SegurPrev Seguros', 'Grupo Atlas'],
+    carroceria_principal: ['TechBank', 'Cerveja Serra Alta', 'Voa Linhas Aéreas', 'Construtora Horizonte', 'SegurPrev Seguros', 'Grupo Atlas', 'Planas Games', 'Instituto Celeiro Literário'],
     capacete: ['Auto Peças Rael', 'Mercado Bom Preço', 'Farmácia Vitalis', 'Posto Estrada Nova', 'Imobiliária Cedro'],
-    combustivel: ['HidraSport Combustíveis', 'PotencIon Lubrificantes', 'AguaViva Racing', 'RecarregaMax', 'Ion Total'],
+    combustivel: ['HidraSport Combustíveis', 'PotencIon Lubrificantes', 'AguaViva Racing', 'RecarregaMax', 'Ion Total', 'Petróleo do Brás'],
     equipamentos: ['Tope', 'Ardidas', 'Pênallti', 'Fitas', 'Kappas', 'Tumdro', 'Lêcoque', 'Strike', 'Nova Ballada'],
   };
+
+  // Fornecedores de motor e construtores de chassi do grid — inspirados em marcas
+  // reais que já não competem mais na F1, com nomes traduzidos/reinterpretados em
+  // português (ex.: Lotus -> Flor de Lótus) em vez do nome de marca original.
+  const MOTORES = [
+    'Motores Auge de Coventry',
+    'Motores de Corrida Britânicos',
+    'Motores Modernos',
+    'Motores Vida',
+    'Peças de Reposição Racing',
+    'Motores Cervo',
+    'Motores Sombra',
+    'Motores Pégaso',
+  ];
+
+  const CHASSIS = [
+    'Chassi Flor de Lótus',
+    'Chassi Lobo',
+    'Chassi Flechas',
+    'Chassi Março',
+    'Chassi Ônix',
+    'Chassi Águia',
+    'Chassi Insígnia',
+    'Chassi Pacífico',
+  ];
 
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -187,7 +228,10 @@
     Object.keys(DEPARTMENTS).forEach((k) => { departments[k] = 0; });
     const sponsors = {};
     Object.keys(SPONSOR_SLOTS).forEach((k) => { sponsors[k] = { current: null, proposal: randomProposal(k) }; });
-    return Object.assign({ budget: STARTING_BUDGET, departments, sponsors }, defaultCustomization());
+    const club = Object.assign({ budget: STARTING_BUDGET, departments, sponsors }, defaultCustomization());
+    club.motorSupplier = pick(MOTORES);
+    club.chassiSupplier = pick(CHASSIS);
+    return club;
   }
 
   function loadClub() {
@@ -208,6 +252,8 @@
         if (!parsed.crest) parsed.crest = defaults.crest;
         if (parsed.crest.color === undefined) parsed.crest.color = defaults.crest.color;
         if (parsed.torcidaName === undefined) parsed.torcidaName = defaults.torcidaName;
+        if (!parsed.motorSupplier) parsed.motorSupplier = pick(MOTORES);
+        if (!parsed.chassiSupplier) parsed.chassiSupplier = pick(CHASSIS);
         if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
         if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
         if (parsed.exclusiveJerseyUnlocked == null) parsed.exclusiveJerseyUnlocked = defaults.exclusiveJerseyUnlocked;
@@ -333,11 +379,12 @@
   window.WSPF1Equipe = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
     PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
-    CAMPUS_TIER_CAPS, crestColor,
+    CAMPUS_TIER_CAPS, crestColor, MOTORES, CHASSIS,
     upgradeCost, effectiveUpgradeCost, groupForDept, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
     facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName, payMatchRevenue,
+    setMotorSupplier, setChassiSupplier,
     maxDepartmentLevelForGroup, bumpValorizacao, adjustMorale, moraleLabel,
   };
 })();
