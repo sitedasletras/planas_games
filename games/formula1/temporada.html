@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Fórmula 1 — Temporada</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: white;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; min-height: 100vh; padding-bottom: 24px; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 14px; }
+  .back-btn { color: #ffd54a; text-decoration: none; font-size: 1.3rem; font-weight: bold; }
+  .topbar h1 { font-size: 1.15rem; color: #ffd54a; }
+
+  .panel { margin: 10px 14px; padding: 14px; background: #16281f; border: 1px solid #345c48; border-radius: 12px; }
+  .panel h2 { font-size: 0.9rem; color: #ffd54a; margin-bottom: 8px; }
+  .season-tag { font-size: 0.72rem; color: #9fd8b8; margin-bottom: 4px; }
+
+  .weekend-title { font-size: 1.1rem; font-weight: bold; }
+  .weekend-meta { font-size: 0.78rem; color: #9fd8b8; margin-top: 4px; }
+  .sprint-badge { display: inline-block; margin-top: 6px; font-size: 0.68rem; background: #1e3b2a; border: 1px solid #ffd54a; color: #ffd54a; padding: 2px 8px; border-radius: 8px; }
+
+  .session-steps { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
+  .session-step { flex: 1 1 auto; text-align: center; font-size: 0.62rem; padding: 6px 4px; border-radius: 8px; background: #0f231a; color: #6f9382; }
+  .session-step.done { color: #3fd67a; }
+  .session-step.active { background: #1e3b2a; color: #ffd54a; border: 1px solid #ffd54a; }
+
+  .primary-btn {
+    display: block; width: 100%; padding: 14px; margin-top: 8px; border: none; border-radius: 12px;
+    background: linear-gradient(160deg, #2f8f4e, #14401f); border: 2px solid #ffd54a; color: white;
+    font-weight: bold; font-size: 1rem; cursor: pointer; text-align: center; text-decoration: none;
+  }
+  .primary-btn:active { transform: scale(0.98); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tab-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #345c48; background: #0f231a; color: #9fd8b8; font-size: 0.78rem; cursor: pointer; }
+  .tab-btn.active { background: #1e3b2a; color: #ffd54a; border-color: #ffd54a; }
+
+  .std-row { display: flex; align-items: center; gap: 8px; padding: 7px 4px; border-bottom: 1px solid #234433; font-size: 0.8rem; }
+  .std-row.player { color: #ffd54a; font-weight: bold; }
+  .std-pos { width: 20px; color: #9fd8b8; }
+  .std-name { flex: 1; }
+  .std-name small { display: block; color: #9fd8b8; font-size: 0.65rem; }
+  .std-pts { font-weight: bold; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 18px; }
+  .overlay.hidden { display: none; }
+  .overlay-card { background: #16281f; border: 2px solid #ffd54a; border-radius: 16px; padding: 22px; max-width: 380px; width: 100%; }
+  .overlay-title { font-size: 1.1rem; font-weight: bold; color: #ffd54a; margin-bottom: 10px; text-align: center; }
+  .overlay-sub { font-size: 0.85rem; color: #cfeede; text-align: center; margin-bottom: 14px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="back-btn" href="index.html">←</a>
+      <h1>Temporada</h1>
+    </div>
+
+    <div class="panel">
+      <div class="season-tag" id="season-tag">Temporada 1 · Corrida 1/21</div>
+      <div class="weekend-title" id="weekend-title">Circuito</div>
+      <div class="weekend-meta" id="weekend-meta"></div>
+      <span class="sprint-badge hidden" id="sprint-badge">Fim de semana com Sprint</span>
+
+      <div class="session-steps" id="session-steps"></div>
+
+      <button class="primary-btn hidden" id="instant-btn"></button>
+      <a class="primary-btn hidden" id="race-link" href="corrida.html"></a>
+      <button class="primary-btn hidden" id="new-season-btn">🏆 Iniciar nova temporada</button>
+    </div>
+
+    <div class="panel">
+      <h2>Classificação</h2>
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-drivers">Pilotos</button>
+        <button class="tab-btn" id="tab-constructors">Construtores</button>
+      </div>
+      <div id="standings-list"></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="report-overlay">
+    <div class="overlay-card">
+      <div class="overlay-title" id="report-title">Relatório</div>
+      <div class="overlay-sub" id="report-text"></div>
+      <button class="primary-btn" id="report-close-btn">Continuar</button>
+    </div>
+  </div>
+
+  <script src="pilotos.js"></script>
+  <script src="equipe.js"></script>
+  <script src="corrida.js"></script>
+  <script src="grid.js"></script>
+  <script src="calendario.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const Cal = window.WSPF1Calendario;
+    let state = Cal.loadState();
+    let activeTab = 'drivers';
+
+    function render() {
+      state = Cal.loadState();
+      document.getElementById('season-tag').textContent = 'Temporada ' + state.seasonNumber + ' · Corrida ' + Math.min(state.weekendIndex + 1, Cal.SEASON_RACE_COUNT) + '/' + Cal.SEASON_RACE_COUNT;
+
+      const weekend = Cal.currentWeekend(state);
+      const instantBtn = document.getElementById('instant-btn');
+      const raceLink = document.getElementById('race-link');
+      const newSeasonBtn = document.getElementById('new-season-btn');
+      instantBtn.classList.add('hidden');
+      raceLink.classList.add('hidden');
+      newSeasonBtn.classList.add('hidden');
+
+      if (!weekend) {
+        document.getElementById('weekend-title').textContent = 'Temporada encerrada!';
+        document.getElementById('weekend-meta').textContent = 'Confira a classificação final abaixo.';
+        document.getElementById('sprint-badge').classList.add('hidden');
+        document.getElementById('session-steps').innerHTML = '';
+        newSeasonBtn.classList.remove('hidden');
+      } else {
+        document.getElementById('weekend-title').textContent = weekend.circuit;
+        document.getElementById('weekend-meta').textContent = weekend.laps + ' voltas na Corrida';
+        document.getElementById('sprint-badge').classList.toggle('hidden', !weekend.hasSprint);
+
+        const stepsEl = document.getElementById('session-steps');
+        stepsEl.innerHTML = '';
+        weekend.sessions.forEach((s, i) => {
+          const step = document.createElement('div');
+          step.className = 'session-step' + (i < weekend.sessionIdx ? ' done' : '') + (i === weekend.sessionIdx ? ' active' : '');
+          step.textContent = Cal.SESSION_TYPES[s].icon + ' ' + Cal.SESSION_TYPES[s].label;
+          stepsEl.appendChild(step);
+        });
+
+        const type = Cal.currentSessionType(state);
+        if (type === 'treino_livre' || type === 'classificatoria') {
+          instantBtn.classList.remove('hidden');
+          instantBtn.textContent = 'Rodar ' + Cal.SESSION_TYPES[type].label;
+          instantBtn.onclick = () => runInstant(type, weekend);
+        } else if (type === 'sprint' || type === 'corrida') {
+          raceLink.classList.remove('hidden');
+          raceLink.textContent = 'Ir pra ' + Cal.SESSION_TYPES[type].label;
+        }
+      }
+
+      renderStandings();
+    }
+
+    function runInstant(type, weekend) {
+      const entrants = window.WSPF1Grid.fullGrid();
+      const order = type === 'treino_livre' ? Cal.resolveFreePractice(entrants) : Cal.resolveQualifying(entrants);
+      Cal.recordSessionResult(state, order);
+
+      const byId = {}; entrants.forEach((e) => { byId[e.id] = e; });
+      const playerPositions = order.map((id, i) => ({ id, i })).filter((x) => byId[x.id] && byId[x.id].isPlayer);
+      const best = playerPositions.length ? Math.min(...playerPositions.map((p) => p.i)) + 1 : null;
+
+      document.getElementById('report-title').textContent = Cal.SESSION_TYPES[type].icon + ' ' + Cal.SESSION_TYPES[type].label;
+      document.getElementById('report-text').textContent = best
+        ? (type === 'classificatoria' ? 'Melhor piloto da equipe larga em ' + best + 'º.' : 'Melhor piloto da equipe terminou o treino em ' + best + 'º.')
+        : 'Sessão concluída.';
+      document.getElementById('report-overlay').classList.remove('hidden');
+    }
+
+    document.getElementById('report-close-btn').addEventListener('click', () => {
+      document.getElementById('report-overlay').classList.add('hidden');
+      render();
+    });
+
+    document.getElementById('new-season-btn').addEventListener('click', () => {
+      state = Cal.startNewSeason(state);
+      render();
+    });
+
+    function renderStandings() {
+      const entrants = window.WSPF1Grid.fullGrid();
+      const list = document.getElementById('standings-list');
+      list.innerHTML = '';
+      const rows = activeTab === 'drivers' ? Cal.driverStandings(state, entrants) : Cal.constructorStandings(state, entrants);
+      rows.forEach((r, i) => {
+        const row = document.createElement('div');
+        row.className = 'std-row' + (r.isPlayer ? ' player' : '');
+        const name = activeTab === 'drivers' ? r.name : r.teamName;
+        const sub = activeTab === 'drivers' ? r.team : '';
+        row.innerHTML = '<span class="std-pos">' + (i + 1) + '</span><span class="std-name">' + name + (sub ? '<small>' + sub + '</small>' : '') + '</span><span class="std-pts">' + r.points + ' pts</span>';
+        list.appendChild(row);
+      });
+    }
+
+    document.getElementById('tab-drivers').addEventListener('click', () => {
+      activeTab = 'drivers';
+      document.getElementById('tab-drivers').classList.add('active');
+      document.getElementById('tab-constructors').classList.remove('active');
+      renderStandings();
+    });
+    document.getElementById('tab-constructors').addEventListener('click', () => {
+      activeTab = 'constructors';
+      document.getElementById('tab-constructors').classList.add('active');
+      document.getElementById('tab-drivers').classList.remove('active');
+      renderStandings();
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>
