@@ -1,0 +1,150 @@
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: white;
+  min-height: 100vh;
+}
+
+.landing-wrap {
+  max-width: 420px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+}
+
+.back-btn {
+  color: #ffd54a;
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.landing-topbar h1 {
+  font-size: 1.2rem;
+  color: #ffd54a;
+}
+
+.club-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 40px;
+}
+
+.club-badge {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #16281f;
+  border: 3px solid #ffd54a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.club-name {
+  font-size: 1.3rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.landing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 40px 24px;
+  margin-top: auto;
+  margin-bottom: 40px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: white;
+  font-weight: bold;
+  font-size: 1.05rem;
+  background: #16281f;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.action-btn.primary {
+  background: linear-gradient(160deg, #2f8f4e, #14401f);
+  border-color: #ffd54a;
+}
+
+.action-btn:active {
+  transform: scale(0.97);
+}
+
+.action-icon {
+  font-size: 1.2rem;
+}
+
+.daily-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.daily-overlay.hidden { display: none; }
+
+.daily-card {
+  background: #16281f;
+  border: 2px solid #ffd54a;
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  max-width: 320px;
+  width: 100%;
+}
+
+.daily-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffd54a;
+  margin-bottom: 6px;
+}
+
+.daily-day {
+  font-size: 0.85rem;
+  color: #9fd8b8;
+  margin-bottom: 12px;
+}
+
+.daily-coin {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.daily-amount {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #3fd67a;
+  margin-bottom: 18px;
+}
+
+.daily-card .action-btn {
+  width: 100%;
+}

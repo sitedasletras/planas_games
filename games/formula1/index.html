@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4102102989530314" crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Fórmula 1</title>
+<link rel="stylesheet" href="landing.css">
+<style>
+  .action-btn.locked {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .locked-tag {
+    margin-left: auto;
+    font-size: 0.68rem;
+    background: rgba(0,0,0,0.3);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .week-note {
+    text-align: center;
+    font-size: 0.72rem;
+    color: #9fd8b8;
+    padding: 0 24px;
+  }
+</style>
+</head>
+<body>
+  <div class="landing-wrap">
+    <div class="landing-topbar">
+      <a class="back-btn" href="../../index.html">←</a>
+      <h1>Fórmula 1</h1>
+    </div>
+
+    <div class="club-card">
+      <div class="club-badge" id="club-badge">🏎️</div>
+      <div class="club-name" id="club-name">Bandeirantes Racing</div>
+    </div>
+
+    <div class="landing-actions">
+      <a class="action-btn locked" href="#" id="race-btn">
+        <span class="action-icon">🏁</span>
+        <span>Corrida</span>
+        <span class="locked-tag">Em breve</span>
+      </a>
+      <a class="action-btn locked" href="#">
+        <span class="action-icon">🏆</span>
+        <span>Temporada</span>
+        <span class="locked-tag">Em breve</span>
+      </a>
+      <a class="action-btn locked" href="#">
+        <span class="action-icon">🧑‍🚀</span>
+        <span>Pilotos</span>
+        <span class="locked-tag">Em breve</span>
+      </a>
+      <a class="action-btn locked" href="#">
+        <span class="action-icon">🏎️</span>
+        <span>Equipe</span>
+        <span class="locked-tag">Em breve</span>
+      </a>
+      <a class="action-btn locked" href="#">
+        <span class="action-icon">🎨</span>
+        <span>Personalização</span>
+        <span class="locked-tag">Em breve</span>
+      </a>
+    </div>
+
+    <p class="week-note">Módulo em construção — a base de dados (equipe e pilotos) já está pronta, o resto chega ao longo da semana.</p>
+  </div>
+
+  <script src="pilotos.js"></script>
+  <script src="equipe.js"></script>
+  <script>
+    if (window.WSPF1Pilotos) {
+      document.getElementById('club-name').textContent = window.WSPF1Pilotos.loadSquad().teamName;
+    }
+    if (window.WSPF1Equipe) {
+      const equipe = window.WSPF1Equipe.loadClub();
+      const badge = document.getElementById('club-badge');
+      badge.textContent = equipe.crest.emblem;
+      badge.style.background = window.WSPF1Equipe.crestColor(equipe);
+      badge.style.borderColor = equipe.colors.detail;
+    }
+  </script>
+</body>
+</html>
