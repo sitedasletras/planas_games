@@ -31,6 +31,14 @@
     { label: 'Vermelho Real', primary: '#c8102e', secondary: '#ffffff', detail: '#0d0d0d', accent: '#c8102e' },
     { label: 'Púrpura Imperial', primary: '#3a0e5c', secondary: '#c084fc', detail: '#ffd54a', accent: '#3a0e5c' },
     { label: 'Preto Absoluto', primary: '#0a0a0a', secondary: '#0a0a0a', detail: '#ffd54a', accent: '#e63946' },
+    { label: 'Marinho e Ouro', primary: '#0a1f44', secondary: '#d4af37', detail: '#ffffff', accent: '#d4af37' },
+    { label: 'Rosa Choque', primary: '#ff2d95', secondary: '#0d0d0d', detail: '#ffffff', accent: '#ff2d95' },
+    { label: 'Verde Limão', primary: '#9acd32', secondary: '#0d0d0d', detail: '#ffffff', accent: '#9acd32' },
+    { label: 'Vinho e Creme', primary: '#4a0e1a', secondary: '#f2e8d5', detail: '#c9a227', accent: '#4a0e1a' },
+    { label: 'Turquesa Tropical', primary: '#0d9488', secondary: '#ff7a1a', detail: '#ffffff', accent: '#ff7a1a' },
+    { label: 'Grafite Militar', primary: '#3a3d2f', secondary: '#ff7a1a', detail: '#c9c9c9', accent: '#ff7a1a' },
+    { label: 'Amarelo Canário', primary: '#f5d90a', secondary: '#0d0d0d', detail: '#ffffff', accent: '#0d0d0d' },
+    { label: 'Azul Elétrico', primary: '#0057ff', secondary: '#c9d1d9', detail: '#ffffff', accent: '#c9d1d9' },
   ];
 
   function defaultCustomization() {

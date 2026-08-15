@@ -172,6 +172,7 @@
 
 .jersey-preset-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -185,6 +186,28 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.car-preset-option {
+  width: 68px;
+  height: auto;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px;
+  background: #0e1c15;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+.car-preset-option:active,
+.car-preset-option:hover {
+  border-color: #ffd54a;
+}
+
+.car-preset-label {
+  font-size: 0.58rem;
+  color: #cfeede;
+  text-align: center;
+  line-height: 1.15;
 }
 
 .shape-row {

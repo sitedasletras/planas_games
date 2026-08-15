@@ -70,6 +70,42 @@
     return section;
   }
 
+  // mesmo desenho em pixel art usado no carro de verdade durante a corrida
+  // (corrida.html) — aqui em miniatura, pra escolher a pintura vendo o
+  // carrinho de F1 de cima já na cor, em vez de um swatch de cor abstrato
+  const MINI_CAR_PIXELS = [
+    ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
+    ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
+    ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
+    ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+    ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+    ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
+    ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
+    ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
+  ];
+
+  function drawMiniCar(canvas, colors) {
+    const ctx = canvas.getContext('2d');
+    const rows = MINI_CAR_PIXELS.length, cols = MINI_CAR_PIXELS[0].length;
+    const cell = canvas.width / cols;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(0, (canvas.height - rows * cell) / 2);
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const px = MINI_CAR_PIXELS[row][col];
+        if (px === '.') continue;
+        ctx.fillStyle = px === 'w' ? '#141414'
+          : px === 'c' ? 'rgba(8,8,8,0.9)'
+          : px === 'g' ? colors.secondary
+          : px === 'n' ? colors.accent
+          : colors.primary;
+        ctx.fillRect(col * cell, row * cell, cell + 0.4, cell + 0.4);
+      }
+    }
+    ctx.restore();
+  }
+
   function colorsSection() {
     const section = document.createElement('div');
     section.className = 'custom-section';
@@ -145,13 +181,16 @@
     liveryRow.className = 'jersey-preset-row';
     window.WSPF1Equipe.LIVERY_PRESETS.forEach((preset) => {
       const btn = document.createElement('button');
-      btn.className = 'jersey-preset-option';
+      btn.className = 'jersey-preset-option car-preset-option';
       btn.title = preset.label;
-      btn.style.background = preset.primary;
-      btn.style.borderColor = preset.secondary;
-      const dot = document.createElement('span');
-      dot.style.cssText = 'display:block;width:10px;height:10px;border-radius:50%;background:' + preset.accent + ';margin:0 auto;';
-      btn.appendChild(dot);
+      const canvas = document.createElement('canvas');
+      canvas.width = 48; canvas.height = 26;
+      btn.appendChild(canvas);
+      const label = document.createElement('span');
+      label.className = 'car-preset-label';
+      label.textContent = preset.label;
+      btn.appendChild(label);
+      drawMiniCar(canvas, preset);
       btn.addEventListener('click', () => applyPreset(preset));
       liveryRow.appendChild(btn);
     });
@@ -167,13 +206,16 @@
       presetRow.className = 'jersey-preset-row';
       EXCLUSIVE_JERSEY_PRESETS.forEach((preset) => {
         const btn = document.createElement('button');
-        btn.className = 'jersey-preset-option';
+        btn.className = 'jersey-preset-option car-preset-option';
         btn.title = preset.label;
-        btn.style.background = preset.primary;
-        btn.style.borderColor = preset.secondary;
-        const dot = document.createElement('span');
-        dot.style.cssText = 'display:block;width:10px;height:10px;border-radius:50%;background:' + preset.detail + ';margin:0 auto;';
-        btn.appendChild(dot);
+        const canvas = document.createElement('canvas');
+        canvas.width = 48; canvas.height = 26;
+        btn.appendChild(canvas);
+        const label = document.createElement('span');
+        label.className = 'car-preset-label';
+        label.textContent = preset.label;
+        btn.appendChild(label);
+        drawMiniCar(canvas, preset);
         btn.addEventListener('click', () => applyPreset(preset));
         presetRow.appendChild(btn);
       });
