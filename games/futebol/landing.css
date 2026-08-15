@@ -2,7 +2,7 @@
 
 html, body {
   background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   color: white;
   min-height: 100vh;
 }
@@ -30,6 +30,7 @@ html, body {
 }
 
 .landing-topbar h1 {
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
   font-size: 1.2rem;
   color: #ffd54a;
 }

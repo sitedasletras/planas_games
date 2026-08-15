@@ -1,7 +1,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
   min-height: 100vh;
   display: flex;
@@ -21,10 +21,20 @@ body {
 }
 
 .hub-header h1 {
-  color: #ffd54a;
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
   font-size: 2.1rem;
   letter-spacing: 1px;
-  text-shadow: 0 2px 0 #7a5b00;
+  color: #ffd54a; /* fallback pra navegadores sem suporte a background-clip:text */
+  background: linear-gradient(135deg, #ffd54a, #ffaa00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleGlow 3s ease-in-out infinite;
+}
+
+@keyframes titleGlow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
 }
 
 .hub-sub {
@@ -51,13 +61,35 @@ body {
   text-decoration: none;
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.1);
-  transition: transform 0.15s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(4px);
+  position: relative;
+  overflow: hidden;
+  animation: cardIn 0.5s ease backwards;
+}
+
+.game-grid .game-card:nth-child(1) { animation-delay: 0.05s; }
+.game-grid .game-card:nth-child(2) { animation-delay: 0.1s; }
+.game-grid .game-card:nth-child(3) { animation-delay: 0.15s; }
+.game-grid .game-card:nth-child(4) { animation-delay: 0.2s; }
+.game-grid .game-card:nth-child(5) { animation-delay: 0.25s; }
+.game-grid .game-card:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .game-card.playable {
   background: linear-gradient(160deg, #2f8f4e, #14401f);
   border-color: #ffd54a;
   cursor: pointer;
+}
+
+.game-card.playable:hover {
+  transform: scale(1.05) translateY(-4px);
+  box-shadow: 0 8px 24px rgba(47, 143, 78, 0.4),
+              0 0 0 1px rgba(255, 213, 74, 0.6);
 }
 
 .game-card.playable:active {
@@ -72,6 +104,32 @@ body {
 .game-card.locked {
   background: #1c1c1c;
   opacity: 0.5;
+}
+
+.game-card.locked::after {
+  content: '🔒';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 0.9rem;
+  opacity: 0.5;
+}
+
+.game-card.locked::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%);
+  animation: shimmer 4s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.game-card.locked .game-icon {
+  filter: grayscale(60%);
 }
 
 .game-icon {
