@@ -84,6 +84,11 @@
       </div>
       <div id="standings-list"></div>
     </div>
+
+    <div class="panel">
+      <h2>Rendimento dos motores nesta temporada</h2>
+      <div id="motor-performance-list"></div>
+    </div>
   </div>
 
   <div class="overlay hidden" id="report-overlay">
@@ -150,6 +155,19 @@
       }
 
       renderStandings();
+      renderMotorPerformance();
+    }
+
+    function renderMotorPerformance() {
+      const box = document.getElementById('motor-performance-list');
+      box.innerHTML = '';
+      const table = state.motorPerformance || {};
+      Object.keys(table).sort((a, b) => table[b] - table[a]).forEach((name) => {
+        const row = document.createElement('div');
+        row.className = 'std-row';
+        row.innerHTML = '<span class="std-name">' + name + '</span><span class="std-pts">' + table[name] + '%</span>';
+        box.appendChild(row);
+      });
     }
 
     function runInstant(type, weekend) {

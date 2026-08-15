@@ -26,6 +26,7 @@
       torcidaName: null,
       motorSupplier: null,
       chassiSupplier: null,
+      tireSupplier: null,
       valorizacaoLevel: 0,
       exclusiveEmblemUnlocked: false,
       exclusiveJerseyUnlocked: false,
@@ -152,6 +153,19 @@
     return { ok: true };
   }
 
+  function pickTireSupplierKey() {
+    const keys = window.WSPF1Corrida ? Object.keys(window.WSPF1Corrida.TIRE_SUPPLIERS) : [];
+    return keys.length ? keys[Math.floor(Math.random() * keys.length)] : null;
+  }
+
+  function setTireSupplier(club, key) {
+    const valid = window.WSPF1Corrida && Object.prototype.hasOwnProperty.call(window.WSPF1Corrida.TIRE_SUPPLIERS, key);
+    if (!valid) return { ok: false, reason: 'invalid' };
+    club.tireSupplier = key;
+    saveClub(club);
+    return { ok: true };
+  }
+
   const BASE_MATCH_REVENUE = 600;
   const REVENUE_PER_TORCIDA_LEVEL = 300;
 
@@ -231,6 +245,7 @@
     const club = Object.assign({ budget: STARTING_BUDGET, departments, sponsors }, defaultCustomization());
     club.motorSupplier = pick(MOTORES);
     club.chassiSupplier = pick(CHASSIS);
+    club.tireSupplier = pickTireSupplierKey();
     return club;
   }
 
@@ -254,6 +269,7 @@
         if (parsed.torcidaName === undefined) parsed.torcidaName = defaults.torcidaName;
         if (!parsed.motorSupplier) parsed.motorSupplier = pick(MOTORES);
         if (!parsed.chassiSupplier) parsed.chassiSupplier = pick(CHASSIS);
+        if (!parsed.tireSupplier) parsed.tireSupplier = pickTireSupplierKey();
         if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
         if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
         if (parsed.exclusiveJerseyUnlocked == null) parsed.exclusiveJerseyUnlocked = defaults.exclusiveJerseyUnlocked;
@@ -384,7 +400,7 @@
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
     facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName, payMatchRevenue,
-    setMotorSupplier, setChassiSupplier,
+    setMotorSupplier, setChassiSupplier, setTireSupplier,
     maxDepartmentLevelForGroup, bumpValorizacao, adjustMorale, moraleLabel,
   };
 })();

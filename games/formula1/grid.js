@@ -39,6 +39,16 @@
 
   function randLevel() { return Math.floor(Math.random() * 21); } // 0-20, escala de departamento
 
+  function randMotorSupplier() {
+    const names = window.WSPF1Equipe ? window.WSPF1Equipe.MOTORES : [];
+    return names.length ? names[Math.floor(Math.random() * names.length)] : null;
+  }
+
+  function randTireSupplier() {
+    const keys = window.WSPF1Corrida ? Object.keys(window.WSPF1Corrida.TIRE_SUPPLIERS) : [];
+    return keys.length ? keys[Math.floor(Math.random() * keys.length)] : null;
+  }
+
   function generateRivalTeam(used, index) {
     const teamName = RIVAL_TEAM_NAMES[index] || ('Equipe Rival ' + (index + 1));
     const basePace = 60 + Math.random() * 35; // 60-95
@@ -52,6 +62,8 @@
       pace: Math.round(basePace),
       motorLevel: randLevel(),
       chassiLevel: randLevel(),
+      motorSupplier: randMotorSupplier(),
+      tireSupplier: randTireSupplier(),
       drivers,
     };
   }
@@ -66,7 +78,16 @@
   function loadGrid() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        let changed = false;
+        (parsed.rivals || []).forEach((r) => {
+          if (!r.motorSupplier) { r.motorSupplier = randMotorSupplier(); changed = true; }
+          if (!r.tireSupplier) { r.tireSupplier = randTireSupplier(); changed = true; }
+        });
+        if (changed) saveGrid(parsed);
+        return parsed;
+      }
     } catch (e) { /* ignore corrupt storage */ }
     const fresh = freshGrid();
     saveGrid(fresh);
@@ -85,6 +106,16 @@
     return Math.min(99, 58 + (motor + chassi + aero) * 0.75);
   }
 
+  // fator de rendimento do motor nesta temporada — motores oscilam de uma
+  // temporada pra outra (corrida.js/calendario.js), então o mesmo fornecedor
+  // pode valer mais ou menos ritmo dependendo da temporada em curso
+  function motorFactorFor(motorSupplier) {
+    if (!window.WSPF1Corrida || !window.WSPF1Calendario) return 1;
+    const state = window.WSPF1Calendario.loadState();
+    const pct = state.motorPerformance ? state.motorPerformance[motorSupplier] : null;
+    return window.WSPF1Corrida.motorPerformanceFactor(pct);
+  }
+
   // Monta o grid completo pra uma sessão: 2 pilotos titulares do jogador +
   // os pilotos das 9 equipes rivais, cada um com pace/motorLevel/chassiLevel
   // prontos pro motor de corrida e pro sorteio de falhas do corrida.js
@@ -97,6 +128,7 @@
       const teamPace = playerTeamPace(club);
       const motorLevel = club.departments.motor || 0;
       const chassiLevel = club.departments.chassi || 0;
+      const motorFactor = motorFactorFor(club.motorSupplier);
       equipe.drivers.filter((d) => d.role !== 'reserva').forEach((d) => {
         entrants.push({
           id: 'player_' + d.id,
@@ -104,13 +136,15 @@
           teamName: equipe.teamName,
           driverName: d.name,
           isPlayer: true,
-          pace: Math.max(40, Math.min(99, teamPace + ((d.rating || 65) - 65) * 0.5)),
+          pace: Math.max(40, Math.min(99, teamPace + ((d.rating || 65) - 65) * 0.5) * motorFactor),
           motorLevel, chassiLevel,
+          motorSupplier: club.motorSupplier, tireSupplier: club.tireSupplier,
           traits: d.traits || [],
         });
       });
     }
     grid.rivals.forEach((r) => {
+      const motorFactor = motorFactorFor(r.motorSupplier);
       r.drivers.forEach((d, i) => {
         entrants.push({
           id: r.id + '_' + i,
@@ -118,9 +152,10 @@
           teamName: r.name,
           driverName: d.name,
           isPlayer: false,
-          pace: d.rating,
+          pace: Math.max(40, Math.min(99, d.rating * motorFactor)),
           motorLevel: r.motorLevel,
           chassiLevel: r.chassiLevel,
+          motorSupplier: r.motorSupplier, tireSupplier: r.tireSupplier,
           traits: [],
         });
       });

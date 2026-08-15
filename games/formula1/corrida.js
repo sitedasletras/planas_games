@@ -23,12 +23,32 @@
   // no seco com pneu de chuva, ou "cozinhando" o intermediário no seco
   const TIRE_MISMATCH_PENALTY = 0.22;
 
-  function tireEffectiveGrip(compoundKey, weatherKey) {
+  // Até 5 fornecedoras de pneu no grid — cada uma com um perfil próprio de
+  // rendimento no seco (macio/médio/duro) x na chuva (intermediário/chuva),
+  // de propósito desbalanceado entre os dois eixos: quem manda no seco não é
+  // necessariamente quem manda na chuva, como o usuário pediu.
+  const TIRE_SUPPLIERS = {
+    aurora: { label: 'Borrachas Aurora', profile: { seco: 1.03, chuva: 0.93 } },
+    titan: { label: 'Pneus Titã', profile: { seco: 0.95, chuva: 1.06 } },
+    cristal: { label: 'Rodagem Cristal', profile: { seco: 1.00, chuva: 1.00 } },
+    vulcano: { label: 'Compostos Vulcano', profile: { seco: 1.05, chuva: 0.90 } },
+    zenite: { label: 'Pneus Zênite', profile: { seco: 0.92, chuva: 1.04 } },
+  };
+
+  function tireSupplierFactor(supplierKey, compoundKey) {
+    const supplier = TIRE_SUPPLIERS[supplierKey];
+    if (!supplier) return 1;
+    const axis = (compoundKey === 'intermediario' || compoundKey === 'chuva') ? 'chuva' : 'seco';
+    return supplier.profile[axis] != null ? supplier.profile[axis] : 1;
+  }
+
+  function tireEffectiveGrip(compoundKey, weatherKey, supplierKey) {
     const compound = TIRE_COMPOUNDS[compoundKey];
     const weather = WEATHER_CONDITIONS[weatherKey];
     if (!compound || !weather) return compound ? compound.gripFactor : 1;
     const ideal = weather.idealTires.includes(compoundKey);
-    return ideal ? compound.gripFactor : compound.gripFactor * (1 - TIRE_MISMATCH_PENALTY);
+    const base = ideal ? compound.gripFactor : compound.gripFactor * (1 - TIRE_MISMATCH_PENALTY);
+    return supplierKey ? base * tireSupplierFactor(supplierKey, compoundKey) : base;
   }
 
   // desgaste acumulado (%) depois de N voltas com o composto — 100% = precisa trocar
@@ -140,12 +160,53 @@
     return entrants[entrants.length - 1];
   }
 
+  // ---------- Rendimento dos motores por temporada ----------
+  // cada motor oscila de uma temporada pra outra (podendo subir ou cair),
+  // em vez de ter um rendimento fixo pra sempre — reflete desenvolvimento e
+  // regressão real de fabricantes de motor ao longo dos anos
+  const MOTOR_PERFORMANCE_MIN = 88;
+  const MOTOR_PERFORMANCE_MAX = 100;
+  const MOTOR_PERFORMANCE_STEP = 4; // variação máxima (pra cima ou pra baixo) de uma temporada pra outra
+
+  function motorNames() {
+    return (window.WSPF1Equipe && window.WSPF1Equipe.MOTORES) || [];
+  }
+
+  // primeira temporada: sorteio livre dentro da faixa. temporadas seguintes:
+  // parte do valor anterior e varia até MOTOR_PERFORMANCE_STEP pontos, então
+  // "motor X tinha 93%, pode virar 97%" e "motor Y tinha 99%, pode cair pra 95%"
+  function rollMotorPerformances(previousTable) {
+    const names = motorNames().length ? motorNames() : Object.keys(previousTable || {});
+    const table = {};
+    names.forEach((name) => {
+      const prev = previousTable && previousTable[name] != null ? previousTable[name] : null;
+      if (prev == null) {
+        table[name] = Math.round(MOTOR_PERFORMANCE_MIN + Math.random() * (MOTOR_PERFORMANCE_MAX - MOTOR_PERFORMANCE_MIN));
+      } else {
+        const delta = Math.round((Math.random() * 2 - 1) * MOTOR_PERFORMANCE_STEP);
+        table[name] = Math.max(MOTOR_PERFORMANCE_MIN, Math.min(MOTOR_PERFORMANCE_MAX, prev + delta));
+      }
+    });
+    return table;
+  }
+
+  // converte o % de rendimento do motor num multiplicador suave de ritmo —
+  // não deixamos o motor sozinho decidir a corrida, só inclina a balança
+  function motorPerformanceFactor(pct) {
+    if (pct == null) return 1;
+    const clamped = Math.max(MOTOR_PERFORMANCE_MIN, Math.min(MOTOR_PERFORMANCE_MAX, pct));
+    const span = MOTOR_PERFORMANCE_MAX - MOTOR_PERFORMANCE_MIN;
+    return 0.97 + ((clamped - MOTOR_PERFORMANCE_MIN) / span) * 0.06; // ~0.97 a ~1.03
+  }
+
   window.WSPF1Corrida = {
-    TIRE_COMPOUNDS, WEATHER_CONDITIONS, TIRE_MISMATCH_PENALTY,
-    tireEffectiveGrip, calcTireWear, calcStintLaps,
+    TIRE_COMPOUNDS, WEATHER_CONDITIONS, TIRE_MISMATCH_PENALTY, TIRE_SUPPLIERS,
+    tireEffectiveGrip, tireSupplierFactor, calcTireWear, calcStintLaps,
     FUEL_BASE_CONSUMPTION_PER_LAP, FUEL_SAFETY_MARGIN_PCT, calcFuelNeeded, calcFuelForStint,
     PIT_STOP_BASE_MS, PIT_STOP_MIN_MS, pitStopMs, pitStopMsForClub,
     FAILURE_TYPES, SEASON_FAILURE_EVENTS_MIN, SEASON_FAILURE_EVENTS_MAX,
     scheduleFailureEvents, failureChanceForRace, rollFailureType, pickAffectedEntrant,
+    MOTOR_PERFORMANCE_MIN, MOTOR_PERFORMANCE_MAX, MOTOR_PERFORMANCE_STEP,
+    rollMotorPerformances, motorPerformanceFactor,
   };
 })();

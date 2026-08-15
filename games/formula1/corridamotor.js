@@ -53,6 +53,7 @@
         pace: e.pace,
         motorLevel: e.motorLevel || 0,
         chassiLevel: e.chassiLevel || 0,
+        tireSupplier: e.tireSupplier || null,
         grid: i,
         lapsCompleted: 0,
         distance: 0,
@@ -202,7 +203,7 @@
         return;
       }
 
-      const grip = C() ? C().tireEffectiveGrip(car.tireCompound, state.weather) : 1;
+      const grip = C() ? C().tireEffectiveGrip(car.tireCompound, state.weather, car.tireSupplier) : 1;
       const wearPenalty = distancePenaltyFromWear(car.tireWear);
       const fuelPenalty = distancePenaltyFromFuel(car.fuelKg, state.fullFuelKg);
       const variance = 1 + (Math.random() - 0.5) * 0.06;
