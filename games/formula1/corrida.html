@@ -128,6 +128,7 @@
       <a class="back-btn" href="temporada.html">←</a>
       <h1 id="circuit-name">Circuito</h1>
       <span class="session-tag" id="session-tag">Corrida</span>
+      <span class="session-tag" id="weather-tag"></span>
     </div>
 
     <div id="circuit-info-panel" class="panel hidden">
@@ -258,6 +259,32 @@
     }
 
     if (weekend) renderCircuitInfo(weekend);
+
+    // temperatura "de telemetria" do circuito — determinística por
+    // circuito (mesma semente), dentro de uma faixa plausível pro clima
+    // predominante daquele lugar. Some no HUD durante a corrida ao vivo.
+    const CLIMA_TEMP_RANGE = { seco: [24, 34], instável: [16, 26], chuvoso: [14, 22] };
+    const CLIMA_ICON = { seco: '☀️', instável: '🌦️', chuvoso: '⛈️' };
+    let raceTemperatureC = 24;
+    if (weekend) {
+      const range = CLIMA_TEMP_RANGE[weekend.clima] || [18, 28];
+      const rng = seededRng(weekend.circuit + '|temp');
+      raceTemperatureC = Math.round(range[0] + rng() * (range[1] - range[0]));
+      const el = document.getElementById('weather-tag');
+      if (el) el.textContent = (CLIMA_ICON[weekend.clima] || '🌤️') + ' ' + raceTemperatureC + '°C';
+    }
+
+    // ao vivo, na corrida, a temperatura acompanha o clima real da
+    // simulação (que pode piorar de seco pra chuva forte), não mais só o
+    // "clima predominante" estático mostrado antes de largar
+    function updateWeatherTag() {
+      const el = document.getElementById('weather-tag');
+      if (!el || !raceState) return;
+      const cond = window.WSPF1Corrida.WEATHER_CONDITIONS[raceState.weather];
+      const tempNow = raceState.weather === 'seco' ? raceTemperatureC
+        : Math.round(raceTemperatureC - (raceState.weather === 'chuva_forte' ? 8 : 4));
+      el.textContent = (cond ? cond.icon : '☀️') + ' ' + tempNow + '°C';
+    }
 
     // traçado determinístico por circuito: mesma forma sempre pro mesmo
     // circuito (semente = nome), variando com os dados reais (curvas, tipo,
@@ -783,6 +810,35 @@
       ctx.restore();
     }
 
+    // marcador de posição acima do carro (pódio + jogador) — bolinha com o
+    // número da posição atual e uma linha fina ligando ao carro, inspirado
+    // nos marcadores de gap dos jogos de F1 de verdade
+    function drawPositionMarker(ctx, x, y, pos, isPlayer) {
+      const markerY = y - 13;
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 5);
+      ctx.lineTo(x, markerY + 4);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, markerY, 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = isPlayer ? '#ffd54a' : 'rgba(10,20,15,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = isPlayer ? '#16281f' : 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = isPlayer ? '#16281f' : '#ffd54a';
+      ctx.font = 'bold 7px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(pos), x, markerY + 0.5);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
+
     // rastro leve atrás do carro do jogador + faíscas na chegada dos 3
     // primeiros — mesmo espírito das partículas do futebol, versão corrida
     let particles = [];
@@ -855,6 +911,12 @@
       });
       ctx.globalAlpha = 1;
 
+      // posição de cada carro na classificação atual — usado só pro
+      // marcador acima do carro (pódio + jogador, senão lota a tela de
+      // numerinho com o pelotão inteiro agrupado na largada)
+      const posByCarId = {};
+      window.WSPF1Motor.standings(raceState).forEach((c, i) => { posByCarId[c.id] = i + 1; });
+
       raceState.cars.forEach((car) => {
         if (car.retired) return;
         const t = car.distance / 100;
@@ -885,6 +947,11 @@
           ctx.font = '10px Arial';
           ctx.fillText('🔧', p.x + 7, p.y - 7);
         }
+
+        const pos = posByCarId[car.id];
+        if (pos != null && (pos <= 3 || car.isPlayer) && !car.pitting) {
+          drawPositionMarker(ctx, p.x, p.y, pos, car.isPlayer);
+        }
       });
 
       renderHud();
@@ -892,6 +959,7 @@
       renderTicker();
       drawMinimap();
       updateSpeedo();
+      updateWeatherTag();
     }
 
     // versão em miniatura da mesma pista, sobreposta no canto da tela
