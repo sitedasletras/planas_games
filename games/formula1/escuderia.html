@@ -33,14 +33,17 @@
     <div class="supplier-card">
       <div class="supplier-label">🔧 Fornecedor de motor</div>
       <select class="supplier-select" id="motor-select"></select>
+      <div class="supplier-locked hidden" id="motor-locked-note">🔒 Contrato fechado até a próxima temporada</div>
     </div>
     <div class="supplier-card">
       <div class="supplier-label">🔩 Construtor do chassi</div>
       <select class="supplier-select" id="chassi-select"></select>
+      <div class="supplier-locked hidden" id="chassi-locked-note">🔒 Contrato fechado até a próxima temporada</div>
     </div>
     <div class="supplier-card">
       <div class="supplier-label">🛞 Fornecedor de pneus</div>
       <select class="supplier-select" id="tire-select"></select>
+      <div class="supplier-locked hidden" id="tire-locked-note">🔒 Contrato fechado até a próxima temporada</div>
       <div class="campus-tier-note" style="margin:6px 0 0;">Cada fornecedor rende diferente no seco e na chuva — o melhor no seco não é sempre o melhor na chuva.</div>
     </div>
 
@@ -55,6 +58,7 @@
   <script src="pilotos.js"></script>
   <script src="equipe.js"></script>
   <script src="corrida.js"></script>
+  <script src="calendario.js"></script>
   <script src="escuderia.js"></script>
 </body>
 </html>

@@ -162,16 +162,27 @@
     return { ok: true };
   }
 
-  function setMotorSupplier(club, name) {
+  // trava de contrato: uma vez escolhido o fornecedor nesta temporada, só
+  // muda de novo quando a próxima temporada começar (mesmo padrão que os
+  // patrocínios já sinalizavam na tela, mas que agora vale de verdade)
+  function isSupplierLocked(lockedSeason, currentSeason) {
+    return lockedSeason != null && currentSeason != null && lockedSeason >= currentSeason;
+  }
+
+  function setMotorSupplier(club, name, seasonNumber) {
     if (!MOTORES.includes(name)) return { ok: false, reason: 'invalid' };
+    if (isSupplierLocked(club.motorLockedSeason, seasonNumber)) return { ok: false, reason: 'locked' };
     club.motorSupplier = name;
+    club.motorLockedSeason = seasonNumber != null ? seasonNumber : club.motorLockedSeason;
     saveClub(club);
     return { ok: true };
   }
 
-  function setChassiSupplier(club, name) {
+  function setChassiSupplier(club, name, seasonNumber) {
     if (!CHASSIS.includes(name)) return { ok: false, reason: 'invalid' };
+    if (isSupplierLocked(club.chassiLockedSeason, seasonNumber)) return { ok: false, reason: 'locked' };
     club.chassiSupplier = name;
+    club.chassiLockedSeason = seasonNumber != null ? seasonNumber : club.chassiLockedSeason;
     saveClub(club);
     return { ok: true };
   }
@@ -181,10 +192,12 @@
     return keys.length ? keys[Math.floor(Math.random() * keys.length)] : null;
   }
 
-  function setTireSupplier(club, key) {
+  function setTireSupplier(club, key, seasonNumber) {
     const valid = window.WSPF1Corrida && Object.prototype.hasOwnProperty.call(window.WSPF1Corrida.TIRE_SUPPLIERS, key);
     if (!valid) return { ok: false, reason: 'invalid' };
+    if (isSupplierLocked(club.tireLockedSeason, seasonNumber)) return { ok: false, reason: 'locked' };
     club.tireSupplier = key;
+    club.tireLockedSeason = seasonNumber != null ? seasonNumber : club.tireLockedSeason;
     saveClub(club);
     return { ok: true };
   }
@@ -269,6 +282,12 @@
     club.motorSupplier = pick(MOTORES);
     club.chassiSupplier = pick(CHASSIS);
     club.tireSupplier = pickTireSupplierKey();
+    // null = nunca travado (ainda não escolheu nada de propósito nesta
+    // temporada) — vira o número da temporada assim que o jogador troca de
+    // fornecedor, e só destrava de novo quando a temporada seguinte começar
+    club.motorLockedSeason = null;
+    club.chassiLockedSeason = null;
+    club.tireLockedSeason = null;
     return club;
   }
 
@@ -294,6 +313,9 @@
         if (!parsed.motorSupplier) parsed.motorSupplier = pick(MOTORES);
         if (!parsed.chassiSupplier) parsed.chassiSupplier = pick(CHASSIS);
         if (!parsed.tireSupplier) parsed.tireSupplier = pickTireSupplierKey();
+        if (parsed.motorLockedSeason === undefined) parsed.motorLockedSeason = null;
+        if (parsed.chassiLockedSeason === undefined) parsed.chassiLockedSeason = null;
+        if (parsed.tireLockedSeason === undefined) parsed.tireLockedSeason = null;
         if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
         if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
         if (parsed.exclusiveJerseyUnlocked == null) parsed.exclusiveJerseyUnlocked = defaults.exclusiveJerseyUnlocked;
@@ -424,7 +446,7 @@
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
     facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName, payMatchRevenue,
-    setMotorSupplier, setChassiSupplier, setTireSupplier,
+    setMotorSupplier, setChassiSupplier, setTireSupplier, isSupplierLocked,
     maxDepartmentLevelForGroup, bumpValorizacao, adjustMorale, moraleLabel,
   };
 })();

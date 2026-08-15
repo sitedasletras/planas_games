@@ -99,8 +99,8 @@
 
     <div class="panel">
       <h2>🧪 Teste</h2>
-      <p style="font-size:0.78rem; color:#9fd8b8; margin-bottom:10px;">Ferramentas só pra testar o jogo — apaga o progresso da temporada atual (não mexe no elenco nem na escuderia).</p>
-      <button class="test-btn danger" id="reset-season-btn">🗑️ Apagar temporada e recomeçar</button>
+      <p style="font-size:0.78rem; color:#9fd8b8; margin-bottom:10px;">Ferramenta só pra testar o jogo — apaga TUDO da Fórmula 1 (temporada, orçamento, departamentos, patrocínios, elenco de pilotos, grid de rivais) e recomeça do zero.</p>
+      <button class="test-btn danger" id="reset-season-btn">🗑️ Apagar tudo e recomeçar</button>
     </div>
 
     <div class="panel">
@@ -250,8 +250,11 @@
     });
 
     document.getElementById('reset-season-btn').addEventListener('click', () => {
-      if (!confirm('Apagar a temporada atual e recomeçar do zero? Isso não pode ser desfeito.')) return;
+      if (!confirm('Apagar TUDO da Fórmula 1 — temporada, orçamento, departamentos, patrocínios, elenco e grid de rivais — e recomeçar do zero? Isso não pode ser desfeito.')) return;
       state = Cal.resetSeason();
+      if (window.WSPF1Equipe) window.WSPF1Equipe.saveClub(window.WSPF1Equipe.defaultClub());
+      if (window.WSPF1Pilotos) window.WSPF1Pilotos.saveSquad(window.WSPF1Pilotos.generateSquad());
+      if (window.WSPF1Grid) window.WSPF1Grid.saveGrid(window.WSPF1Grid.freshGrid());
       render();
     });
 

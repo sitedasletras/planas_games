@@ -4,11 +4,14 @@
     DEPARTMENTS, MAX_LEVEL, upgradeCost, effectiveUpgradeCost, loadClub, upgradeDepartment,
     SPONSOR_SLOTS, acceptSponsor, rerollSponsor, dismissDepartment,
     FACILITY_GROUPS, TORCIDA_NAME_MAX, facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName,
-    moraleLabel, MOTORES, CHASSIS, setMotorSupplier, setChassiSupplier, setTireSupplier,
+    moraleLabel, MOTORES, CHASSIS, setMotorSupplier, setChassiSupplier, setTireSupplier, isSupplierLocked,
   } = window.WSPF1Equipe;
   const TIRE_SUPPLIERS = window.WSPF1Corrida.TIRE_SUPPLIERS;
 
   const club = loadClub();
+  // contrato de fornecedor trava até a pré-temporada seguinte — precisa
+  // saber em que temporada estamos pra decidir se ainda tá travado
+  const seasonNumber = window.WSPF1Calendario ? window.WSPF1Calendario.loadState().seasonNumber : 1;
   const budgetEl = document.getElementById('budget-value');
   const moraleFillEl = document.getElementById('morale-fill');
   const moraleValueEl = document.getElementById('morale-value');
@@ -256,6 +259,10 @@
   }
 
   function renderSuppliers() {
+    const motorLocked = isSupplierLocked(club.motorLockedSeason, seasonNumber);
+    const chassiLocked = isSupplierLocked(club.chassiLockedSeason, seasonNumber);
+    const tireLocked = isSupplierLocked(club.tireLockedSeason, seasonNumber);
+
     motorSelectEl.innerHTML = '';
     MOTORES.forEach((name) => {
       const opt = document.createElement('option');
@@ -264,6 +271,9 @@
       if (name === club.motorSupplier) opt.selected = true;
       motorSelectEl.appendChild(opt);
     });
+    motorSelectEl.disabled = motorLocked;
+    document.getElementById('motor-locked-note').classList.toggle('hidden', !motorLocked);
+
     chassiSelectEl.innerHTML = '';
     CHASSIS.forEach((name) => {
       const opt = document.createElement('option');
@@ -272,6 +282,9 @@
       if (name === club.chassiSupplier) opt.selected = true;
       chassiSelectEl.appendChild(opt);
     });
+    chassiSelectEl.disabled = chassiLocked;
+    document.getElementById('chassi-locked-note').classList.toggle('hidden', !chassiLocked);
+
     tireSelectEl.innerHTML = '';
     Object.keys(TIRE_SUPPLIERS).forEach((key) => {
       const supplier = TIRE_SUPPLIERS[key];
@@ -281,16 +294,24 @@
       if (key === club.tireSupplier) opt.selected = true;
       tireSelectEl.appendChild(opt);
     });
+    tireSelectEl.disabled = tireLocked;
+    document.getElementById('tire-locked-note').classList.toggle('hidden', !tireLocked);
   }
 
   motorSelectEl.addEventListener('change', () => {
-    setMotorSupplier(club, motorSelectEl.value);
+    const result = setMotorSupplier(club, motorSelectEl.value, seasonNumber);
+    if (!result.ok) motorSelectEl.value = club.motorSupplier;
+    renderSuppliers();
   });
   chassiSelectEl.addEventListener('change', () => {
-    setChassiSupplier(club, chassiSelectEl.value);
+    const result = setChassiSupplier(club, chassiSelectEl.value, seasonNumber);
+    if (!result.ok) chassiSelectEl.value = club.chassiSupplier;
+    renderSuppliers();
   });
   tireSelectEl.addEventListener('change', () => {
-    setTireSupplier(club, tireSelectEl.value);
+    const result = setTireSupplier(club, tireSelectEl.value, seasonNumber);
+    if (!result.ok) tireSelectEl.value = club.tireSupplier;
+    renderSuppliers();
   });
 
   function render() {
