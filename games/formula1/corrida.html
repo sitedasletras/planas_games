@@ -431,8 +431,14 @@
       return Math.atan2(ry * Math.cos(angle), -rx * Math.sin(angle));
     }
 
+    let playerLiveryColor = '#ffd54a';
+    if (window.WSPF1Equipe) {
+      const club = window.WSPF1Equipe.loadClub();
+      if (club.colors && club.colors.primary) playerLiveryColor = club.colors.primary;
+    }
+
     function teamColor(car) {
-      if (car.isPlayer) return '#ffd54a';
+      if (car.isPlayer) return playerLiveryColor;
       let hash = 0;
       for (let i = 0; i < car.teamId.length; i++) hash = (hash * 31 + car.teamId.charCodeAt(i)) & 0xffffffff;
       const hue = Math.abs(hash) % 360;

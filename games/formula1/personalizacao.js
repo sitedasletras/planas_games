@@ -88,6 +88,10 @@
       stripe.className = 'stripe';
       stripe.style.background = club.colors.secondary;
       swatch.appendChild(stripe);
+      const accentStripe = document.createElement('div');
+      accentStripe.style.cssText = 'position:absolute; right:0; top:0; bottom:0; width:14px; background:' + club.colors.accent + ';';
+      swatch.style.position = 'relative';
+      swatch.appendChild(accentStripe);
       const border = document.createElement('div');
       border.style.cssText = 'width:60px;height:6px;background:' + club.colors.detail + ';border-radius:3px;margin-top:6px;';
       const wrap = document.createElement('div');
@@ -101,6 +105,7 @@
       { key: 'primary', label: 'Cor principal' },
       { key: 'secondary', label: 'Cor secundária' },
       { key: 'detail', label: 'Cor de detalhe' },
+      { key: 'accent', label: 'Cor de destaque (4ª cor)' },
     ];
     const colorInputs = {};
     fields.forEach((f) => {
@@ -122,6 +127,36 @@
       section.appendChild(row);
     });
 
+    function applyPreset(preset) {
+      saveCustomization(club, { colors: { primary: preset.primary, secondary: preset.secondary, detail: preset.detail, accent: preset.accent } });
+      colorInputs.primary.value = preset.primary;
+      colorInputs.secondary.value = preset.secondary;
+      colorInputs.detail.value = preset.detail;
+      colorInputs.accent.value = preset.accent;
+      renderPreview();
+    }
+
+    const liveryTitle = document.createElement('div');
+    liveryTitle.className = 'exclusive-emblem-title';
+    liveryTitle.textContent = 'Pinturas de época — escolha uma e ajuste as cores acima se quiser';
+    section.appendChild(liveryTitle);
+
+    const liveryRow = document.createElement('div');
+    liveryRow.className = 'jersey-preset-row';
+    window.WSPF1Equipe.LIVERY_PRESETS.forEach((preset) => {
+      const btn = document.createElement('button');
+      btn.className = 'jersey-preset-option';
+      btn.title = preset.label;
+      btn.style.background = preset.primary;
+      btn.style.borderColor = preset.secondary;
+      const dot = document.createElement('span');
+      dot.style.cssText = 'display:block;width:10px;height:10px;border-radius:50%;background:' + preset.accent + ';margin:0 auto;';
+      btn.appendChild(dot);
+      btn.addEventListener('click', () => applyPreset(preset));
+      liveryRow.appendChild(btn);
+    });
+    section.appendChild(liveryRow);
+
     if (club.exclusiveJerseyUnlocked) {
       const exclusiveTitle = document.createElement('div');
       exclusiveTitle.className = 'exclusive-emblem-title';
@@ -139,13 +174,7 @@
         const dot = document.createElement('span');
         dot.style.cssText = 'display:block;width:10px;height:10px;border-radius:50%;background:' + preset.detail + ';margin:0 auto;';
         btn.appendChild(dot);
-        btn.addEventListener('click', () => {
-          saveCustomization(club, { colors: { primary: preset.primary, secondary: preset.secondary, detail: preset.detail } });
-          colorInputs.primary.value = preset.primary;
-          colorInputs.secondary.value = preset.secondary;
-          colorInputs.detail.value = preset.detail;
-          renderPreview();
-        });
+        btn.addEventListener('click', () => applyPreset(preset));
         presetRow.appendChild(btn);
       });
       section.appendChild(presetRow);

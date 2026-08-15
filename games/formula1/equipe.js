@@ -12,16 +12,31 @@
   const CREST_EMBLEMS = ['🏎️', '🏁', '⭐', '🦁', '🦅', '⚔️', '🔱', '👑', '🔥', '⚡', '🛡️', '🐎'];
   const EXCLUSIVE_CREST_EMBLEMS = ['💎', '🏆', '👽', '🐉'];
   const EXCLUSIVE_JERSEY_PRESETS = [
-    { label: 'Ouro Especial', primary: '#8a6d00', secondary: '#ffd54a', detail: '#ffffff' },
-    { label: 'Prata Lendária', primary: '#3a3f47', secondary: '#c9d1d9', detail: '#ffd54a' },
-    { label: 'Fúria Roxa', primary: '#3a0e5c', secondary: '#c084fc', detail: '#ffd54a' },
-    { label: 'Fênix', primary: '#7a1a1a', secondary: '#ff8c3f', detail: '#ffd54a' },
+    { label: 'Ouro Especial', primary: '#8a6d00', secondary: '#ffd54a', detail: '#ffffff', accent: '#8a6d00' },
+    { label: 'Prata Lendária', primary: '#3a3f47', secondary: '#c9d1d9', detail: '#ffd54a', accent: '#3a3f47' },
+    { label: 'Fúria Roxa', primary: '#3a0e5c', secondary: '#c084fc', detail: '#ffd54a', accent: '#3a0e5c' },
+    { label: 'Fênix', primary: '#7a1a1a', secondary: '#ff8c3f', detail: '#ffd54a', accent: '#7a1a1a' },
+  ];
+
+  // Pinturas fictícias inspiradas em estilos de época que marcaram a
+  // história da F1 (cores/padrões, nunca marca ou nome de patrocinador
+  // real) — o jogador escolhe uma como ponto de partida e ainda pode
+  // ajustar as 4 cores manualmente depois.
+  const LIVERY_PRESETS = [
+    { label: 'Ouro Negro', primary: '#0d0d0d', secondary: '#c9a227', detail: '#ffffff', accent: '#c9a227' },
+    { label: 'Flecha de Prata', primary: '#c0c0c0', secondary: '#1a1a1a', detail: '#00d4ff', accent: '#ffffff' },
+    { label: 'Verde Clássico', primary: '#0b4d2c', secondary: '#ffd54a', detail: '#ffffff', accent: '#0b4d2c' },
+    { label: 'Azul e Laranja', primary: '#0a3a6e', secondary: '#ff7a1a', detail: '#ffffff', accent: '#ff7a1a' },
+    { label: 'Listras de Época', primary: '#ffffff', secondary: '#0a3a8c', detail: '#c8102e', accent: '#0a3a8c' },
+    { label: 'Vermelho Real', primary: '#c8102e', secondary: '#ffffff', detail: '#0d0d0d', accent: '#c8102e' },
+    { label: 'Púrpura Imperial', primary: '#3a0e5c', secondary: '#c084fc', detail: '#ffd54a', accent: '#3a0e5c' },
+    { label: 'Preto Absoluto', primary: '#0a0a0a', secondary: '#0a0a0a', detail: '#ffd54a', accent: '#e63946' },
   ];
 
   function defaultCustomization() {
     return {
       premiumUnlocked: false,
-      colors: { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a' },
+      colors: { primary: '#1c1c1c', secondary: '#ffffff', detail: '#ffd54a', accent: '#e63946' },
       crest: { shape: 'escudo', emblem: '🏎️', color: null },
       torcidaName: null,
       motorSupplier: null,
@@ -264,6 +279,7 @@
         const defaults = defaultCustomization();
         if (parsed.premiumUnlocked == null) parsed.premiumUnlocked = defaults.premiumUnlocked;
         if (!parsed.colors) parsed.colors = defaults.colors;
+        if (!parsed.colors.accent) parsed.colors.accent = defaults.colors.accent;
         if (!parsed.crest) parsed.crest = defaults.crest;
         if (parsed.crest.color === undefined) parsed.crest.color = defaults.crest.color;
         if (parsed.torcidaName === undefined) parsed.torcidaName = defaults.torcidaName;
@@ -394,7 +410,7 @@
 
   window.WSPF1Equipe = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
-    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
+    PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, LIVERY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
     CAMPUS_TIER_CAPS, crestColor, MOTORES, CHASSIS,
     upgradeCost, effectiveUpgradeCost, groupForDept, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
