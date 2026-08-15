@@ -187,6 +187,15 @@
     return { ok: true };
   }
 
+  function setCambioSupplier(club, name, seasonNumber) {
+    if (!CAMBIO.includes(name)) return { ok: false, reason: 'invalid' };
+    if (isSupplierLocked(club.cambioLockedSeason, seasonNumber)) return { ok: false, reason: 'locked' };
+    club.cambioSupplier = name;
+    club.cambioLockedSeason = seasonNumber != null ? seasonNumber : club.cambioLockedSeason;
+    saveClub(club);
+    return { ok: true };
+  }
+
   function pickTireSupplierKey() {
     const keys = window.WSPF1Corrida ? Object.keys(window.WSPF1Corrida.TIRE_SUPPLIERS) : [];
     return keys.length ? keys[Math.floor(Math.random() * keys.length)] : null;
@@ -252,23 +261,43 @@
     'Chassi Pacífico',
   ];
 
-  // cada construtor de chassi rende um pouquinho diferente de ritmo (banda
-  // apertada, ±3%, mesma filosofia dos outros fornecedores) — antes disso
-  // a escolha do chassi era só estética, sem efeito nenhum no jogo
+  // cada construtor de chassi rende um pouquinho diferente de ritmo — antes
+  // disso a escolha do chassi era só estética, sem efeito nenhum no jogo.
+  // banda global 86%-98% (regra do usuário pra qualquer porcentagem de
+  // fornecedor): a ordem entre as marcas é a mesma de antes, só a escala
+  // foi comprimida pra caber no teto/piso instituído
   const CHASSIS_PACE_PROFILES = {
-    'Chassi Flor de Lótus': 1.03,
-    'Chassi Lobo': 0.97,
-    'Chassi Flechas': 1.02,
-    'Chassi Março': 0.98,
-    'Chassi Ônix': 1.01,
-    'Chassi Águia': 0.99,
-    'Chassi Insígnia': 1.00,
-    'Chassi Pacífico': 1.00,
+    'Chassi Flor de Lótus': 0.98,
+    'Chassi Lobo': 0.86,
+    'Chassi Flechas': 0.96,
+    'Chassi Março': 0.88,
+    'Chassi Ônix': 0.94,
+    'Chassi Águia': 0.90,
+    'Chassi Insígnia': 0.92,
+    'Chassi Pacífico': 0.92,
   };
 
   function chassiPaceFactor(name) {
     return CHASSIS_PACE_PROFILES[name] != null ? CHASSIS_PACE_PROFILES[name] : 1;
   }
+
+  // Fornecedor de câmbio: marca escolhida pelo jogador (contrato de 1
+  // temporada, igual motor/chassi/pneu). "Câmbio" já existia como TIPO de
+  // pane mecânica ligada ao departamento de chassi — em vez de repetir o
+  // mesmo multiplicador de ritmo que chassi já usa, a marca de câmbio
+  // afeta CONFIABILIDADE (chance de pane), uma variável genuinamente
+  // nova. Perfil (86%-98%, mesma banda global) mora em corrida.js junto
+  // com cambioReliabilityMult, que é quem realmente usa esse número.
+  const CAMBIO = [
+    'Câmbios Constelação',
+    'Transmissões Faísca',
+    'Câmbios Rocha',
+    'Transmissões Meridiano',
+    'Câmbios Ventania',
+    'Transmissões Cadência',
+    'Câmbios Bússola',
+    'Transmissões Alforje',
+  ];
 
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -300,12 +329,14 @@
     club.motorSupplier = pick(MOTORES);
     club.chassiSupplier = pick(CHASSIS);
     club.tireSupplier = pickTireSupplierKey();
+    club.cambioSupplier = pick(CAMBIO);
     // null = nunca travado (ainda não escolheu nada de propósito nesta
     // temporada) — vira o número da temporada assim que o jogador troca de
     // fornecedor, e só destrava de novo quando a temporada seguinte começar
     club.motorLockedSeason = null;
     club.chassiLockedSeason = null;
     club.tireLockedSeason = null;
+    club.cambioLockedSeason = null;
     return club;
   }
 
@@ -331,9 +362,11 @@
         if (!parsed.motorSupplier) parsed.motorSupplier = pick(MOTORES);
         if (!parsed.chassiSupplier) parsed.chassiSupplier = pick(CHASSIS);
         if (!parsed.tireSupplier) parsed.tireSupplier = pickTireSupplierKey();
+        if (!parsed.cambioSupplier) parsed.cambioSupplier = pick(CAMBIO);
         if (parsed.motorLockedSeason === undefined) parsed.motorLockedSeason = null;
         if (parsed.chassiLockedSeason === undefined) parsed.chassiLockedSeason = null;
         if (parsed.tireLockedSeason === undefined) parsed.tireLockedSeason = null;
+        if (parsed.cambioLockedSeason === undefined) parsed.cambioLockedSeason = null;
         if (parsed.valorizacaoLevel == null) parsed.valorizacaoLevel = defaults.valorizacaoLevel;
         if (parsed.exclusiveEmblemUnlocked == null) parsed.exclusiveEmblemUnlocked = defaults.exclusiveEmblemUnlocked;
         if (parsed.exclusiveJerseyUnlocked == null) parsed.exclusiveJerseyUnlocked = defaults.exclusiveJerseyUnlocked;
@@ -459,12 +492,12 @@
   window.WSPF1Equipe = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
     PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, LIVERY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
-    CAMPUS_TIER_CAPS, crestColor, MOTORES, CHASSIS, CHASSIS_PACE_PROFILES, chassiPaceFactor,
+    CAMPUS_TIER_CAPS, crestColor, MOTORES, CHASSIS, CHASSIS_PACE_PROFILES, chassiPaceFactor, CAMBIO,
     upgradeCost, effectiveUpgradeCost, groupForDept, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,
     facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName, payMatchRevenue,
-    setMotorSupplier, setChassiSupplier, setTireSupplier, isSupplierLocked,
+    setMotorSupplier, setChassiSupplier, setTireSupplier, setCambioSupplier, isSupplierLocked,
     maxDepartmentLevelForGroup, bumpValorizacao, adjustMorale, moraleLabel,
   };
 })();

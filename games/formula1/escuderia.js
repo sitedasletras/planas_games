@@ -4,11 +4,12 @@
     DEPARTMENTS, MAX_LEVEL, upgradeCost, effectiveUpgradeCost, loadClub, upgradeDepartment,
     SPONSOR_SLOTS, acceptSponsor, rerollSponsor, dismissDepartment,
     FACILITY_GROUPS, TORCIDA_NAME_MAX, facilityGroupLevel, facilityTierLabel, tierNameForLevel, setTorcidaName,
-    moraleLabel, MOTORES, CHASSIS, setMotorSupplier, setChassiSupplier, setTireSupplier, isSupplierLocked,
-    chassiPaceFactor,
+    moraleLabel, MOTORES, CHASSIS, CAMBIO, setMotorSupplier, setChassiSupplier, setTireSupplier, setCambioSupplier,
+    isSupplierLocked, chassiPaceFactor,
   } = window.WSPF1Equipe;
   const TIRE_SUPPLIERS = window.WSPF1Corrida.TIRE_SUPPLIERS;
   const motorSupplierFuelFactor = window.WSPF1Corrida.motorSupplierFuelFactor;
+  const cambioReliabilityPct = window.WSPF1Corrida.cambioReliabilityPct;
 
   const club = loadClub();
   // contrato de fornecedor trava até a pré-temporada seguinte — precisa
@@ -25,6 +26,7 @@
   const motorSelectEl = document.getElementById('motor-select');
   const chassiSelectEl = document.getElementById('chassi-select');
   const tireSelectEl = document.getElementById('tire-select');
+  const cambioSelectEl = document.getElementById('cambio-select');
 
   function formatMoney(n) {
     return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
@@ -267,6 +269,7 @@
     const motorLocked = isSupplierLocked(club.motorLockedSeason, seasonNumber);
     const chassiLocked = isSupplierLocked(club.chassiLockedSeason, seasonNumber);
     const tireLocked = isSupplierLocked(club.tireLockedSeason, seasonNumber);
+    const cambioLocked = isSupplierLocked(club.cambioLockedSeason, seasonNumber);
 
     motorSelectEl.innerHTML = '';
     MOTORES.forEach((name) => {
@@ -303,6 +306,17 @@
     });
     tireSelectEl.disabled = tireLocked;
     document.getElementById('tire-locked-note').classList.toggle('hidden', !tireLocked);
+
+    cambioSelectEl.innerHTML = '';
+    CAMBIO.forEach((name) => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name + ' (confiabilidade ' + cambioReliabilityPct(name) + '%)';
+      if (name === club.cambioSupplier) opt.selected = true;
+      cambioSelectEl.appendChild(opt);
+    });
+    cambioSelectEl.disabled = cambioLocked;
+    document.getElementById('cambio-locked-note').classList.toggle('hidden', !cambioLocked);
   }
 
   motorSelectEl.addEventListener('change', () => {
@@ -318,6 +332,11 @@
   tireSelectEl.addEventListener('change', () => {
     const result = setTireSupplier(club, tireSelectEl.value, seasonNumber);
     if (!result.ok) tireSelectEl.value = club.tireSupplier;
+    renderSuppliers();
+  });
+  cambioSelectEl.addEventListener('change', () => {
+    const result = setCambioSupplier(club, cambioSelectEl.value, seasonNumber);
+    if (!result.ok) cambioSelectEl.value = club.cambioSupplier;
     renderSuppliers();
   });
 

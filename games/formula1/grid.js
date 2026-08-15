@@ -157,7 +157,7 @@
           isPlayer: true,
           pace: Math.max(40, Math.min(99, teamPace + ((d.rating || 65) - 65) * 0.5) * motorFactor * chassiFactor * setupFactor),
           motorLevel, chassiLevel,
-          motorSupplier: club.motorSupplier, tireSupplier: club.tireSupplier,
+          motorSupplier: club.motorSupplier, tireSupplier: club.tireSupplier, cambioSupplier: club.cambioSupplier,
           traits: d.traits || [],
         });
       });

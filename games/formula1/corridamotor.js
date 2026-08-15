@@ -88,6 +88,7 @@
         chassiLevel: e.chassiLevel || 0,
         motorSupplier: e.motorSupplier || null,
         tireSupplier: e.tireSupplier || null,
+        cambioReliability: e.cambioSupplier && C() ? C().cambioReliabilityPct(e.cambioSupplier) : null,
         wearFactor: e.isPlayer && C() ? C().setupWearFactor(opts.carSetup) : 1,
         grid: i,
         lapsCompleted: 0,
@@ -113,7 +114,7 @@
 
     let scheduledFailure = null;
     if (opts.hasFailureEvent && !opts.isSprint && C()) {
-      const picked = C().pickAffectedEntrant(cars.map((c) => ({ id: c.id, motorLevel: c.motorLevel, chassiLevel: c.chassiLevel })));
+      const picked = C().pickAffectedEntrant(cars.map((c) => ({ id: c.id, motorLevel: c.motorLevel, chassiLevel: c.chassiLevel, cambioReliability: c.cambioReliability })));
       if (picked) {
         scheduledFailure = {
           carId: picked.id,

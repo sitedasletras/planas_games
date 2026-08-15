@@ -218,16 +218,31 @@ necessidade de retrabalhar nada disso.
 5. **Matchmaking progressivo robô→humano**: documentado em
    `docs/matchmaking-robos-humanos-spec.md`, não iniciado, vale pra todos
    os jogos esportivos da WSP.
-6. **Regra explícita do usuário (15/08): motor mais potente tem que beber
-   mais combustível.** Hoje o consumo de combustível em
-   `games/formula1/corridamotor.js` (dentro de `stepRace`) é uniforme por
-   volta, só variando pelo estilo de pilotagem
-   (`drivingStyleFuelMult`) — não reflete `motorLevel` nem
-   `motorPerformanceFactor` (rendimento do motor na temporada). Pedido:
-   adicionar esse elo como mais uma variável de trade-off (motor mais
-   forte = mais rápido, mas também mais sedento). Ainda não implementado
-   — só registrado aqui até o usuário confirmar se quer que eu implemente
-   agora ou depois.
+6. **[IMPLEMENTADO 15/08]** Motor mais potente bebe mais combustível —
+   `motorFuelMult(motorLevel)` em `corrida.js`, usado dentro de `stepRace`
+   em `corridamotor.js` junto com `motorSupplierFuelFactor` (consumo fixo
+   por marca, independente da potência sazonal).
+7. **[IMPLEMENTADO 15/08] Regra global do usuário: nenhuma porcentagem de
+   fornecedor pode passar de 98% nem ficar abaixo de 86%** — vale pra
+   pneu (`TIRE_SUPPLIERS`), motor (`MOTOR_PERFORMANCE_MIN/MAX` e
+   `MOTOR_FUEL_PROFILES`, ambos em `corrida.js`) e chassi
+   (`CHASSIS_PACE_PROFILES` em `equipe.js`). Todas as tabelas foram
+   remapeadas pra essa banda preservando a ordem relativa entre marcas
+   (quem era melhor/pior continua sendo, só a escala mudou).
+   Também nesse pedido: **criado o fornecedor de Câmbio** (não existia —
+   só existia "câmbio" como TIPO de pane mecânica, ligado ao
+   departamento de chassi). Em vez de repetir o multiplicador de ritmo
+   que chassi já usa, a marca de câmbio (`CAMBIO` em `equipe.js`, 8 nomes
+   fictícios "sabor original") mexe em **confiabilidade**:
+   `CAMBIO_RELIABILITY_PROFILES`/`cambioReliabilityPct` (em `corrida.js`)
+   dão a porcentagem (86-98%) de cada marca, e `cambioReliabilityMult`
+   reduz a chance de QUALQUER pane mecânica em até 25% pro melhor câmbio
+   (não decide a corrida, só inclina, mesmo espírito dos outros
+   fornecedores) — plugado em `failureChanceForRace`/`pickAffectedEntrant`.
+   Contrato de câmbio trava por temporada igual motor/chassi/pneu
+   (`cambioLockedSeason`, `setCambioSupplier`). É mecânica só do
+   jogador (rivais não têm `cambioSupplier`), mesmo padrão já usado pro
+   chassi. UI: novo card "⚙️ Marca do câmbio" em `escuderia.html`.
 
 ## Outras notas importantes
 

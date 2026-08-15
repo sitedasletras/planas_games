@@ -34,13 +34,16 @@
   // necessariamente quem manda na chuva, como o usuário pediu.
   // banda apertada de propósito (pedido explícito do usuário): a diferença
   // entre fornecedoras tem que ser pequena — no seco e na chuva, a mesma
-  // magnitude de diferença — não pode ser o fator decisivo da corrida
+  // magnitude de diferença — não pode ser o fator decisivo da corrida.
+  // regra global (pedido explícito 15/08): toda porcentagem de fornecedor
+  // fica travada entre 86% (piso) e 98% (teto), nunca passa disso pra cima
+  // nem fica abaixo disso — vale pra pneu, motor e câmbio
   const TIRE_SUPPLIERS = {
-    aurora: { label: 'Borrachas Aurora', profile: { seco: 1.03, chuva: 0.97 } },
-    titan: { label: 'Pneus Titã', profile: { seco: 0.97, chuva: 1.03 } },
-    cristal: { label: 'Rodagem Cristal', profile: { seco: 1.00, chuva: 1.00 } },
-    vulcano: { label: 'Compostos Vulcano', profile: { seco: 1.04, chuva: 0.96 } },
-    zenite: { label: 'Pneus Zênite', profile: { seco: 0.96, chuva: 1.04 } },
+    aurora: { label: 'Borrachas Aurora', profile: { seco: 0.96, chuva: 0.88 } },
+    titan: { label: 'Pneus Titã', profile: { seco: 0.88, chuva: 0.96 } },
+    cristal: { label: 'Rodagem Cristal', profile: { seco: 0.92, chuva: 0.92 } },
+    vulcano: { label: 'Compostos Vulcano', profile: { seco: 0.98, chuva: 0.86 } },
+    zenite: { label: 'Pneus Zênite', profile: { seco: 0.86, chuva: 0.98 } },
   };
 
   function tireSupplierFactor(supplierKey, compoundKey) {
@@ -132,6 +135,42 @@
     colisao: { label: 'Batida', icon: '💢', desc: 'Colisão na pista encerra a corrida do piloto.', reliabilityDept: null },
   };
 
+  // ---------- Confiabilidade do câmbio (fornecedor, não departamento) ----------
+  // câmbio já existia como TIPO de pane (ligado ao departamento de chassi);
+  // agora também existe como FORNECEDOR de verdade (marca escolhida pelo
+  // jogador, contrato por temporada, igual motor/chassi/pneu) — em vez de
+  // repetir o mesmo multiplicador de ritmo que chassi já usa, o câmbio
+  // mexe na confiabilidade: quanto melhor a marca, menor a chance de o
+  // carro ter QUALQUER pane mecânica na corrida (não decide, só inclina)
+  const CAMBIO_RELIABILITY_MIN = 86;
+  const CAMBIO_RELIABILITY_MAX = 98;
+
+  function cambioReliabilityMult(pct) {
+    if (pct == null) return 1;
+    const clamped = Math.max(CAMBIO_RELIABILITY_MIN, Math.min(CAMBIO_RELIABILITY_MAX, pct));
+    const span = CAMBIO_RELIABILITY_MAX - CAMBIO_RELIABILITY_MIN;
+    // melhor câmbio (98%) reduz a chance de pane em até 25%; o pior (86%) não reduz nada
+    return 1 - ((clamped - CAMBIO_RELIABILITY_MIN) / span) * 0.25;
+  }
+
+  // confiabilidade é característica FIXA de cada marca de câmbio (mesmo
+  // espírito do consumo de combustível do motor) — banda global 86%-98%
+  const CAMBIO_RELIABILITY_PROFILES = {
+    'Câmbios Constelação': 0.94,
+    'Transmissões Faísca': 0.88,
+    'Câmbios Rocha': 0.98,
+    'Transmissões Meridiano': 0.90,
+    'Câmbios Ventania': 0.86,
+    'Transmissões Cadência': 0.96,
+    'Câmbios Bússola': 0.92,
+    'Transmissões Alforje': 0.92,
+  };
+
+  function cambioReliabilityPct(name) {
+    const factor = CAMBIO_RELIABILITY_PROFILES[name] != null ? CAMBIO_RELIABILITY_PROFILES[name] : 0.92;
+    return Math.round(factor * 100);
+  }
+
   const SEASON_FAILURE_EVENTS_MIN = 1;
   const SEASON_FAILURE_EVENTS_MAX = 3;
 
@@ -149,11 +188,12 @@
 
   // risco de falha de uma equipe na corrida sorteada — cai conforme os
   // departamentos de motor/chassi sobem de nível (estrutura nível 20 quase não quebra)
-  function failureChanceForRace(motorLevel, chassiLevel) {
+  function failureChanceForRace(motorLevel, chassiLevel, cambioReliabilityPct) {
     const base = 0.12;
     const min = 0.01;
     const avg = ((motorLevel || 0) + (chassiLevel || 0)) / 2;
-    return base - (base - min) * (Math.max(0, Math.min(20, avg)) / 20);
+    const deptChance = base - (base - min) * (Math.max(0, Math.min(20, avg)) / 20);
+    return deptChance * cambioReliabilityMult(cambioReliabilityPct);
   }
 
   function rollFailureType(motorLevel, chassiLevel) {
@@ -168,7 +208,7 @@
   // numa corrida marcada, com peso maior pra quem tem estrutura mais fraca
   function pickAffectedEntrant(entrants) {
     if (!entrants || !entrants.length) return null;
-    const weights = entrants.map((e) => Math.max(0.001, failureChanceForRace(e.motorLevel, e.chassiLevel)));
+    const weights = entrants.map((e) => Math.max(0.001, failureChanceForRace(e.motorLevel, e.chassiLevel, e.cambioReliability)));
     const total = weights.reduce((a, b) => a + b, 0);
     let r = Math.random() * total;
     for (let i = 0; i < entrants.length; i++) {
@@ -182,8 +222,8 @@
   // cada motor oscila de uma temporada pra outra (podendo subir ou cair),
   // em vez de ter um rendimento fixo pra sempre — reflete desenvolvimento e
   // regressão real de fabricantes de motor ao longo dos anos
-  const MOTOR_PERFORMANCE_MIN = 88;
-  const MOTOR_PERFORMANCE_MAX = 100;
+  const MOTOR_PERFORMANCE_MIN = 86;
+  const MOTOR_PERFORMANCE_MAX = 98;
   const MOTOR_PERFORMANCE_STEP = 4; // variação máxima (pra cima ou pra baixo) de uma temporada pra outra
 
   function motorNames() {
@@ -221,15 +261,19 @@
   // motor (diferente da potência, que oscila por temporada) — motor mais
   // sedento não é necessariamente o mais potente nesta temporada, mais
   // uma variável independente pro jogador pesar na escolha
+  // banda global 86%-98% (mesma regra de qualquer porcentagem de
+  // fornecedor) — a ordem entre as marcas continua a mesma de antes
+  // (Coventry é o mais sedento, Modernos o mais econômico), só a escala
+  // que foi comprimida pra caber no teto/piso instituído
   const MOTOR_FUEL_PROFILES = {
-    'Motores Auge de Coventry': 1.05,
-    'Motores de Corrida Britânicos': 0.97,
-    'Motores Modernos': 0.95,
-    'Motores Vida': 1.03,
-    'Peças de Reposição Racing': 1.00,
-    'Motores Cervo': 0.98,
-    'Motores Sombra': 1.02,
-    'Motores Pégaso': 1.00,
+    'Motores Auge de Coventry': 0.98,
+    'Motores de Corrida Britânicos': 0.88,
+    'Motores Modernos': 0.86,
+    'Motores Vida': 0.96,
+    'Peças de Reposição Racing': 0.92,
+    'Motores Cervo': 0.90,
+    'Motores Sombra': 0.94,
+    'Motores Pégaso': 0.92,
   };
 
   function motorSupplierFuelFactor(name) {
@@ -331,6 +375,8 @@
     PIT_STOP_BASE_MS, PIT_STOP_MIN_MS, pitStopMs, pitStopMsForClub,
     FAILURE_TYPES, SEASON_FAILURE_EVENTS_MIN, SEASON_FAILURE_EVENTS_MAX,
     scheduleFailureEvents, failureChanceForRace, rollFailureType, pickAffectedEntrant,
+    CAMBIO_RELIABILITY_MIN, CAMBIO_RELIABILITY_MAX, cambioReliabilityMult,
+    CAMBIO_RELIABILITY_PROFILES, cambioReliabilityPct,
     MOTOR_PERFORMANCE_MIN, MOTOR_PERFORMANCE_MAX, MOTOR_PERFORMANCE_STEP,
     rollMotorPerformances, motorPerformanceFactor, MOTOR_FUEL_PROFILES, motorSupplierFuelFactor,
     CAR_SETUP_OPTIONS, defaultCarSetup, setupPaceFactor, setupWearFactor,
