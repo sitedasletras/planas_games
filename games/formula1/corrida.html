@@ -241,6 +241,14 @@
     let selectedSetup = window.WSPF1Corrida.defaultCarSetup();
     let selectedDrivingStyle = window.WSPF1Corrida.defaultDrivingStyle();
 
+    // motor mais potente bebe mais combustível — pro jogador ver isso já
+    // refletido na planilha antes de largar (não só sentir na corrida)
+    let playerMotorLevel = 0;
+    if (window.WSPF1Equipe) {
+      const clubForFuel = window.WSPF1Equipe.loadClub();
+      playerMotorLevel = (clubForFuel.departments && clubForFuel.departments.motor) || 0;
+    }
+
     const validSession = isPractice || sessionType === 'sprint' || sessionType === 'corrida';
     const weekendGated = weekend && weekend.sessionIdx === 0 && !window.WSPF1Calendario.isWeekendAvailable(temporadaState);
     if (!weekend || !validSession || weekendGated) {
@@ -454,22 +462,24 @@
     function renderFuelTable() {
       const C = window.WSPF1Corrida;
       const totalLaps = sessionTotalLaps();
-      const fuelNeeded = C.calcFuelNeeded(totalLaps);
-      const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP;
+      const motorMult = C.motorFuelMult(playerMotorLevel);
+      const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP * motorMult;
+      const fuelNeeded = C.calcFuelNeeded(totalLaps, fuelPerLap);
       const styleWearMult = C.drivingStyleWearMult(selectedDrivingStyle);
       const stintLaps = C.calcStintLaps(selectedCompound, 90, styleWearMult);
       const tireStopsNeeded = Math.max(0, Math.ceil(totalLaps / stintLaps) - 1);
       const stylePaceFactor = C.drivingStylePaceFactor(selectedDrivingStyle);
       const stylePacePct = Math.round((stylePaceFactor - 1) * 100);
-      const fuelForTarget = selectedFuelTargetLap ? C.calcFuelForStint(selectedFuelTargetLap) : fuelNeeded;
+      const fuelForTarget = selectedFuelTargetLap ? C.calcFuelForStint(selectedFuelTargetLap, fuelPerLap) : fuelNeeded;
       // pelo menos 1 parada é garantida pelo motor (pneu nunca aguenta a
       // corrida toda) — a planilha já mostra isso pra não prometer "sem
       // parar" com nenhum composto
       const stopsNeeded = Math.max(1, tireStopsNeeded, selectedFuelTargetLap ? 1 : 0);
 
+      const motorPct = Math.round((motorMult - 1) * 100);
       const rows = [
         ['Voltas da sessão', totalLaps],
-        ['Combustível/volta', fuelPerLap.toFixed(1) + ' kg'],
+        ['Combustível/volta', fuelPerLap.toFixed(1) + ' kg' + (motorPct > 0 ? ' (motor nível ' + playerMotorLevel + ': +' + motorPct + '%)' : '')],
         [selectedFuelTargetLap ? 'Combustível de largada (até a volta ' + selectedFuelTargetLap + ')' : 'Combustível total (tanque cheio)', fuelForTarget + ' kg'],
         ['Estilo de pilotagem', C.DRIVING_STYLES[selectedDrivingStyle].label + ' (' + (stylePacePct >= 0 ? '+' : '') + stylePacePct + '% ritmo)'],
         ['Composto escolhido aguenta', stintLaps + ' voltas'],

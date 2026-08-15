@@ -278,7 +278,10 @@
       car.distance += speed * dtMs;
       const wearAdd = C() ? C().calcTireWear(car.tireCompound, dtMs / (state.raceRealMs / state.totalLaps), 1) : 0;
       car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult);
-      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult);
+      // motor mais potente bebe mais combustível — vale pra todo mundo no
+      // grid, não só o jogador, já que rivais também têm motorLevel variado
+      const motorFuelMult = C() ? C().motorFuelMult(car.motorLevel) : 1;
+      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult * motorFuelMult);
 
       while (car.distance >= 100 && car.finishedAt == null) {
         car.distance -= 100;

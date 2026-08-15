@@ -89,6 +89,15 @@
     return Math.round(stintLaps * perLap * 10) / 10;
   }
 
+  // motor mais potente bebe mais combustível — mais uma variável de
+  // trade-off (pedido explícito do usuário 15/08): nível 0 de motor não
+  // penaliza nada, nível máximo (20) bebe 10% a mais por volta
+  const MOTOR_MAX_LEVEL = 20;
+  const MOTOR_FUEL_SPREAD = 0.10;
+  function motorFuelMult(motorLevel) {
+    return 1 + (Math.max(0, Math.min(MOTOR_MAX_LEVEL, motorLevel || 0)) / MOTOR_MAX_LEVEL) * MOTOR_FUEL_SPREAD;
+  }
+
   // ---------- Tempo de parada no box ----------
   // melhorar a estrutura de boxes (mecânicos + telemetria) e a engenharia
   // (motor/chassi/aerodinâmica) reduz o tempo parado — é o retorno concreto
@@ -299,7 +308,7 @@
   window.WSPF1Corrida = {
     TIRE_COMPOUNDS, WEATHER_CONDITIONS, TIRE_MISMATCH_PENALTY, TIRE_SUPPLIERS,
     tireEffectiveGrip, tireSupplierFactor, calcTireWear, calcStintLaps,
-    FUEL_BASE_CONSUMPTION_PER_LAP, FUEL_SAFETY_MARGIN_PCT, calcFuelNeeded, calcFuelForStint,
+    FUEL_BASE_CONSUMPTION_PER_LAP, FUEL_SAFETY_MARGIN_PCT, calcFuelNeeded, calcFuelForStint, motorFuelMult,
     PIT_STOP_BASE_MS, PIT_STOP_MIN_MS, pitStopMs, pitStopMsForClub,
     FAILURE_TYPES, SEASON_FAILURE_EVENTS_MIN, SEASON_FAILURE_EVENTS_MAX,
     scheduleFailureEvents, failureChanceForRace, rollFailureType, pickAffectedEntrant,
