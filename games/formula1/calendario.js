@@ -13,28 +13,54 @@
   const SEASON_RACE_COUNT = 21;
   const SPRINT_WEEKEND_COUNT = 7;
 
+  // Pool bem maior que as 21 vagas de uma temporada — é o que permite trocar
+  // pelo menos metade do calendário a cada nova temporada (selectSeasonCircuits)
+  // em vez de repetir sempre a mesma lista, como o usuário pediu. "tipo" é só
+  // sabor (inspirado na mistura rua/permanente/misto de circuitos reais) —
+  // nomes fictícios, sem usar os nomes reais de GPs.
   const CIRCUIT_POOL = [
-    { name: 'Autódromo das Bandeiras', laps: 58 },
-    { name: 'Circuito da Serra Encantada', laps: 52 },
-    { name: 'Pista do Litoral Dourado', laps: 63 },
-    { name: 'Anel de Ipanema', laps: 68 },
-    { name: 'Circuito do Cerrado', laps: 55 },
-    { name: 'Autódromo Vale das Águias', laps: 57 },
-    { name: 'Traçado da Baía Azul', laps: 60 },
-    { name: 'Circuito Terras Altas', laps: 50 },
-    { name: 'Pista Real do Norte', laps: 54 },
-    { name: 'Anel Metropolitano', laps: 66 },
-    { name: 'Circuito das Cataratas', laps: 53 },
-    { name: 'Autódromo Costa Esmeralda', laps: 59 },
-    { name: 'Traçado do Deserto Vermelho', laps: 56 },
-    { name: 'Circuito Ilha do Sol', laps: 61 },
-    { name: 'Pista Nevoeiro', laps: 49 },
-    { name: 'Anel Real Imperial', laps: 52 },
-    { name: 'Circuito Vale Dourado', laps: 58 },
-    { name: 'Autódromo dos Ventos', laps: 64 },
-    { name: 'Traçado da Montanha Negra', laps: 51 },
-    { name: 'Circuito Grande Baía', laps: 62 },
-    { name: 'Pista Estrela do Sul', laps: 57 },
+    { name: 'Autódromo das Bandeiras', laps: 58, type: 'permanente' },
+    { name: 'Circuito da Serra Encantada', laps: 52, type: 'permanente' },
+    { name: 'Pista do Litoral Dourado', laps: 63, type: 'misto' },
+    { name: 'Anel de Ipanema', laps: 68, type: 'rua' },
+    { name: 'Circuito do Cerrado', laps: 55, type: 'permanente' },
+    { name: 'Autódromo Vale das Águias', laps: 57, type: 'permanente' },
+    { name: 'Traçado da Baía Azul', laps: 60, type: 'misto' },
+    { name: 'Circuito Terras Altas', laps: 50, type: 'permanente' },
+    { name: 'Pista Real do Norte', laps: 54, type: 'permanente' },
+    { name: 'Anel Metropolitano', laps: 66, type: 'rua' },
+    { name: 'Circuito das Cataratas', laps: 53, type: 'permanente' },
+    { name: 'Autódromo Costa Esmeralda', laps: 59, type: 'misto' },
+    { name: 'Traçado do Deserto Vermelho', laps: 56, type: 'permanente' },
+    { name: 'Circuito Ilha do Sol', laps: 61, type: 'misto' },
+    { name: 'Pista Nevoeiro', laps: 49, type: 'permanente' },
+    { name: 'Anel Real Imperial', laps: 52, type: 'rua' },
+    { name: 'Circuito Vale Dourado', laps: 58, type: 'permanente' },
+    { name: 'Autódromo dos Ventos', laps: 64, type: 'misto' },
+    { name: 'Traçado da Montanha Negra', laps: 51, type: 'permanente' },
+    { name: 'Circuito Grande Baía', laps: 62, type: 'misto' },
+    { name: 'Pista Estrela do Sul', laps: 57, type: 'permanente' },
+    { name: 'Circuito Rua Nova', laps: 72, type: 'rua' },
+    { name: 'Autódromo Portal do Sul', laps: 56, type: 'permanente' },
+    { name: 'Circuito das Ilhas Claras', laps: 60, type: 'misto' },
+    { name: 'Traçado Real da Baía', laps: 70, type: 'rua' },
+    { name: 'Circuito Vento Norte', laps: 54, type: 'permanente' },
+    { name: 'Autódromo Fronteira Dourada', laps: 58, type: 'permanente' },
+    { name: 'Circuito da Lagoa Azul', laps: 62, type: 'misto' },
+    { name: 'Pista Alto da Serra', laps: 51, type: 'permanente' },
+    { name: 'Circuito Rua Central', laps: 74, type: 'rua' },
+    { name: 'Autódromo Terras do Sol', laps: 57, type: 'permanente' },
+    { name: 'Circuito Costa Norte', laps: 61, type: 'misto' },
+    { name: 'Traçado das Palmeiras', laps: 68, type: 'rua' },
+    { name: 'Circuito Grande Vale', laps: 55, type: 'permanente' },
+    { name: 'Autódromo Colinas Verdes', laps: 59, type: 'permanente' },
+    { name: 'Circuito Baía Serena', laps: 63, type: 'misto' },
+    { name: 'Pista Duna Dourada', laps: 52, type: 'permanente' },
+    { name: 'Circuito Rua do Porto', laps: 71, type: 'rua' },
+    { name: 'Autódromo Planalto Norte', laps: 56, type: 'permanente' },
+    { name: 'Circuito Vale de Prata', laps: 60, type: 'misto' },
+    { name: 'Traçado Litoral Sul', laps: 69, type: 'rua' },
+    { name: 'Circuito Estrela Polar', laps: 53, type: 'permanente' },
   ];
 
   const SESSION_TYPES = {
@@ -73,8 +99,28 @@
     return set;
   }
 
-  function buildCalendar() {
-    const circuits = shuffle(CIRCUIT_POOL).slice(0, SEASON_RACE_COUNT);
+  // garante que pelo menos metade do calendário troque de uma temporada pra
+  // outra: prioriza circuitos que não estavam na lista anterior e só reusa
+  // os antigos pra completar as 21 vagas, até um teto de metade repetida
+  function selectSeasonCircuits(previousNames) {
+    const prevSet = new Set(previousNames || []);
+    const maxCarryover = Math.floor(SEASON_RACE_COUNT / 2);
+    const freshPool = shuffle(CIRCUIT_POOL.filter((c) => !prevSet.has(c.name)));
+    const repeatPool = shuffle(CIRCUIT_POOL.filter((c) => prevSet.has(c.name)));
+    const chosen = [];
+    while (chosen.length < SEASON_RACE_COUNT && freshPool.length) chosen.push(freshPool.pop());
+    while (chosen.length < SEASON_RACE_COUNT && repeatPool.length
+      && chosen.filter((c) => prevSet.has(c.name)).length < maxCarryover) {
+      chosen.push(repeatPool.pop());
+    }
+    while (chosen.length < SEASON_RACE_COUNT && (freshPool.length || repeatPool.length)) {
+      chosen.push(freshPool.length ? freshPool.pop() : repeatPool.pop());
+    }
+    return shuffle(chosen);
+  }
+
+  function buildCalendar(previousCircuitNames) {
+    const circuits = selectSeasonCircuits(previousCircuitNames);
     const sprintSet = distributeSprintWeekends(SEASON_RACE_COUNT, SPRINT_WEEKEND_COUNT);
     const failureSet = new Set(window.WSPF1Corrida ? window.WSPF1Corrida.scheduleFailureEvents(SEASON_RACE_COUNT) : []);
     return circuits.map((circuit, i) => {
@@ -85,6 +131,7 @@
         index: i,
         circuit: circuit.name,
         laps: circuit.laps,
+        type: circuit.type,
         hasSprint: sprintSet.has(i),
         hasFailureEvent: failureSet.has(i),
         sessions,
@@ -96,12 +143,16 @@
     });
   }
 
-  function freshState() {
+  function freshState(previousCircuitNames, previousMotorPerformance) {
+    const motorPerformance = window.WSPF1Corrida
+      ? window.WSPF1Corrida.rollMotorPerformances(previousMotorPerformance)
+      : {};
     return {
       seasonNumber: 1,
-      weekends: buildCalendar(),
+      weekends: buildCalendar(previousCircuitNames),
       weekendIndex: 0,
       points: {}, // entrantId -> pontos acumulados na temporada
+      motorPerformance, // nome do motor -> % de rendimento nesta temporada
       seasonOver: false,
     };
   }
@@ -109,7 +160,14 @@
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (!parsed.motorPerformance) {
+          parsed.motorPerformance = window.WSPF1Corrida ? window.WSPF1Corrida.rollMotorPerformances(null) : {};
+          saveState(parsed);
+        }
+        return parsed;
+      }
     } catch (e) { /* ignore corrupt storage */ }
     const fresh = freshState();
     saveState(fresh);
@@ -195,7 +253,8 @@
   }
 
   function startNewSeason(state) {
-    const fresh = freshState();
+    const previousCircuitNames = (state.weekends || []).map((w) => w.circuit);
+    const fresh = freshState(previousCircuitNames, state.motorPerformance);
     fresh.seasonNumber = (state.seasonNumber || 1) + 1;
     saveState(fresh);
     return fresh;
@@ -204,7 +263,7 @@
   window.WSPF1Calendario = {
     GAME_DAY_REAL_MS, SEASON_RACE_COUNT, SPRINT_WEEKEND_COUNT, CIRCUIT_POOL, SESSION_TYPES,
     RACE_POINTS, SPRINT_POINTS,
-    loadState, saveState, freshState,
+    loadState, saveState, freshState, selectSeasonCircuits,
     currentWeekend, currentSessionType, isSeasonOver,
     resolveFreePractice, resolveQualifying, recordSessionResult,
     driverStandings, constructorStandings, startNewSeason,
