@@ -176,8 +176,8 @@
 
   <div class="overlay hidden" id="empty-overlay">
     <div class="overlay-card">
-      <div class="overlay-title">Nada pra correr agora</div>
-      <p style="font-size:0.85rem; color:#9fd8b8; text-align:center; margin-bottom:14px;">A sessão pendente deste final de semana não é Sprint nem Corrida — resolva Treino Livre e Classificatória na tela de Temporada.</p>
+      <div class="overlay-title" id="empty-overlay-title">Nada pra correr agora</div>
+      <p id="empty-overlay-text" style="font-size:0.85rem; color:#9fd8b8; text-align:center; margin-bottom:14px;">A sessão pendente deste final de semana não é Sprint nem Corrida — resolva Treino Livre e Classificatória na tela de Temporada.</p>
       <a class="primary-btn" style="display:block; text-align:center; text-decoration:none;" href="temporada.html">Ir pra Temporada</a>
     </div>
   </div>
@@ -211,7 +211,12 @@
     let selectedSetup = window.WSPF1Corrida.defaultCarSetup();
 
     const validSession = isPractice || sessionType === 'sprint' || sessionType === 'corrida';
-    if (!weekend || !validSession) {
+    const weekendGated = weekend && weekend.sessionIdx === 0 && !window.WSPF1Calendario.isWeekendAvailable(temporadaState);
+    if (!weekend || !validSession || weekendGated) {
+      if (weekendGated) {
+        document.getElementById('empty-overlay-title').textContent = 'GP ainda não liberou';
+        document.getElementById('empty-overlay-text').textContent = '⏳ Próximo GP libera em ' + window.WSPF1Calendario.formatCountdown(window.WSPF1Calendario.msUntilNextWeekend(temporadaState)) + '.';
+      }
       emptyOverlayEl.classList.remove('hidden');
       strategyPanelEl.classList.add('hidden');
     } else {

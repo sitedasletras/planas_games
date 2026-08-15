@@ -13,6 +13,15 @@
   const SEASON_RACE_COUNT = 21;
   const SPRINT_WEEKEND_COUNT = 7;
 
+  // 1 GP (fim de semana completo) por dia, e 4 dias de intervalo entre uma
+  // temporada e a próxima — tempo pra trocar circuitos, fazer testes de
+  // pré-temporada etc. Cooldown real, igual ao intervalo de partidas do
+  // futebol, só que contado por fim de semana de GP em vez de por jogo.
+  const GP_WEEKEND_COOLDOWN_DAYS = 1;
+  const GP_WEEKEND_COOLDOWN_MS = GAME_DAY_REAL_MS * GP_WEEKEND_COOLDOWN_DAYS;
+  const SEASON_GAP_DAYS = 4;
+  const SEASON_GAP_MS = GAME_DAY_REAL_MS * SEASON_GAP_DAYS;
+
   // Pool baseado em dados reais: país/cidade e características técnicas
   // (extensão aproximada -> voltas pra ~305km, curvas, sentido, clima
   // predominante, altitude) de circuitos reais — os 22 do calendário 2026
@@ -168,6 +177,8 @@
       weekendIndex: 0,
       points: {}, // entrantId -> pontos acumulados na temporada
       motorPerformance, // nome do motor -> % de rendimento nesta temporada
+      nextWeekendAt: null, // timestamp: quando o próximo GP libera (cooldown de 1 dia)
+      nextSeasonAt: null, // timestamp: quando a próxima temporada libera (gap de 4 dias)
       seasonOver: false,
     };
   }
@@ -177,10 +188,14 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
+        let changed = false;
         if (!parsed.motorPerformance) {
           parsed.motorPerformance = window.WSPF1Corrida ? window.WSPF1Corrida.rollMotorPerformances(null) : {};
-          saveState(parsed);
+          changed = true;
         }
+        if (parsed.nextWeekendAt === undefined) { parsed.nextWeekendAt = null; changed = true; }
+        if (parsed.nextSeasonAt === undefined) { parsed.nextSeasonAt = null; changed = true; }
+        if (changed) saveState(parsed);
         return parsed;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -207,6 +222,34 @@
 
   function isSeasonOver(state) {
     return state.weekendIndex >= state.weekends.length;
+  }
+
+  function isWeekendAvailable(state) {
+    return !state.nextWeekendAt || Date.now() >= state.nextWeekendAt;
+  }
+
+  function msUntilNextWeekend(state) {
+    if (!state.nextWeekendAt) return 0;
+    return Math.max(0, state.nextWeekendAt - Date.now());
+  }
+
+  function isNewSeasonAvailable(state) {
+    return !state.nextSeasonAt || Date.now() >= state.nextSeasonAt;
+  }
+
+  function msUntilNewSeason(state) {
+    if (!state.nextSeasonAt) return 0;
+    return Math.max(0, state.nextSeasonAt - Date.now());
+  }
+
+  function daysRemaining(ms) {
+    return Math.max(0, Math.ceil(ms / GAME_DAY_REAL_MS));
+  }
+
+  function formatCountdown(ms) {
+    if (ms <= 0) return 'Disponível agora';
+    const days = daysRemaining(ms);
+    return days === 1 ? '1 dia' : days + ' dias';
   }
 
   // acerto do carro escolhido no treino livre — vale pro resto do fim de
@@ -257,6 +300,11 @@
     if (w.sessionIdx >= w.sessions.length) {
       w.done = true;
       state.weekendIndex++;
+      if (isSeasonOver(state)) {
+        state.nextSeasonAt = Date.now() + SEASON_GAP_MS;
+      } else {
+        state.nextWeekendAt = Date.now() + GP_WEEKEND_COOLDOWN_MS;
+      }
     }
     saveState(state);
     return { ok: true, weekendDone: w.done, seasonOver: isSeasonOver(state) };
@@ -278,6 +326,7 @@
   }
 
   function startNewSeason(state) {
+    if (!isNewSeasonAvailable(state)) return state;
     const previousCircuitNames = (state.weekends || []).map((w) => w.circuit);
     const fresh = freshState(previousCircuitNames, state.motorPerformance);
     fresh.seasonNumber = (state.seasonNumber || 1) + 1;
@@ -287,9 +336,10 @@
 
   window.WSPF1Calendario = {
     GAME_DAY_REAL_MS, SEASON_RACE_COUNT, SPRINT_WEEKEND_COUNT, CIRCUIT_POOL, SESSION_TYPES, CLIMATE_RAIN_CHANCE, ASPHALT_LABELS,
-    RACE_POINTS, SPRINT_POINTS,
+    RACE_POINTS, SPRINT_POINTS, GP_WEEKEND_COOLDOWN_DAYS, SEASON_GAP_DAYS,
     loadState, saveState, freshState, selectSeasonCircuits,
     currentWeekend, currentSessionType, isSeasonOver, applyCarSetup,
+    isWeekendAvailable, msUntilNextWeekend, isNewSeasonAvailable, msUntilNewSeason, formatCountdown,
     resolveFreePractice, resolveQualifying, recordSessionResult,
     driverStandings, constructorStandings, startNewSeason,
   };

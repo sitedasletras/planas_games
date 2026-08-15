@@ -32,6 +32,7 @@
   .weekend-title { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1.05rem; font-weight: bold; }
   .weekend-meta { font-size: 0.78rem; color: #9fd8b8; margin-top: 4px; }
   .sprint-badge { display: inline-block; margin-top: 6px; font-size: 0.68rem; background: #1e3b2a; border: 1px solid #ffd54a; color: #ffd54a; padding: 2px 8px; border-radius: 8px; }
+  .cooldown-note { margin-top: 10px; font-size: 0.8rem; color: #9fd8b8; }
 
   .session-steps { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
   .session-step { flex: 1 1 auto; text-align: center; font-size: 0.62rem; padding: 6px 4px; border-radius: 8px; background: #0f231a; color: #6f9382; }
@@ -81,6 +82,7 @@
       <div class="weekend-title" id="weekend-title">Circuito</div>
       <div class="weekend-meta" id="weekend-meta"></div>
       <span class="sprint-badge hidden" id="sprint-badge">Fim de semana com Sprint</span>
+      <p class="cooldown-note hidden" id="cooldown-note"></p>
 
       <div class="session-steps" id="session-steps"></div>
 
@@ -136,12 +138,29 @@
       raceLink.classList.add('hidden');
       newSeasonBtn.classList.add('hidden');
 
+      const cooldownNote = document.getElementById('cooldown-note');
+      cooldownNote.classList.add('hidden');
+
       if (!weekend) {
-        document.getElementById('weekend-title').textContent = 'Temporada encerrada!';
-        document.getElementById('weekend-meta').textContent = 'Confira a classificação final abaixo.';
         document.getElementById('sprint-badge').classList.add('hidden');
         document.getElementById('session-steps').innerHTML = '';
-        newSeasonBtn.classList.remove('hidden');
+        if (Cal.isNewSeasonAvailable(state)) {
+          document.getElementById('weekend-title').textContent = 'Temporada encerrada!';
+          document.getElementById('weekend-meta').textContent = 'Confira a classificação final abaixo.';
+          newSeasonBtn.classList.remove('hidden');
+        } else {
+          document.getElementById('weekend-title').textContent = 'Temporada encerrada!';
+          document.getElementById('weekend-meta').textContent = 'Trocando circuitos e fazendo testes de pré-temporada...';
+          cooldownNote.textContent = '🏗️ Próxima temporada libera em ' + Cal.formatCountdown(Cal.msUntilNewSeason(state));
+          cooldownNote.classList.remove('hidden');
+        }
+      } else if (weekend.sessionIdx === 0 && !Cal.isWeekendAvailable(state)) {
+        document.getElementById('weekend-title').textContent = weekend.circuit;
+        document.getElementById('weekend-meta').textContent = weekend.pais + ' — ' + weekend.cidade;
+        document.getElementById('sprint-badge').classList.toggle('hidden', !weekend.hasSprint);
+        document.getElementById('session-steps').innerHTML = '';
+        cooldownNote.textContent = '⏳ Próximo GP libera em ' + Cal.formatCountdown(Cal.msUntilNextWeekend(state));
+        cooldownNote.classList.remove('hidden');
       } else {
         document.getElementById('weekend-title').textContent = weekend.circuit;
         document.getElementById('weekend-meta').textContent = weekend.pais + ' — ' + weekend.cidade + ' · ' + weekend.laps + ' voltas · ' + weekend.curves + ' curvas · clima ' + weekend.clima;
@@ -238,6 +257,7 @@
     });
 
     render();
+    setInterval(render, 60000);
   })();
   </script>
 </body>
