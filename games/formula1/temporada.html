@@ -144,7 +144,7 @@
         newSeasonBtn.classList.remove('hidden');
       } else {
         document.getElementById('weekend-title').textContent = weekend.circuit;
-        document.getElementById('weekend-meta').textContent = weekend.laps + ' voltas na Corrida';
+        document.getElementById('weekend-meta').textContent = weekend.laps + ' voltas · ' + weekend.curves + ' curvas · sentido ' + weekend.sentido + ' · clima ' + weekend.clima;
         document.getElementById('sprint-badge').classList.toggle('hidden', !weekend.hasSprint);
 
         const stepsEl = document.getElementById('session-steps');

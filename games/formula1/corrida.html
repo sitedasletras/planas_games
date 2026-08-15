@@ -56,6 +56,15 @@
   .hud-value { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1rem; font-weight: bold; color: #ffd54a; }
   .hud-value.p1 { animation: hudPulse 1.2s ease infinite; color: #3fd67a; }
 
+  .circuit-data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .circuit-data-item { background: #0f231a; border-radius: 8px; padding: 8px 10px; }
+  .circuit-data-label { font-size: 0.6rem; color: #9fd8b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .circuit-data-value { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 0.88rem; font-weight: bold; color: #ffd54a; }
+
+  .fuel-table { margin-top: 10px; border-top: 1px solid #345c48; padding-top: 10px; }
+  .fuel-row { display: flex; justify-content: space-between; font-size: 0.76rem; padding: 4px 0; color: #cfeede; }
+  .fuel-row b { color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
+
   @keyframes hudPulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.55; }
@@ -102,6 +111,11 @@
       <span class="session-tag" id="session-tag">Corrida</span>
     </div>
 
+    <div id="circuit-info-panel" class="panel hidden">
+      <h2>Dados do circuito</h2>
+      <div class="circuit-data-grid" id="circuit-data-grid"></div>
+    </div>
+
     <div id="strategy-panel" class="panel">
       <h2>Estratégia de largada</h2>
       <p id="strategy-hint">Escolha o composto de pneu pra largada. Fique de olho no céu — o tempo pode mudar.</p>
@@ -110,6 +124,9 @@
         <p>Reabastecimento (só na Sprint):</p>
         <div class="refuel-row" id="refuel-row"></div>
       </div>
+
+      <div class="fuel-table" id="fuel-table"></div>
+
       <button class="primary-btn" id="start-btn">🏁 Largar</button>
     </div>
 
@@ -183,6 +200,29 @@
     document.getElementById('circuit-name').textContent = weekend ? weekend.circuit : 'Circuito';
     document.getElementById('session-tag').textContent = sessionType === 'sprint' ? 'Corrida Sprint' : 'Corrida';
 
+    if (weekend) renderCircuitInfo(weekend);
+
+    function renderCircuitInfo(w) {
+      const panel = document.getElementById('circuit-info-panel');
+      const grid = document.getElementById('circuit-data-grid');
+      const typeLabel = { permanente: 'Permanente', rua: 'Rua', misto: 'Misto' }[w.type] || w.type;
+      const items = [
+        ['Traçado', typeLabel],
+        ['Voltas na corrida', w.laps],
+        ['Curvas', w.curves],
+        ['Sentido', w.sentido],
+        ['Clima predominante', w.clima],
+        ['Ultrapassagem', w.ultrapassagem],
+      ];
+      grid.innerHTML = items.map(([label, value]) => (
+        '<div class="circuit-data-item"><div class="circuit-data-label">' + label + '</div><div class="circuit-data-value">' + value + '</div></div>'
+      )).join('');
+      panel.classList.remove('hidden');
+      const rainChance = Math.round((window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[w.clima] || 0.2) * 100);
+      const hint = document.getElementById('strategy-hint');
+      if (hint) hint.textContent = 'Escolha o composto de pneu pra largada. Clima ' + w.clima + ' — cerca de ' + rainChance + '% de chance de chuva durante a corrida.';
+    }
+
     function initStrategy() {
       const isSprint = sessionType === 'sprint';
       const compoundRow = document.getElementById('compound-row');
@@ -196,6 +236,7 @@
           selectedCompound = key;
           [...compoundRow.children].forEach((b) => b.classList.remove('selected'));
           btn.classList.add('selected');
+          renderFuelTable();
         });
         compoundRow.appendChild(btn);
       });
@@ -217,6 +258,30 @@
       }
 
       document.getElementById('start-btn').addEventListener('click', startRace);
+      renderFuelTable();
+    }
+
+    // "planilha" de combustível/pneu: os números de verdade que o corrida.js
+    // já calculava por baixo dos panos, agora visíveis antes de largar
+    function renderFuelTable() {
+      const C = window.WSPF1Corrida;
+      const isSprint = sessionType === 'sprint';
+      const totalLaps = isSprint ? Math.max(6, Math.round(weekend.laps / 3)) : weekend.laps;
+      const fuelNeeded = C.calcFuelNeeded(totalLaps);
+      const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP;
+      const stintLaps = C.calcStintLaps(selectedCompound, 90);
+      const stopsNeeded = Math.max(0, Math.ceil(totalLaps / stintLaps) - 1);
+
+      const rows = [
+        ['Voltas da sessão', totalLaps],
+        ['Combustível/volta', fuelPerLap.toFixed(1) + ' kg'],
+        ['Combustível total necessário', fuelNeeded + ' kg'],
+        ['Composto escolhido aguenta', stintLaps + ' voltas'],
+        ['Paradas previstas com esse composto', stopsNeeded],
+      ];
+      document.getElementById('fuel-table').innerHTML = rows.map(([label, value]) => (
+        '<div class="fuel-row"><span>' + label + '</span><b>' + value + '</b></div>'
+      )).join('');
     }
 
     // ---------- Corrida ao vivo ----------
@@ -256,6 +321,7 @@
         startCompound: selectedCompound,
         refuelPlan: selectedRefuel,
         pitStopMsByTeam,
+        rainChance: window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[weekend.clima],
       });
       strategyPanelEl.classList.add('hidden');
       raceViewEl.classList.remove('hidden');

@@ -88,7 +88,8 @@
     }
 
     let weatherEvent = null;
-    if (!opts.isSprint && Math.random() < 0.2) {
+    const rainChance = opts.rainChance != null ? opts.rainChance : 0.2;
+    if (!opts.isSprint && Math.random() < rainChance) {
       weatherEvent = {
         startLap: Math.floor(totalLaps * 0.3 + Math.random() * totalLaps * 0.3),
         stage: 'chuva_leve',
