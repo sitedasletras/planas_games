@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Fórmula 1 — Escuderia</title>
+<link rel="stylesheet" href="escuderia.css">
+</head>
+<body>
+  <div class="clube-wrap">
+    <div class="clube-topbar">
+      <a class="back-btn" href="index.html">←</a>
+      <h1>Escuderia</h1>
+    </div>
+
+    <div class="budget-card">
+      <span class="budget-label">Caixa da equipe</span>
+      <span class="budget-value" id="budget-value">R$ 0</span>
+    </div>
+
+    <div class="morale-card">
+      <span class="budget-label">Moral da equipe</span>
+      <div class="morale-bar-wrap">
+        <div class="level-track"><div class="level-fill" id="morale-fill"></div></div>
+        <span class="morale-value" id="morale-value">Neutra</span>
+      </div>
+    </div>
+
+    <h2 class="section-title">Motor e Chassi</h2>
+    <div class="supplier-card">
+      <div class="supplier-label">🔧 Fornecedor de motor</div>
+      <select class="supplier-select" id="motor-select"></select>
+    </div>
+    <div class="supplier-card">
+      <div class="supplier-label">🔩 Construtor do chassi</div>
+      <select class="supplier-select" id="chassi-select"></select>
+    </div>
+
+    <h2 class="section-title">Estrutura da Equipe</h2>
+    <div class="campus-tier-note">Todos os departamentos podem evoluir até o nível 20 — melhorar Boxes e Engenharia (motor/chassi/aerodinâmica) reduz o tempo de parada nos pit stops.</div>
+    <div class="dept-list" id="dept-list"></div>
+
+    <h2 class="section-title">Patrocínios</h2>
+    <div class="dept-list" id="sponsor-list"></div>
+  </div>
+
+  <script src="pilotos.js"></script>
+  <script src="equipe.js"></script>
+  <script src="corrida.js"></script>
+  <script src="escuderia.js"></script>
+</body>
+</html>
