@@ -207,10 +207,13 @@
   // treino): mais agressivo ganha ritmo mas gasta o pneu mais rápido —
   // é o eixo que fecha a "planilha" de combustível/pneu com um número que
   // a pessoa realmente controla e vê recalcular na hora.
+  // ajustável ao vivo durante a corrida (não só antes de largar) — por
+  // isso também carrega fuelMult: mudar de estilo no meio da corrida deve
+  // mexer no consumo de combustível de verdade, não só no ritmo/desgaste
   const DRIVING_STYLES = {
-    conservador: { label: 'Conservador', desc: 'Poupa o pneu, perde um pouco de ritmo.', paceMod: -0.012, wearMult: 0.82 },
-    equilibrado: { label: 'Equilibrado', desc: 'Ritmo e desgaste padrão.', paceMod: 0, wearMult: 1 },
-    agressivo: { label: 'Agressivo', desc: 'Mais rápido, desgasta o pneu bem mais rápido.', paceMod: 0.018, wearMult: 1.28 },
+    conservador: { label: 'Conservador', desc: 'Poupa pneu e combustível, perde um pouco de ritmo.', paceMod: -0.012, wearMult: 0.82, fuelMult: 0.93 },
+    equilibrado: { label: 'Equilibrado', desc: 'Ritmo, desgaste e consumo padrão.', paceMod: 0, wearMult: 1, fuelMult: 1 },
+    agressivo: { label: 'Agressivo', desc: 'Mais rápido, gasta pneu e combustível bem mais rápido.', paceMod: 0.018, wearMult: 1.28, fuelMult: 1.09 },
   };
 
   function defaultDrivingStyle() { return 'equilibrado'; }
@@ -223,6 +226,11 @@
   function drivingStyleWearMult(style) {
     const s = DRIVING_STYLES[style];
     return s ? s.wearMult : 1;
+  }
+
+  function drivingStyleFuelMult(style) {
+    const s = DRIVING_STYLES[style];
+    return s ? s.fuelMult : 1;
   }
 
   // vice-versa) — escolhido no treino livre e vale pro resto do fim de
@@ -291,6 +299,6 @@
     rollMotorPerformances, motorPerformanceFactor,
     CAR_SETUP_OPTIONS, defaultCarSetup, setupPaceFactor, setupWearFactor,
     ASPHALT_IDEAL_ALTURA, setupAsphaltMatchFactor,
-    DRIVING_STYLES, defaultDrivingStyle, drivingStylePaceFactor, drivingStyleWearMult,
+    DRIVING_STYLES, defaultDrivingStyle, drivingStylePaceFactor, drivingStyleWearMult, drivingStyleFuelMult,
   };
 })();

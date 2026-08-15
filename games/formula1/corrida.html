@@ -89,6 +89,13 @@
     font-size: 0.74rem; color: #cfeede; min-height: 1.4em;
   }
 
+  .live-style-row { display: flex; gap: 6px; margin: 6px 14px; }
+  .live-style-btn {
+    flex: 1; padding: 8px 4px; border-radius: 9px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: #cfeede; font-size: 0.68rem; font-weight: bold; cursor: pointer; text-align: center;
+  }
+  .live-style-btn.selected { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
+
   .leaderboard { margin: 8px 14px 14px; }
   .lb-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; font-size: 0.78rem; }
   .lb-row.player { background: #1e3b2a; border: 1px solid #ffd54a; }
@@ -170,6 +177,8 @@
         </div>
       </div>
       <div class="ticker" id="ticker">Aguardando a largada...</div>
+
+      <div class="live-style-row" id="live-style-row"></div>
 
       <div class="leaderboard" id="leaderboard"></div>
 
@@ -456,6 +465,7 @@
       setupPanelEl.classList.add('hidden');
       document.getElementById('circuit-info-panel').classList.add('hidden');
       raceViewEl.classList.remove('hidden');
+      initLiveStyleRow();
       lastTs = null;
       rafId = requestAnimationFrame(loop);
     }
@@ -896,6 +906,28 @@
       const player = raceState.cars.find((c) => c.isPlayer);
       const el = document.getElementById('speedo-value');
       el.textContent = player ? Math.round(player.displaySpeedKmh || 0) : '0';
+    }
+
+    // controle de ritmo AO VIVO — diferente do estilo escolhido antes de
+    // largar (que só define o valor inicial), este muda raceState de
+    // verdade a qualquer momento da corrida, e o motor aplica no tick
+    // seguinte (ritmo/desgaste/consumo de combustível)
+    function initLiveStyleRow() {
+      const styles = window.WSPF1Corrida.DRIVING_STYLES;
+      const row = document.getElementById('live-style-row');
+      row.innerHTML = '';
+      const shortLabels = { conservador: '🐢 Poupar', equilibrado: '⚖️ Padrão', agressivo: '🔥 Atacar' };
+      Object.keys(styles).forEach((key) => {
+        const btn = document.createElement('button');
+        btn.className = 'live-style-btn' + (key === raceState.playerDrivingStyle ? ' selected' : '');
+        btn.textContent = shortLabels[key] || styles[key].label;
+        btn.addEventListener('click', () => {
+          window.WSPF1Motor.setDrivingStyle(raceState, key);
+          [...row.children].forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+        row.appendChild(btn);
+      });
     }
 
     function renderHud() {

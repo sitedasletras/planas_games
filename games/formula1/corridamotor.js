@@ -58,13 +58,11 @@
         teamName: e.teamName,
         driverName: e.driverName,
         isPlayer: !!e.isPlayer,
-        pace: (e.isPlayer && C()) ? e.pace * C().drivingStylePaceFactor(opts.drivingStyle) : e.pace,
+        pace: e.pace,
         motorLevel: e.motorLevel || 0,
         chassiLevel: e.chassiLevel || 0,
         tireSupplier: e.tireSupplier || null,
-        wearFactor: e.isPlayer && C()
-          ? C().setupWearFactor(opts.carSetup) * C().drivingStyleWearMult(opts.drivingStyle)
-          : 1,
+        wearFactor: e.isPlayer && C() ? C().setupWearFactor(opts.carSetup) : 1,
         grid: i,
         lapsCompleted: 0,
         distance: 0,
@@ -128,7 +126,19 @@
       finished: false,
       log: [],
       pitStopMsByTeam: opts.pitStopMsByTeam || null,
+      // estilo de pilotagem do jogador — ajustável AO VIVO durante a
+      // corrida (setDrivingStyle), não só fixado na largada
+      playerDrivingStyle: (opts.drivingStyle && C() && C().DRIVING_STYLES[opts.drivingStyle])
+        ? opts.drivingStyle
+        : (C() ? C().defaultDrivingStyle() : 'equilibrado'),
     };
+  }
+
+  // chamada externa: muda o estilo de pilotagem do jogador em tempo real,
+  // no meio da corrida — o próximo tick de stepRace já aplica o novo ritmo/
+  // desgaste/consumo, sem precisar recriar o raceState
+  function setDrivingStyle(state, style) {
+    if (C() && C().DRIVING_STYLES[style]) state.playerDrivingStyle = style;
   }
 
   function pushLog(state, text) {
@@ -220,18 +230,26 @@
         return;
       }
 
+      // fatores do estilo de pilotagem só valem pro jogador, e são lidos do
+      // state a cada tick (não fixados na largada) — mudar de estilo ao
+      // vivo já reflete no próximo tick
+      const style = car.isPlayer && C() ? state.playerDrivingStyle : null;
+      const stylePaceFactor = style ? C().drivingStylePaceFactor(style) : 1;
+      const styleWearMult = style ? C().drivingStyleWearMult(style) : 1;
+      const styleFuelMult = style ? C().drivingStyleFuelMult(style) : 1;
+
       const grip = C() ? C().tireEffectiveGrip(car.tireCompound, state.weather, car.tireSupplier) : 1;
       const wearPenalty = distancePenaltyFromWear(car.tireWear);
       const fuelPenalty = distancePenaltyFromFuel(car.fuelKg, state.fullFuelKg);
       const variance = 1 + (Math.random() - 0.5) * 0.06;
-      const speedFactor = (car.pace / 75) * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance;
+      const speedFactor = (car.pace / 75) * stylePaceFactor * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance;
       const speed = state.baseSpeedPerMs * speedFactor;
       car.displaySpeedKmh = Math.max(0, SPEED_DISPLAY_BASE_KMH * speedFactor);
 
       car.distance += speed * dtMs;
       const wearAdd = C() ? C().calcTireWear(car.tireCompound, dtMs / (state.raceRealMs / state.totalLaps), 1) : 0;
-      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1));
-      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)));
+      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult);
+      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult);
 
       while (car.distance >= 100 && car.finishedAt == null) {
         car.distance -= 100;
@@ -278,6 +296,6 @@
   }
 
   window.WSPF1Motor = {
-    createRaceState, stepRace, isFinished, standings, requestPit,
+    createRaceState, stepRace, isFinished, standings, requestPit, setDrivingStyle,
   };
 })();
