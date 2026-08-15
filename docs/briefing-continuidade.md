@@ -218,6 +218,16 @@ necessidade de retrabalhar nada disso.
 5. **Matchmaking progressivo robô→humano**: documentado em
    `docs/matchmaking-robos-humanos-spec.md`, não iniciado, vale pra todos
    os jogos esportivos da WSP.
+6. **Regra explícita do usuário (15/08): motor mais potente tem que beber
+   mais combustível.** Hoje o consumo de combustível em
+   `games/formula1/corridamotor.js` (dentro de `stepRace`) é uniforme por
+   volta, só variando pelo estilo de pilotagem
+   (`drivingStyleFuelMult`) — não reflete `motorLevel` nem
+   `motorPerformanceFactor` (rendimento do motor na temporada). Pedido:
+   adicionar esse elo como mais uma variável de trade-off (motor mais
+   forte = mais rápido, mas também mais sedento). Ainda não implementado
+   — só registrado aqui até o usuário confirmar se quer que eu implemente
+   agora ou depois.
 
 ## Outras notas importantes
 
