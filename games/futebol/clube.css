@@ -138,6 +138,16 @@ html, body {
 
 .calendar-ad-btn.hidden { display: none; }
 
+.calendar-ad-hint {
+  margin-top: 6px;
+  display: block;
+  text-align: center;
+  font-size: 0.68rem;
+  color: #9fd8b8;
+}
+
+.calendar-ad-hint.hidden { display: none; }
+
 .ad-overlay {
   position: fixed;
   inset: 0;

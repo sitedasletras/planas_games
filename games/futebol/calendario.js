@@ -9,9 +9,34 @@
   const MATCH_COOLDOWN_GAME_DAYS = 3;
   const MATCH_COOLDOWN_MS = GAME_DAY_REAL_MS * MATCH_COOLDOWN_GAME_DAYS;
   const MAX_HEADLINES = 10;
+  // teto de vídeos por dia REAL (não confundir com o "dia de jogo" do cooldown
+  // acima) — reseta sozinho quando a data do calendário do sistema muda
+  const DAILY_VIDEO_CAP = 8;
+  const VIDEO_REWARD_MONEY = 150;
 
   function freshCalendar() {
-    return { nextMatchAt: null, lastMatch: null, headlines: [] };
+    return { nextMatchAt: null, lastMatch: null, headlines: [], videoWatch: null };
+  }
+
+  function todayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function dailyVideoState(cal) {
+    const today = todayKey();
+    if (!cal.videoWatch || cal.videoWatch.date !== today) {
+      cal.videoWatch = { date: today, count: 0 };
+    }
+    return cal.videoWatch;
+  }
+
+  function videosWatchedToday(cal) {
+    return dailyVideoState(cal).count;
+  }
+
+  function videosRemainingToday(cal) {
+    return Math.max(0, DAILY_VIDEO_CAP - videosWatchedToday(cal));
   }
 
   function loadCalendar() {
@@ -54,14 +79,23 @@
   // que exige passar por um resumo do dia (treino/preparação/etc.) entre
   // um vídeo e outro antes de deixar assistir o próximo
   function canWatchAdToSkipDay(cal) {
-    return !isMatchAvailable(cal);
+    return !isMatchAvailable(cal) && videosRemainingToday(cal) > 0;
   }
 
   function watchAdToSkipDay(cal) {
     if (!canWatchAdToSkipDay(cal)) return { ok: false };
     cal.nextMatchAt = Math.max(Date.now(), cal.nextMatchAt - GAME_DAY_REAL_MS);
+    const videoState = dailyVideoState(cal);
+    videoState.count += 1;
     saveCalendar(cal);
-    return { ok: true };
+    let reward = 0;
+    if (window.WSPClub) {
+      const club = window.WSPClub.loadClub();
+      club.budget += VIDEO_REWARD_MONEY;
+      window.WSPClub.saveClub(club);
+      reward = VIDEO_REWARD_MONEY;
+    }
+    return { ok: true, reward, remaining: videosRemainingToday(cal) };
   }
 
   // ---------- Manchetes e opinião da torcida ----------
@@ -140,9 +174,10 @@
 
   window.WSPCalendar = {
     GAME_DAY_REAL_MS, MATCH_COOLDOWN_GAME_DAYS, MATCH_COOLDOWN_MS,
+    DAILY_VIDEO_CAP, VIDEO_REWARD_MONEY,
     loadCalendar, saveCalendar, freshCalendar,
     isMatchAvailable, msUntilNextMatch, formatCountdown, gameDaysRemaining,
     generateHeadlines, registerMatchResult,
-    canWatchAdToSkipDay, watchAdToSkipDay,
+    canWatchAdToSkipDay, watchAdToSkipDay, videosWatchedToday, videosRemainingToday,
   };
 })();

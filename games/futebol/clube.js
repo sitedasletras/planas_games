@@ -18,6 +18,7 @@
   const calendarValueEl = document.getElementById('calendar-value');
   const calendarPlayBtnEl = document.getElementById('calendar-play-btn');
   const calendarAdBtnEl = document.getElementById('calendar-ad-btn');
+  const calendarAdHintEl = document.getElementById('calendar-ad-hint');
   const newsSectionEl = document.getElementById('news-section');
   const newsListEl = document.getElementById('news-list');
   const activityMedicoEl = document.getElementById('activity-medico');
@@ -240,11 +241,25 @@
       calendarValueEl.textContent = 'Disponível agora';
       calendarPlayBtnEl.classList.remove('hidden');
       calendarAdBtnEl.classList.add('hidden');
+      if (calendarAdHintEl) calendarAdHintEl.classList.add('hidden');
     } else {
       calendarLabelEl.textContent = 'Próxima partida libera em';
       calendarValueEl.textContent = window.WSPCalendar.formatCountdown(window.WSPCalendar.msUntilNextMatch(cal));
       calendarPlayBtnEl.classList.add('hidden');
-      calendarAdBtnEl.classList.toggle('hidden', !window.WSPCalendar.canWatchAdToSkipDay(cal));
+      const canWatch = window.WSPCalendar.canWatchAdToSkipDay(cal);
+      calendarAdBtnEl.classList.toggle('hidden', !canWatch);
+      if (calendarAdHintEl) {
+        const remaining = window.WSPCalendar.videosRemainingToday(cal);
+        if (canWatch) {
+          calendarAdHintEl.textContent = '+R$ ' + window.WSPCalendar.VIDEO_REWARD_MONEY + ' por vídeo · restam ' + remaining + ' hoje';
+          calendarAdHintEl.classList.remove('hidden');
+        } else if (remaining <= 0) {
+          calendarAdHintEl.textContent = 'Limite de vídeos de hoje atingido — volte amanhã';
+          calendarAdHintEl.classList.remove('hidden');
+        } else {
+          calendarAdHintEl.classList.add('hidden');
+        }
+      }
     }
 
     newsListEl.innerHTML = '';
@@ -387,9 +402,12 @@
     'Comissão técnica revisou os últimos resultados com o time.',
   ];
 
-  function showDayReport() {
+  function showDayReport(videoResult) {
     dayReportTextEl.textContent = DAY_EVENTS[Math.floor(Math.random() * DAY_EVENTS.length)];
-    dayReportExtraEl.textContent = '';
+    const extraParts = [];
+    if (videoResult && videoResult.reward) {
+      extraParts.push('Patrocinador do vídeo depositou R$ ' + videoResult.reward + ' no caixa do clube.');
+    }
     if (window.WSPSquad) {
       const squad = window.WSPSquad.loadSquad();
       const fisicaLevel = (club.departments && club.departments.preparador_fisico) || 0;
@@ -397,9 +415,10 @@
       window.WSPSquad.saveSquad(squad);
       if (squad.players.length) {
         const avgCondition = Math.round(squad.players.reduce((s, p) => s + (p.condition || 100), 0) / squad.players.length);
-        dayReportExtraEl.textContent = 'Condicionamento médio do elenco: ' + avgCondition + '%.';
+        extraParts.push('Condicionamento médio do elenco: ' + avgCondition + '%.');
       }
     }
+    dayReportExtraEl.textContent = extraParts.join(' ');
     dayReportOverlayEl.classList.remove('hidden');
   }
 
@@ -409,10 +428,15 @@
   if (adCloseBtnEl) {
     adCloseBtnEl.addEventListener('click', () => {
       const cal = window.WSPCalendar.loadCalendar();
-      window.WSPCalendar.watchAdToSkipDay(cal);
+      const result = window.WSPCalendar.watchAdToSkipDay(cal);
+      if (result.reward && window.WSPClub) {
+        club.budget = window.WSPClub.loadClub().budget;
+        budgetEl.textContent = formatMoney(club.budget);
+      }
       adOverlayEl.classList.add('hidden');
       calendarAdBtnEl.classList.add('hidden'); // só reaparece depois de confirmar o resumo do dia
-      showDayReport();
+      if (calendarAdHintEl) calendarAdHintEl.classList.add('hidden');
+      showDayReport(result);
     });
   }
   if (dayReportContinueBtnEl) {
