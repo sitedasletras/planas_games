@@ -27,12 +27,15 @@
   // rendimento no seco (macio/médio/duro) x na chuva (intermediário/chuva),
   // de propósito desbalanceado entre os dois eixos: quem manda no seco não é
   // necessariamente quem manda na chuva, como o usuário pediu.
+  // banda apertada de propósito (pedido explícito do usuário): a diferença
+  // entre fornecedoras tem que ser pequena — no seco e na chuva, a mesma
+  // magnitude de diferença — não pode ser o fator decisivo da corrida
   const TIRE_SUPPLIERS = {
-    aurora: { label: 'Borrachas Aurora', profile: { seco: 1.03, chuva: 0.93 } },
-    titan: { label: 'Pneus Titã', profile: { seco: 0.95, chuva: 1.06 } },
+    aurora: { label: 'Borrachas Aurora', profile: { seco: 1.03, chuva: 0.97 } },
+    titan: { label: 'Pneus Titã', profile: { seco: 0.97, chuva: 1.03 } },
     cristal: { label: 'Rodagem Cristal', profile: { seco: 1.00, chuva: 1.00 } },
-    vulcano: { label: 'Compostos Vulcano', profile: { seco: 1.05, chuva: 0.90 } },
-    zenite: { label: 'Pneus Zênite', profile: { seco: 0.92, chuva: 1.04 } },
+    vulcano: { label: 'Compostos Vulcano', profile: { seco: 1.04, chuva: 0.96 } },
+    zenite: { label: 'Pneus Zênite', profile: { seco: 0.96, chuva: 1.04 } },
   };
 
   function tireSupplierFactor(supplierKey, compoundKey) {

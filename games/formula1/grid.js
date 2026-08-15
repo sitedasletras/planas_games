@@ -51,10 +51,13 @@
 
   function generateRivalTeam(used, index) {
     const teamName = RIVAL_TEAM_NAMES[index] || ('Equipe Rival ' + (index + 1));
-    const basePace = 60 + Math.random() * 35; // 60-95
+    // banda apertada de propósito (pedido explícito do usuário): a diferença
+    // de ritmo entre equipes rivais tem que ser pequena o bastante pra
+    // piloto/estratégia decidirem a corrida, não o sorteio da equipe
+    const basePace = 88 + Math.random() * 9; // 88-97
     const drivers = [0, 1].map(() => ({
       name: uniqueName(used),
-      rating: Math.round(Math.max(50, Math.min(99, basePace + (Math.random() - 0.5) * 10))),
+      rating: Math.round(Math.max(50, Math.min(99, basePace + (Math.random() - 0.5) * 6))),
     }));
     return {
       id: 'rival_' + index,
