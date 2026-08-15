@@ -1,71 +1,223 @@
 # Briefing de continuidade — World Special Player / Planas Games
 
-Documento de handoff para retomar o desenvolvimento em uma nova conversa, sem perder contexto.
+Documento de handoff para retomar o desenvolvimento em uma nova conversa (ou
+num computador diferente), sem perder contexto. **Sempre ler este arquivo
+inteiro no início de uma sessão nova neste projeto**, antes de qualquer
+trabalho — e os dois outros docs desta pasta quando for mexer em Fórmula 1
+(`formula-racing-manager-spec.md`) ou no matchmaking robô→humano
+(`matchmaking-robos-humanos-spec.md`).
+
+Última atualização: 15/08/2026.
 
 ## O projeto
 
 - **Nome**: World Special Player (WSP) / "Planas Games" — hub de jogos esportivos navegador-only.
 - **Repositório**: `sitedasletras/planas_games`, branch `main`.
 - **Site publicado**: https://sitedasletras.github.io/planas_games/ (também acessível via `https://sitedasletras.github.io/` — repositório separado `sitedasletras/sitedasletras.github.io` que só redireciona pra cá).
-- **Stack**: HTML/CSS/JavaScript puro, sem build step, sem framework, sem backend (tudo em `localStorage`). Padrão de módulo: cada arquivo `.js` é uma IIFE que exporta um objeto global (`window.WSPSquad`, `window.WSPClub`, etc).
-- **Jogo funcional hoje**: só Futebol (`games/futebol/`). Outros esportes/jogos do hub estão "Em breve" (travados no `index.html` raiz).
+- **Stack**: HTML/CSS/JavaScript puro, sem build step, sem framework, sem backend de verdade (tudo em `localStorage` do navegador — ver "Persistência e limitações" abaixo, é importante). Padrão de módulo: cada arquivo `.js` é uma IIFE que exporta um objeto global (`window.WSPSquad`, `window.WSPClub`, `window.WSPF1Equipe`, etc).
+- **Jogos funcionais hoje**: Futebol (`games/futebol/`) e Fórmula 1 (`games/formula1/`), os dois desbloqueados e jogáveis de ponta a ponta a partir do `index.html` raiz. Vôlei, Basquete, Fórmula 2, Fórmula Indy e Fórmula E ainda "Em breve".
 - **Importante**: este repositório é **diferente** do `sitedasletras/triploohesigmalbpl` (conteúdo literário) e do `sitedasletras/CeleiroLiterario` — são projetos separados, não confundir.
 
-## Arquivos principais (`games/futebol/`)
+## Persistência e limitações (leia antes de prometer algo ao usuário)
 
-- `game.js` — motor da partida (canvas 2D), o maior arquivo. Partida 100% automática (sem controle manual).
-- `squad.js` — geração/gestão do elenco (jogadores, posições, nota, potencial, mercado).
-- `club.js` — clube (orçamento, departamentos/Campus, patrocínios, escudo/cores, torcida).
-- `season.js` — temporada, ligas, copas, tiers (bairro/cidade/regional/estadual).
-- `elenco.js`/`elenco.html` — tela de elenco + mercado de contratações.
-- `escalacao.js`/`escalacao.html` — hoje é só **prévia read-only** dos titulares (não é interativa, não influencia a partida — ver pendências).
-- `personalizacao.js` — editor de nome do clube, cores, escudo, jogadores (nome/número).
-- `temporada.js`/`confronto.js`/`historico.js` — telas de temporada, prévia de confronto, histórico/troféus.
-- `trilha.js`/`trilha.html` — trilha "Patrocinador Especial" (pontos por partida, prêmios, prêmio final exclusivo).
+- **Não existe conta de usuário nem backend real.** Tudo (elenco, clube,
+  temporada, orçamento, F1...) fica só no `localStorage` do navegador que
+  o usuário está usando. Trocar de navegador, trocar de aparelho, limpar
+  dados do site ou usar modo anônimo = progresso perdido.
+- O futebol tem um paliativo pra isso: `backup.js`/`backup.html`
+  (`games/futebol/`), com salvar/carregar via Firebase por e-mail (sem
+  senha) e também um código manual. **O F1 ainda não tem isso** — se o
+  usuário pedir export/import ou sincronizar entre aparelhos no F1, esse
+  é o padrão a replicar (não inventar um sistema novo).
+- Isso é completamente diferente da "memória" do Claude entre sessões —
+  aquilo é sobre o navegador do jogador; isto aqui (este arquivo) é sobre
+  o Claude não perder o fio da meada do projeto entre conversas/máquinas
+  diferentes. As duas coisas foram perguntadas juntas numa conversa e vale
+  não confundir se o assunto voltar.
+
+## Convenção de nomes fictícios (motores, chassis, pneus, circuitos, pilotos)
+
+**Regra fixa, já documentada em `docs/formula-racing-manager-spec.md`
+(seções 4, 5, 9, 35, 36) desde 12/08: nunca usar nomes reais de marcas,
+equipes, pilotos, motores, chassis, pneus ou circuitos de F1 — só
+fictícios, a não ser que surja uma licença.** Quando o nome fictício for
+inspirado num nome real, traduzir/reinterpretar em vez de usar o nome
+original (pedido explícito do usuário) — exemplo dado por ele: chassi
+"Lotus" vira **"Chassi Flor de Lótus"**, combustível "Petrobras" vira
+**"Petróleo do Brás"**. Isso já foi aplicado em:
+
+- **Motores** (`MOTORES` em `games/formula1/equipe.js`): Motores Auge de
+  Coventry, Motores de Corrida Britânicos, Motores Modernos, Motores
+  Vida, Peças de Reposição Racing, Motores Cervo, Motores Sombra, Motores
+  Pégaso.
+- **Chassis** (`CHASSIS`, mesmo arquivo): Chassi Flor de Lótus, Chassi
+  Lobo, Chassi Flechas, Chassi Março, Chassi Ônix, Chassi Águia, Chassi
+  Insígnia, Chassi Pacífico.
+- **Fornecedoras de pneu** (`TIRE_SUPPLIERS` em `games/formula1/corrida.js`):
+  5 marcas fictícias (Borrachas Aurora, Pneus Titã, Rodagem Cristal,
+  Compostos Vulcano, Pneus Zênite), cada uma com rendimento independente
+  no seco x na chuva — de propósito desbalanceado entre os dois eixos.
+- **Circuitos** (`CIRCUIT_POOL` em `games/formula1/calendario.js`): 42
+  circuitos fictícios (nomes brasileiros/genéricos inventados), **não** os
+  nomes reais de GP. O usuário mandou uma "Enciclopédia de Circuitos de
+  F1" em PDF (1950–2026, real) — ela foi usada só como referência de
+  *estrutura* (categorias de circuito, formato de fim de semana, ~21-22
+  corridas por temporada), não pra copiar os nomes reais.
+- **Patrocinadores institucionais**: "Planas Games" e "Instituto Celeiro
+  Literário" (o instituto/seal do próprio usuário) entram como opções
+  reais no pool de patrocinador principal do F1 (`SPONSOR_NAMES.carroceria_principal`
+  em `equipe.js`) — esses dois **não** são fictícios, foram pedidos
+  assim de propósito.
+- **Pilotos**: sempre gerados (nome/sobrenome de pool próprio), nunca
+  nomes reais de pilotos de F1.
+
+## Arquivos principais — Futebol (`games/futebol/`)
+
+- `game.js` — motor da partida (canvas 2D), o maior arquivo. Partida 100%
+  automática (sem controle manual), mas a escalação que o usuário monta em
+  `escalacao.html` **é respeitada** (`selectStartersFromLineup`) — sorteio
+  aleatório só entra se não houver escalação salva pra aquela tática.
+  Sistemas já maduros: instruções por jogador (aplicam na próxima bola
+  parada se dadas ao vivo, instantâneo se pausado/pré-jogo), duelo
+  jogador-contra-jogador (popup), replay 2D de perfil (gol animado
+  pé→rede diferenciando jogo/falta/pênalti, confusão, VAR em duas etapas,
+  DEFESAÇO), evento de confusão pós-falta dura, artilheiro/assistência com
+  regras corretas, motor tático do adversário (reage ao placar, faz
+  substituições), motor de decisão dos jogadores por atributo, relatório
+  completo da partida (`#report-btn` no fim de jogo).
+- `squad.js` — elenco (jogadores, posições, nota, potencial 0-200,
+  mercado, condição física, lesões).
+- `club.js` — clube: orçamento (`STARTING_BUDGET = 20000`), departamentos/
+  Campus (`MAX_LEVEL = 20`), patrocínios, escudo/cores, torcida, moral.
+- `season.js` — temporada, ligas (10 divisões em 4 campeonatos), copas,
+  promoção/rebaixamento, mercado de transferências de rivais.
+- `calendario.js` — cooldown de 3 dias entre partidas + assistir vídeo
+  pra adiantar 1 dia, com **teto de 8 vídeos por dia real** (não confundir
+  com dia de jogo) e **R$ 150 de recompensa por vídeo** — adicionado
+  15/08.
+- `elenco.html`/`escalacao.html`/`personalizacao.html`/`temporada.html`/
+  `confronto.html`/`historico.html`/`treino.html`/`medico.html`/
+  `diretoria.html`/`trilha.html`/`clube.html` — telas de gestão.
+- `presidente.js` — tour de onboarding "Presidente/Presidenta do Time",
+  cobre todas as telas.
+- `backup.js`/`backup.html` — salvar/carregar (Firebase por e-mail, código
+  manual, reset total). `cloud.js` — integração Firebase.
 - `daily.js` — recompensa diária (streak de login).
-- `backup.js`/`backup.html` — salvar/carregar (nuvem via Firebase e-mail, código manual, e botão de reset total).
-- `cloud.js` — integração Firebase (login por e-mail, sem senha).
 
-## Sistemas já implementados (histórico completo)
+## Arquivos principais — Fórmula 1 (`games/formula1/`, construído em 15/08)
 
-Times 100% automáticos (sem joystick), zoom de comemoração no gol, arquibancada reage à Torcida, duelo jogador-contra-jogador (popup), barra de pressão/posse de bola, artilheiro/assistências por jogador com regras corretas (escanteio=assistência exceto gol olímpico, falta perto do gol=assistência, tiro de meta do goleiro=assistência do goleiro, lateral que originou o gol=assistência), instruções por jogador (aplicam na próxima bola parada se dadas ao vivo, instantâneo se dadas pausado/pré-jogo), recompensa diária com streak, trilha "Patrocinador Especial" (pontos por resultado, prêmios em dinheiro + emblema de escudo exclusivo + uniformes exclusivos no prêmio final), sistema de **potencial** (0-200, hoje só usa 2-10 no elenco/mercado normal e 11-15 em "joias" raras e caras — separado da nota 0-99, influencia evolução na troca de temporada), Google AdSense (site verificado, aguardando aprovação do Google), política de privacidade.
+Módulo inteiro construído numa sessão só, seguindo o mesmo padrão do
+futebol (telas .html + módulo .js correspondente, tudo automático exceto
+decisões de estratégia). Visão completa/de longo prazo está em
+`docs/formula-racing-manager-spec.md` (não construída inteira — só um MVP
+jogável, como o próprio doc já orientava fazer).
 
-## Rebalanceamentos e correções desta sessão (13/08)
+- `pilotos.js` — elenco de 3 pilotos (titular_1, titular_2, reserva),
+  espelha `squad.js`.
+- `equipe.js` — clube: orçamento, departamentos (`FACILITY_GROUPS`:
+  médico, comissão técnica, engenharia [aerodinâmica/motor/chassi],
+  boxes, imprensa, fã-clube), patrocínios, motor/chassi/pneu escolhidos
+  (`motorSupplier`/`chassiSupplier`/`tireSupplier`), customização.
+- `corrida.js` — **tabela de dados/fórmulas puras** (sem DOM): compostos
+  de pneu, fornecedoras de pneu, combustível, tempo de pit stop (cai com
+  o nível de boxes+engenharia), catálogo de falhas mecânicas/batidas
+  (1-3 por temporada, sorteio pesado pro time mais fraco), e o
+  **rendimento de motor por temporada** (`rollMotorPerformances` — cada
+  motor varia até 4 pontos pra cima/baixo a cada nova temporada, partindo
+  do valor anterior).
+- `grid.js` — monta o grid completo (jogador + 9 rivais fixas, 2 pilotos
+  cada = 20 carros), aplica o fator de rendimento do motor da temporada
+  no ritmo de cada carro.
+- `calendario.js` — temporada: 21 corridas, 7 com Sprint (espalhadas, não
+  amontoadas), pool de 42 circuitos com **rotação garantida de pelo menos
+  metade a cada nova temporada** (`selectSeasonCircuits`), pontuação
+  estilo F1 real (25-18-...-1 na corrida, 8-7-...-1 na sprint),
+  classificação de pilotos/construtores.
+- `corridamotor.js` — motor de corrida **puro** (sem canvas): pneu com
+  desgaste/troca de composto, combustível com peso variável, pit stop,
+  clima dinâmico (pode chover, força troca de pneu), reabastecimento
+  estratégico opcional na Sprint, falha mecânica agendada. Tem um teto
+  duro de tempo (`raceRealMs * 1.6`) pra corrida nunca travar mesmo se
+  chuva atrasar o pelotão inteiro — isso já foi um bug real, corrigido.
+- `corrida.html` — tela de corrida: painel de estratégia pré-largada
+  (composto + refuel na sprint) e a corrida ao vivo (canvas oval, HUD,
+  ticker, líderes, pit manual, velocidade/pausa).
+- `temporada.html`, `escuderia.html`(+`.css`), `personalizacao.html`(+`.css`),
+  `pilotos.html` — telas de gestão, espelhando as equivalentes do futebol.
 
-1. Elenco inicial reduzido de 23 para **16 jogadores**; aviso no Elenco pedindo pra contratar mais 7 (até completar 23).
-2. Mercado de contratações corrigido: agora sempre mostra **10 candidatos**, com distribuição garantida 1 goleiro + 3 defensores + 3 meio-campistas + 3 atacantes (antes enviesava pra defesa).
-3. Cor do escudo agora editável separadamente do uniforme.
-4. Números da camisa: removido um rótulo "#N" fixo (não editável) que confundia o usuário achando que a numeração estava travada — **corrigido**, o campo de número que sempre funcionou continua ao lado do botão Salvar.
-5. Chips do Elenco: removida a nota (0-99) das listas (confundia com o potencial); no lugar, o Elenco mostra o número da camisa. A escala de cores (verde/amarelo/cinza) agora indica o **potencial**, não mais a nota.
-6. Botões do topo da partida (⏸ ⏩ etc.) cortados em telas estreitas — **corrigido** (tamanhos reduzidos + rolagem de segurança).
-
-## Pendências abertas (nesta ordem de prioridade, combinada com o usuário)
-
-(A lista de tasks do gerenciador interno é por sessão e não é carregada automaticamente numa conversa nova — recriar as tasks abaixo com `TaskCreate` ao retomar, se for usar o gerenciador.)
-
-1. **Re-investigar numeração** (pode já estar resolvido pelo item 4 acima — reconfirmar no site publicado, não só localmente, pois GitHub Pages pode levar 1-2 min pra atualizar após push).
-2. **Escalação interativa conectada à partida** — hoje `escalacao.html` só mostra uma prévia; a partida (`selectStarters()` em `game.js`) sorteia o time **aleatoriamente**, ignorando qualquer preferência do usuário. Pedido do usuário: poder escolher os titulares/reservas manualmente, e a partida usar essa escolha real (encaixando na tática selecionada). Também apareceu no feedback: "não tinha a posição de escolha dos jogos (titulares e reservas), quem estava no banco" — ligado a este mesmo ponto.
-3. **Reduzir excesso de faltas/expulsões** — usuário relatou muitas faltas e **2 expulsões numa única partida** (viu pelos prints: falta dura seguida de 2º amarelo rapidamente, e outro jogador com vermelho direto). Revisar as constantes de chance de falta/cartão em `game.js` (buscar por `FOUL_CHANCE`, lógica de cartão/expulsão).
-4. **Ritmo da partida mais cadenciado** — usuário achou o jogo rápido demais, "parece pebolim", quer algo mais próximo do ritmo real de futebol. Revisar velocidades de jogador/bola e frequência de ações em `game.js`.
-5. **Rebalancear economia**: baixar `STARTING_BUDGET` de 100.000 para **20.000**, e reduzir proporcionalmente (aprox. ÷5) todas as despesas — custo de melhorias de departamento (`BASE_COST`), despesas de partida (`OTHER_EXPENSES_PER_MATCH`), salários (`BUCKET_BASE_SALARY`), custo de desbloqueio premium (`PREMIUM_COST`), receita de bilheteria (`BASE_MATCH_REVENUE`, `REVENUE_PER_TORCIDA_LEVEL`), valores de propostas de patrocínio (`SPONSOR_SLOTS`) — **EXCETO** o passe/valor de mercado dos jogadores (`MARKET_VALUE_MIN`/`MAX`, `transferFee`), que o usuário quer manter como está (fica proporcionalmente mais caro/relevante com o orçamento menor — "apostar tudo" ao contratar).
-6. **Aumentar níveis de departamento**: hoje `MAX_LEVEL = 5` (os "5 pontinhos" nos departamentos do Campus). Usuário pediu para subir para **pelo menos 20** níveis. Isso também exige reajustar `CAMPUS_TIER_CAPS` (hoje `{ bairro: 1, cidade: 2, regional: 4, estadual: 5 }`, proporcionalmente para uma escala de 20) e revisar a fórmula `upgradeCost(level)` pra não ficar absurda em 20 níveis, já compatível com o orçamento menor do item 5.
-7. **Corrigir botões do topo cortados no mobile** — ✅ já corrigido nesta sessão (ver acima), só falta reconfirmar no site publicado.
-
-## Depois das pendências acima: Tour do "Presidente do Time"
-
-Pedido do usuário, para depois de resolver os itens acima: um sistema de **onboarding guiado**, no estilo "tour", com um personagem "Presidente do Time" (o jogador escolhe no cadastro se é homem ou mulher) guiando o novo usuário pelas telas/funcionalidades do jogo, dando recompensas conforme ele avança/conhece cada parte. Ideia do usuário: "eu que criei o jogo contigo estou tendo dificuldades, imagine quem não conhece" — ou seja, o jogo está ficando complexo demais pra quem chega sem contexto, e esse tour resolveria isso. Ainda não iniciado — é uma funcionalidade grande (personagem, fluxo de tutorial passo a passo, sistema de recompensa por etapa), avaliar escopo com calma antes de começar.
-
-## Fluxo de trabalho / testes (usado a sessão inteira)
+## Fluxo de trabalho / testes
 
 1. Editar arquivo(s).
-2. `node --check <arquivo>.js` pra validar sintaxe.
-3. Subir um servidor de teste local: `python3 -m http.server <porta> --directory /workspace/planas_games` via Bash com `run_in_background: true` (a porta muda a cada sessão nova porque o container reinicia e mata processos em background — sempre conferir com `curl -sI http://localhost:<porta>/games/futebol/index.html` antes de rodar testes).
-4. Escrever script Playwright em `/tmp/claude-0/.../scratchpad/test_*.js` e rodar com `NODE_PATH=/opt/node22/lib/node_modules node <script>.js` (também via `run_in_background: true` — partidas completas em 2x velocidade levam ~2-3 min).
-5. Sempre rodar uma regressão de partida completa (`#btn-speed`, aguardar `#overlay-title === 'FIM DE JOGO'`, checar 0 banners de erro) antes de subir qualquer mudança em `game.js`.
+2. `node --check <arquivo>.js` pra validar sintaxe rápido.
+3. **Playwright agora está instalado de verdade** (antes não estava — só
+   descobri isso quando o usuário perguntou e mandei instalar em 15/08).
+   `package.json` na raiz do repo (`private: true`, devDependency
+   `playwright`), `node_modules/` no `.gitignore`. Rodar
+   `cd /workspace/planas_games && npm install` se o `node_modules` não
+   existir na sessão atual (o container é efêmero, mas o `package.json`
+   está no git — sempre vai estar lá).
+   - **Não usar `require('playwright')` direto de um script fora do
+     projeto** — só funciona chamando o módulo pelo caminho absoluto:
+     `require('/workspace/planas_games/node_modules/playwright')`.
+   - Navegador: **não rodar `playwright install`**, já tem Chromium
+     pré-instalado em `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`
+     (o número da versão pode mudar — conferir com
+     `find /opt/pw-browsers -iname "*chrome*" -type f -executable`).
+     Lançar com `chromium.launch({ executablePath: '/opt/pw-browsers/.../chrome' })`.
+   - Testes de lógica pura (sem DOM) continuam valendo a pena escrever
+     como harness Node simples (`eval(fs.readFileSync(...))` dos módulos
+     + `global.window = {}` + mock de `localStorage`) — mais rápido pra
+     testar fórmulas/simulação em massa (dezenas de temporadas/corridas).
+     Mas isso **não substitui** testar a página de verdade — já achou um
+     bug real (`ReferenceError` de temporal dead zone em `corrida.html`)
+     que só apareceu rodando no Chromium, nunca nos harness de dados.
+4. Subir um servidor de teste local: `python3 -m http.server <porta> --directory /workspace/planas_games` via Bash com `run_in_background: true` (a porta muda a cada sessão nova porque o container reinicia e mata processos em background — sempre conferir com `curl -sI http://localhost:<porta>/index.html` antes de rodar testes).
+5. Sempre rodar uma regressão de partida/corrida completa antes de subir
+   qualquer mudança em `game.js` ou `corridamotor.js` (futebol: `#btn-speed`,
+   aguardar `#overlay-title === 'FIM DE JOGO'`; F1: rodar `stepRace` em
+   loop até `isFinished`), checando 0 erros de página (`page.on('pageerror', ...)`).
 6. `git add` só os arquivos relevantes (nunca `-A` sem checar), commitar com mensagem em português explicando o quê e o porquê, `git push -u origin main`.
+
+## Estado das pendências antigas (lista de 13/08 — todas resolvidas)
+
+A lista de pendências registrada em 13/08 (escalação interativa, excesso
+de faltas, ritmo da partida, rebalancear economia pra 20k, subir
+`MAX_LEVEL` pra 20, botões cortados no mobile) **foi toda resolvida** ao
+longo das sessões seguintes — confirmado direto no código (`STARTING_BUDGET
+= 20000`, `MAX_LEVEL = 20`, `selectStartersFromLineup` em uso). O tour do
+Presidente do Time também foi construído e cobre todas as telas. Não há
+necessidade de retrabalhar nada disso.
+
+## Pendências reais / ideias em aberto agora
+
+1. **F1 ainda não tem backup/export de save** (ver "Persistência e
+   limitações" acima) — replicar o padrão do futebol (`backup.js`) se o
+   usuário pedir.
+2. **Formula Racing Manager (`formula-racing-manager-spec.md`) tem MUITA
+   coisa além do que foi construído** — o que existe hoje é um MVP
+   (equipe → fim de semana → corrida → resultado → temporada). Não
+   construídos ainda: engenheiro de corrida com rádio/mensagens durante a
+   prova, previsão do tempo com margem de erro (hoje o clima é só um
+   evento surpresa, sem previsão nenhuma pro jogador), configuração de
+   carro por sessão (asa/altura/pressão dos pneus), árvore de
+   desenvolvimento do carro ao longo da temporada, editor de circuito
+   próprio, política da categoria/votações, modo dinastia de décadas,
+   dificuldade selecionável, funcionários por departamento (hoje só tem
+   nível 0-20 do departamento, sem contratar pessoas individuais). Ver o
+   documento inteiro antes de expandir o F1 — ele já tem a resposta pra
+   "como deveria funcionar" de quase tudo.
+3. **Fórmula 2, Fórmula Indy, Fórmula E**: `formula-racing-manager-spec.md`
+   é o roteiro-base pros quatro, não só F1. Quando entrar nesses, reusar
+   a arquitetura do F1 (grid/calendario/corridamotor já são bem
+   genéricos) em vez de recomeçar do zero.
+4. **Vôlei, Basquete**: ainda sem nenhum trabalho iniciado.
+5. **Matchmaking progressivo robô→humano**: documentado em
+   `docs/matchmaking-robos-humanos-spec.md`, não iniciado, vale pra todos
+   os jogos esportivos da WSP.
 
 ## Outras notas importantes
 
 - **Google AdSense**: conta criada, site verificado (via `sitedasletras/sitedasletras.github.io`, repositório novo criado especificamente pra isso, com página de redirecionamento pro jogo), revisão pedida ao Google — só falta aguardar aprovação (pode levar horas/dias, chega por e-mail). Nada mais a fazer até a aprovação chegar.
-- **Ideias salvas pra depois** (não iniciar sem pedido explícito): matchmaking progressivo robô→humano para todos os jogos esportivos da WSP (documentado em `docs/matchmaking-robos-humanos-spec.md`), câmera 3D ("só quando tivermos recursos financeiros"), jogo separado "Futebol Mister Class" (controle manual em tempo real, timing comprimido: 2min30s por tempo).
+- Câmera 3D: ideia guardada pra quando "tivermos recursos financeiros" — não iniciar sem pedido explícito.
+- Jogo separado "Futebol Mister Class" (controle manual em tempo real, timing comprimido: 2min30s por tempo) — ideia guardada, não iniciado.
 - Conta de e-mail do jogo (usada no AdSense/contato): `omeutimaoeumabosta@gmail.com`.
