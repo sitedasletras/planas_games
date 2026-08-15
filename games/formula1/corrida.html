@@ -126,6 +126,7 @@
     <div id="setup-panel" class="panel hidden">
       <h2>Acerto do carro</h2>
       <p>Escolha o acerto pra sessão — ele vale pro resto do fim de semana (classificatória, sprint e corrida usam o mesmo acerto).</p>
+      <p id="setup-asphalt-hint" style="color:#ffd54a; font-weight:bold;"></p>
       <div id="setup-dials"></div>
     </div>
 
@@ -231,12 +232,14 @@
       const grid = document.getElementById('circuit-data-grid');
       const typeLabel = { permanente: 'Permanente', rua: 'Rua', misto: 'Misto' }[w.type] || w.type;
       const items = [
+        ['País / Cidade', w.pais + ' — ' + w.cidade],
         ['Traçado', typeLabel],
         ['Voltas na corrida', w.laps],
         ['Curvas', w.curves],
         ['Sentido', w.sentido],
         ['Clima predominante', w.clima],
         ['Ultrapassagem', w.ultrapassagem],
+        ['Asfalto', w.asfalto ? window.WSPF1Calendario.ASPHALT_LABELS[w.asfalto.tipo] : '-'],
       ];
       grid.innerHTML = items.map(([label, value]) => (
         '<div class="circuit-data-item"><div class="circuit-data-label">' + label + '</div><div class="circuit-data-value">' + value + '</div></div>'
@@ -249,6 +252,10 @@
 
     function initSetupPanel() {
       setupPanelEl.classList.remove('hidden');
+      if (weekend.asfalto) {
+        document.getElementById('setup-asphalt-hint').textContent =
+          '🛣️ Asfalto deste circuito: ' + window.WSPF1Calendario.ASPHALT_LABELS[weekend.asfalto.tipo];
+      }
       const options = window.WSPF1Corrida.CAR_SETUP_OPTIONS;
       const dialsEl = document.getElementById('setup-dials');
       const dialLabels = { aero: 'Aerodinâmica', altura: 'Altura do carro', pressao: 'Pressão dos pneus' };

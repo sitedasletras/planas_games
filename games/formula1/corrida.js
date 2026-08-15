@@ -241,6 +241,21 @@
     return Math.max(0.7, 1 + sum);
   }
 
+  // altura ideal depende do asfalto do circuito — carro baixo é rápido no
+  // tapete liso mas sofre num piso ondulado, carro alto é mais seguro no
+  // ondulado mas perde ritmo num circuito liso. O jogador decide sozinho;
+  // isso só recompensa quem acertou o palpite, não escolhe por ele.
+  const ASPHALT_IDEAL_ALTURA = { liso: 'baixa', medio: 'media', ondulado: 'alta' };
+  const ALTURA_ORDER = ['baixa', 'media', 'alta'];
+
+  function setupAsphaltMatchFactor(altura, asphaltTipo) {
+    if (!altura || !asphaltTipo || !ASPHALT_IDEAL_ALTURA[asphaltTipo]) return 1;
+    const ideal = ASPHALT_IDEAL_ALTURA[asphaltTipo];
+    const distance = Math.abs(ALTURA_ORDER.indexOf(altura) - ALTURA_ORDER.indexOf(ideal));
+    if (distance === 0) return 1.012; // acertou o palpite, pequeno ganho
+    return 1 - distance * 0.018; // errou feio (baixo no ondulado, ou alto no liso) custa mais
+  }
+
   window.WSPF1Corrida = {
     TIRE_COMPOUNDS, WEATHER_CONDITIONS, TIRE_MISMATCH_PENALTY, TIRE_SUPPLIERS,
     tireEffectiveGrip, tireSupplierFactor, calcTireWear, calcStintLaps,
@@ -251,5 +266,6 @@
     MOTOR_PERFORMANCE_MIN, MOTOR_PERFORMANCE_MAX, MOTOR_PERFORMANCE_STEP,
     rollMotorPerformances, motorPerformanceFactor,
     CAR_SETUP_OPTIONS, defaultCarSetup, setupPaceFactor, setupWearFactor,
+    ASPHALT_IDEAL_ALTURA, setupAsphaltMatchFactor,
   };
 })();

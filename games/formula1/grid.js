@@ -122,7 +122,12 @@
     if (!window.WSPF1Corrida || !window.WSPF1Calendario) return 1;
     const state = window.WSPF1Calendario.loadState();
     const weekend = window.WSPF1Calendario.currentWeekend(state);
-    return window.WSPF1Corrida.setupPaceFactor(weekend && weekend.carSetup);
+    const setup = weekend && weekend.carSetup;
+    const paceFactor = window.WSPF1Corrida.setupPaceFactor(setup);
+    const asphaltFactor = (weekend && weekend.asfalto && setup)
+      ? window.WSPF1Corrida.setupAsphaltMatchFactor(setup.altura, weekend.asfalto.tipo)
+      : 1;
+    return paceFactor * asphaltFactor;
   }
 
   // Monta o grid completo pra uma sessão: 2 pilotos titulares do jogador +

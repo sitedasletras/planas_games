@@ -13,63 +13,63 @@
   const SEASON_RACE_COUNT = 21;
   const SPRINT_WEEKEND_COUNT = 7;
 
-  // Pool bem maior que as 21 vagas de uma temporada — é o que permite trocar
-  // pelo menos metade do calendário a cada nova temporada (selectSeasonCircuits)
-  // em vez de repetir sempre a mesma lista, como o usuário pediu. "tipo" é só
-  // sabor (inspirado na mistura rua/permanente/misto de circuitos reais) —
-  // nomes fictícios, sem usar os nomes reais de GPs.
+  // Pool baseado em dados reais: país/cidade e características técnicas
+  // (extensão aproximada -> voltas pra ~305km, curvas, sentido, clima
+  // predominante, altitude) de circuitos reais — os 22 do calendário 2026
+  // (fonte: enciclopédia que o usuário mandou) mais 10 históricos famosos,
+  // pra dar variedade real na rotação de temporadas. O NOME do circuito é
+  // fictício ("sabor real": traduzido/evocado a partir do lugar de verdade,
+  // nunca o nome oficial do GP/circuito real) — país e cidade continuam
+  // reais, geografia não é marca registrada. Ex.: Silverstone (village =
+  // "pedra de prata") -> "Circuito da Vila de Prata"; Zandvoort (holandês
+  // "vau de areia") -> "Circuito Vau de Areia"; Interlagos (já é palavra
+  // comum em português) -> "Circuito Entre Lagos".
   //
-  // curves = número de curvas; sentido = horário/anti-horário; clima = tendência
-  // predominante do circuito (usada de verdade em corridamotor.js pra pesar a
-  // chance de chuva na corrida, não é só decorativo); ultrapassagem = quão fácil
-  // é passar ali (afeta pouco a simulação hoje, mas já fica documentado — campos
-  // inspirados na "planilha" de circuitos que o usuário mandou).
+  // asfalto: aspereza/ondulação real do piso (mm) — some pra decisão de
+  // altura do carro no treino livre (corrida.js/setupAsphaltMatchFactor).
   const CIRCUIT_POOL = [
-    { name: 'Autódromo das Bandeiras', laps: 58, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'média' },
-    { name: 'Circuito da Serra Encantada', laps: 52, type: 'permanente', curves: 13, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'difícil' },
-    { name: 'Pista do Litoral Dourado', laps: 63, type: 'misto', curves: 17, sentido: 'horário', clima: 'instável', ultrapassagem: 'média' },
-    { name: 'Anel de Ipanema', laps: 68, type: 'rua', curves: 21, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'difícil' },
-    { name: 'Circuito do Cerrado', laps: 55, type: 'permanente', curves: 14, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil' },
-    { name: 'Autódromo Vale das Águias', laps: 57, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'média' },
-    { name: 'Traçado da Baía Azul', laps: 60, type: 'misto', curves: 18, sentido: 'horário', clima: 'instável', ultrapassagem: 'média' },
-    { name: 'Circuito Terras Altas', laps: 50, type: 'permanente', curves: 12, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil' },
-    { name: 'Pista Real do Norte', laps: 54, type: 'permanente', curves: 15, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'média' },
-    { name: 'Anel Metropolitano', laps: 66, type: 'rua', curves: 20, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil' },
-    { name: 'Circuito das Cataratas', laps: 53, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'média' },
-    { name: 'Autódromo Costa Esmeralda', laps: 59, type: 'misto', curves: 16, sentido: 'horário', clima: 'seco', ultrapassagem: 'média' },
-    { name: 'Traçado do Deserto Vermelho', laps: 56, type: 'permanente', curves: 13, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil' },
-    { name: 'Circuito Ilha do Sol', laps: 61, type: 'misto', curves: 17, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média' },
-    { name: 'Pista Nevoeiro', laps: 49, type: 'permanente', curves: 12, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'difícil' },
-    { name: 'Anel Real Imperial', laps: 52, type: 'rua', curves: 19, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'difícil' },
-    { name: 'Circuito Vale Dourado', laps: 58, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'média' },
-    { name: 'Autódromo dos Ventos', laps: 64, type: 'misto', curves: 18, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média' },
-    { name: 'Traçado da Montanha Negra', laps: 51, type: 'permanente', curves: 13, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'difícil' },
-    { name: 'Circuito Grande Baía', laps: 62, type: 'misto', curves: 17, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média' },
-    { name: 'Pista Estrela do Sul', laps: 57, type: 'permanente', curves: 14, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil' },
-    { name: 'Circuito Rua Nova', laps: 72, type: 'rua', curves: 22, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil' },
-    { name: 'Autódromo Portal do Sul', laps: 56, type: 'permanente', curves: 15, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média' },
-    { name: 'Circuito das Ilhas Claras', laps: 60, type: 'misto', curves: 18, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média' },
-    { name: 'Traçado Real da Baía', laps: 70, type: 'rua', curves: 20, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'difícil' },
-    { name: 'Circuito Vento Norte', laps: 54, type: 'permanente', curves: 13, sentido: 'horário', clima: 'instável', ultrapassagem: 'fácil' },
-    { name: 'Autódromo Fronteira Dourada', laps: 58, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média' },
-    { name: 'Circuito da Lagoa Azul', laps: 62, type: 'misto', curves: 17, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média' },
-    { name: 'Pista Alto da Serra', laps: 51, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'difícil' },
-    { name: 'Circuito Rua Central', laps: 74, type: 'rua', curves: 23, sentido: 'horário', clima: 'seco', ultrapassagem: 'difícil' },
-    { name: 'Autódromo Terras do Sol', laps: 57, type: 'permanente', curves: 15, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'fácil' },
-    { name: 'Circuito Costa Norte', laps: 61, type: 'misto', curves: 16, sentido: 'horário', clima: 'instável', ultrapassagem: 'média' },
-    { name: 'Traçado das Palmeiras', laps: 68, type: 'rua', curves: 21, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'difícil' },
-    { name: 'Circuito Grande Vale', laps: 55, type: 'permanente', curves: 13, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil' },
-    { name: 'Autódromo Colinas Verdes', laps: 59, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média' },
-    { name: 'Circuito Baía Serena', laps: 63, type: 'misto', curves: 18, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média' },
-    { name: 'Pista Duna Dourada', laps: 52, type: 'permanente', curves: 12, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'fácil' },
-    { name: 'Circuito Rua do Porto', laps: 71, type: 'rua', curves: 22, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil' },
-    { name: 'Autódromo Planalto Norte', laps: 56, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média' },
-    { name: 'Circuito Vale de Prata', laps: 60, type: 'misto', curves: 17, sentido: 'horário', clima: 'instável', ultrapassagem: 'média' },
-    { name: 'Traçado Litoral Sul', laps: 69, type: 'rua', curves: 20, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'difícil' },
-    { name: 'Circuito Estrela Polar', laps: 53, type: 'permanente', curves: 13, sentido: 'horário', clima: 'instável', ultrapassagem: 'fácil' },
+    // -------- calendário real 2026 --------
+    { name: 'Circuito Beira-Lago', pais: 'Austrália', cidade: 'Melbourne', laps: 58, type: 'misto', curves: 14, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 } },
+    { name: 'Circuito do Dragão', pais: 'China', cidade: 'Xangai', laps: 56, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
+    { name: 'Circuito Oito do Oriente', pais: 'Japão', cidade: 'Suzuka', laps: 53, type: 'permanente', curves: 18, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 } },
+    { name: 'Circuito das Dunas', pais: 'Bahrein', cidade: 'Sakhir', laps: 57, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 3 } },
+    { name: 'Circuito da Corniche', pais: 'Arábia Saudita', cidade: 'Jidá', laps: 50, type: 'rua', curves: 27, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'liso', mm: 1 } },
+    { name: 'Circuito das Palmeiras', pais: 'Estados Unidos', cidade: 'Miami', laps: 57, type: 'misto', curves: 19, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
+    { name: 'Circuito da Ilha Notre', pais: 'Canadá', cidade: 'Montreal', laps: 70, type: 'misto', curves: 14, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 5 } },
+    { name: 'Circuito das Ruas do Principado', pais: 'Mônaco', cidade: 'Monte Carlo', laps: 78, type: 'rua', curves: 19, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 } },
+    { name: 'Circuito da Vila de Prata', pais: 'Reino Unido', cidade: 'Silverstone', laps: 52, type: 'permanente', curves: 18, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
+    { name: 'Circuito das Florestas Ardenas', pais: 'Bélgica', cidade: 'Spa', laps: 44, type: 'permanente', curves: 19, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 } },
+    { name: 'Circuito do Anel Húngaro', pais: 'Hungria', cidade: 'Budapeste', laps: 70, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'medio', mm: 2 } },
+    { name: 'Circuito Vau de Areia', pais: 'Países Baixos', cidade: 'Zandvoort', laps: 72, type: 'permanente', curves: 14, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'liso', mm: 1 } },
+    { name: 'Circuito Templo da Velocidade', pais: 'Itália', cidade: 'Monza', laps: 53, type: 'permanente', curves: 11, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 } },
+    { name: 'Circuito Urbano da Capital', pais: 'Espanha', cidade: 'Madri', laps: 56, type: 'misto', curves: 20, sentido: 'horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
+    { name: 'Circuito da Cidade dos Ventos', pais: 'Azerbaijão', cidade: 'Baku', laps: 51, type: 'rua', curves: 20, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
+    { name: 'Circuito da Baía Noturna', pais: 'Singapura', cidade: 'Marina Bay', laps: 62, type: 'rua', curves: 19, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'difícil', asfalto: { tipo: 'medio', mm: 3 } },
+    { name: 'Circuito das Colinas do Texas', pais: 'Estados Unidos', cidade: 'Austin', laps: 56, type: 'permanente', curves: 20, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 4 } },
+    { name: 'Circuito da Grande Altitude', pais: 'México', cidade: 'Cidade do México', laps: 71, type: 'permanente', curves: 17, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
+    { name: 'Circuito Entre Lagos', pais: 'Brasil', cidade: 'São Paulo', laps: 71, type: 'permanente', curves: 15, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 } },
+    { name: 'Circuito da Avenida Dourada', pais: 'Estados Unidos', cidade: 'Las Vegas', laps: 50, type: 'rua', curves: 17, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
+    { name: 'Circuito das Areias do Golfo', pais: 'Catar', cidade: 'Lusail', laps: 57, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
+    { name: 'Circuito da Ilha Dourada', pais: 'Emirados Árabes Unidos', cidade: 'Abu Dhabi', laps: 58, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
+    // -------- históricos famosos (dão variedade extra na rotação) --------
+    { name: 'Circuito das Montanhas Eifel', pais: 'Alemanha', cidade: 'Nürburg', laps: 59, type: 'permanente', curves: 15, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 5 } },
+    { name: 'Circuito do Rio Santerno', pais: 'Itália', cidade: 'Ímola', laps: 62, type: 'permanente', curves: 19, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 5 } },
+    { name: 'Circuito da Floresta Negra', pais: 'Alemanha', cidade: 'Hockenheim', laps: 67, type: 'permanente', curves: 17, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 4 } },
+    { name: 'Circuito do Algarve', pais: 'Portugal', cidade: 'Portimão', laps: 65, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 } },
+    { name: 'Circuito do Planalto Africano', pais: 'África do Sul', cidade: 'Joanesburgo', laps: 67, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
+    { name: 'Circuito do Bósforo', pais: 'Turquia', cidade: 'Istambul', laps: 57, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
+    { name: 'Circuito das Monções', pais: 'Malásia', cidade: 'Sepang', laps: 55, type: 'permanente', curves: 15, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 } },
+    { name: 'Circuito das Montanhas Estírias', pais: 'Áustria', cidade: 'Spielberg', laps: 71, type: 'permanente', curves: 10, sentido: 'horário', clima: 'instável', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 } },
+    { name: 'Circuito do Mistral', pais: 'França', cidade: 'Le Castellet', laps: 53, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 2 } },
+    { name: 'Circuito das Colinas Toscanas', pais: 'Itália', cidade: 'Mugello', laps: 58, type: 'permanente', curves: 15, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 5 } },
   ];
 
   const CLIMATE_RAIN_CHANCE = { seco: 0.08, instável: 0.28, chuvoso: 0.5 };
+  const ASPHALT_LABELS = {
+    liso: 'Tapete liso (~1mm de ondulação)',
+    medio: 'Poucas ondulações (~2-4mm)',
+    ondulado: 'Cheio de ondulações e trepidação (~5-6mm)',
+  };
 
   const SESSION_TYPES = {
     treino_livre: { label: 'Treino Livre', icon: '🔧' },
@@ -138,12 +138,15 @@
       return {
         index: i,
         circuit: circuit.name,
+        pais: circuit.pais,
+        cidade: circuit.cidade,
         laps: circuit.laps,
         type: circuit.type,
         curves: circuit.curves,
         sentido: circuit.sentido,
         clima: circuit.clima,
         ultrapassagem: circuit.ultrapassagem,
+        asfalto: circuit.asfalto,
         hasSprint: sprintSet.has(i),
         hasFailureEvent: failureSet.has(i),
         sessions,
@@ -283,7 +286,7 @@
   }
 
   window.WSPF1Calendario = {
-    GAME_DAY_REAL_MS, SEASON_RACE_COUNT, SPRINT_WEEKEND_COUNT, CIRCUIT_POOL, SESSION_TYPES, CLIMATE_RAIN_CHANCE,
+    GAME_DAY_REAL_MS, SEASON_RACE_COUNT, SPRINT_WEEKEND_COUNT, CIRCUIT_POOL, SESSION_TYPES, CLIMATE_RAIN_CHANCE, ASPHALT_LABELS,
     RACE_POINTS, SPRINT_POINTS,
     loadState, saveState, freshState, selectSeasonCircuits,
     currentWeekend, currentSessionType, isSeasonOver, applyCarSetup,
