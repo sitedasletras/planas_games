@@ -206,6 +206,16 @@
     return state.weekendIndex >= state.weekends.length;
   }
 
+  // acerto do carro escolhido no treino livre — vale pro resto do fim de
+  // semana (classificatória, sprint e corrida usam o mesmo weekend.carSetup)
+  function applyCarSetup(state, setup) {
+    const w = currentWeekend(state);
+    if (!w) return { ok: false };
+    w.carSetup = setup;
+    saveState(state);
+    return { ok: true };
+  }
+
   // resolve treino livre e classificatória sem simulação visual — só a
   // corrida e a sprint passam pelo motor de corrida (corridamotor.js)
   function resolveInstantSession(entrants, bonusTrait) {
@@ -276,7 +286,7 @@
     GAME_DAY_REAL_MS, SEASON_RACE_COUNT, SPRINT_WEEKEND_COUNT, CIRCUIT_POOL, SESSION_TYPES, CLIMATE_RAIN_CHANCE,
     RACE_POINTS, SPRINT_POINTS,
     loadState, saveState, freshState, selectSeasonCircuits,
-    currentWeekend, currentSessionType, isSeasonOver,
+    currentWeekend, currentSessionType, isSeasonOver, applyCarSetup,
     resolveFreePractice, resolveQualifying, recordSessionResult,
     driverStandings, constructorStandings, startNewSeason,
   };

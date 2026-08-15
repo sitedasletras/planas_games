@@ -54,6 +54,7 @@
         motorLevel: e.motorLevel || 0,
         chassiLevel: e.chassiLevel || 0,
         tireSupplier: e.tireSupplier || null,
+        wearFactor: e.isPlayer && C() ? C().setupWearFactor(opts.carSetup) : 1,
         grid: i,
         lapsCompleted: 0,
         distance: 0,
@@ -212,7 +213,7 @@
 
       car.distance += speed * dtMs;
       const wearAdd = C() ? C().calcTireWear(car.tireCompound, dtMs / (state.raceRealMs / state.totalLaps), 1) : 0;
-      car.tireWear = Math.min(100, car.tireWear + wearAdd);
+      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1));
       car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)));
 
       while (car.distance >= 100 && car.finishedAt == null) {

@@ -199,6 +199,48 @@
     return 0.97 + ((clamped - MOTOR_PERFORMANCE_MIN) / span) * 0.06; // ~0.97 a ~1.03
   }
 
+  // ---------- Acerto do carro (treino livre) ----------
+  // 3 ajustes com trade-off real: ganhar ritmo custa desgaste de pneu (ou
+  // vice-versa) — escolhido no treino livre e vale pro resto do fim de
+  // semana (classificatória, sprint e corrida), não só pro treino em si
+  const CAR_SETUP_OPTIONS = {
+    aero: {
+      baixa: { label: 'Baixa carga aerodinâmica', desc: 'Mais veloz nas retas, escorrega mais nas curvas.', paceMod: 0.02, wearMod: -0.04 },
+      media: { label: 'Carga média', desc: 'Equilíbrio entre reta e curva.', paceMod: 0, wearMod: 0 },
+      alta: { label: 'Alta carga aerodinâmica', desc: 'Mais estável nas curvas, perde um pouco nas retas.', paceMod: -0.015, wearMod: 0.03 },
+    },
+    altura: {
+      baixa: { label: 'Carro baixo', desc: 'Mais rápido, mais risco em pista irregular.', paceMod: 0.012, wearMod: 0.02 },
+      media: { label: 'Altura média', desc: 'Ajuste neutro.', paceMod: 0, wearMod: 0 },
+      alta: { label: 'Carro alto', desc: 'Mais seguro, um pouco mais lento.', paceMod: -0.01, wearMod: -0.02 },
+    },
+    pressao: {
+      baixa: { label: 'Pressão baixa', desc: 'Mais aderência, desgasta o pneu mais rápido.', paceMod: 0.008, wearMod: 0.08 },
+      media: { label: 'Pressão média', desc: 'Equilíbrio.', paceMod: 0, wearMod: 0 },
+      alta: { label: 'Pressão alta', desc: 'Pneu dura mais, um pouco menos de aderência.', paceMod: -0.008, wearMod: -0.07 },
+    },
+  };
+
+  function defaultCarSetup() {
+    return { aero: 'media', altura: 'media', pressao: 'media' };
+  }
+
+  function setupPaceFactor(setup) {
+    if (!setup) return 1;
+    const sum = (CAR_SETUP_OPTIONS.aero[setup.aero] || { paceMod: 0 }).paceMod
+      + (CAR_SETUP_OPTIONS.altura[setup.altura] || { paceMod: 0 }).paceMod
+      + (CAR_SETUP_OPTIONS.pressao[setup.pressao] || { paceMod: 0 }).paceMod;
+    return 1 + sum;
+  }
+
+  function setupWearFactor(setup) {
+    if (!setup) return 1;
+    const sum = (CAR_SETUP_OPTIONS.aero[setup.aero] || { wearMod: 0 }).wearMod
+      + (CAR_SETUP_OPTIONS.altura[setup.altura] || { wearMod: 0 }).wearMod
+      + (CAR_SETUP_OPTIONS.pressao[setup.pressao] || { wearMod: 0 }).wearMod;
+    return Math.max(0.7, 1 + sum);
+  }
+
   window.WSPF1Corrida = {
     TIRE_COMPOUNDS, WEATHER_CONDITIONS, TIRE_MISMATCH_PENALTY, TIRE_SUPPLIERS,
     tireEffectiveGrip, tireSupplierFactor, calcTireWear, calcStintLaps,
@@ -208,5 +250,6 @@
     scheduleFailureEvents, failureChanceForRace, rollFailureType, pickAffectedEntrant,
     MOTOR_PERFORMANCE_MIN, MOTOR_PERFORMANCE_MAX, MOTOR_PERFORMANCE_STEP,
     rollMotorPerformances, motorPerformanceFactor,
+    CAR_SETUP_OPTIONS, defaultCarSetup, setupPaceFactor, setupWearFactor,
   };
 })();

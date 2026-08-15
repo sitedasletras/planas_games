@@ -116,6 +116,15 @@
     return window.WSPF1Corrida.motorPerformanceFactor(pct);
   }
 
+  // acerto de carro escolhido no treino livre — só o jogador tem esse painel,
+  // então só o ritmo do jogador reflete a escolha
+  function setupFactorForPlayer() {
+    if (!window.WSPF1Corrida || !window.WSPF1Calendario) return 1;
+    const state = window.WSPF1Calendario.loadState();
+    const weekend = window.WSPF1Calendario.currentWeekend(state);
+    return window.WSPF1Corrida.setupPaceFactor(weekend && weekend.carSetup);
+  }
+
   // Monta o grid completo pra uma sessão: 2 pilotos titulares do jogador +
   // os pilotos das 9 equipes rivais, cada um com pace/motorLevel/chassiLevel
   // prontos pro motor de corrida e pro sorteio de falhas do corrida.js
@@ -129,6 +138,7 @@
       const motorLevel = club.departments.motor || 0;
       const chassiLevel = club.departments.chassi || 0;
       const motorFactor = motorFactorFor(club.motorSupplier);
+      const setupFactor = setupFactorForPlayer();
       equipe.drivers.filter((d) => d.role !== 'reserva').forEach((d) => {
         entrants.push({
           id: 'player_' + d.id,
@@ -136,7 +146,7 @@
           teamName: equipe.teamName,
           driverName: d.name,
           isPlayer: true,
-          pace: Math.max(40, Math.min(99, teamPace + ((d.rating || 65) - 65) * 0.5) * motorFactor),
+          pace: Math.max(40, Math.min(99, teamPace + ((d.rating || 65) - 65) * 0.5) * motorFactor * setupFactor),
           motorLevel, chassiLevel,
           motorSupplier: club.motorSupplier, tireSupplier: club.tireSupplier,
           traits: d.traits || [],

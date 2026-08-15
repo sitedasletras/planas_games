@@ -65,6 +65,13 @@
   .fuel-row { display: flex; justify-content: space-between; font-size: 0.76rem; padding: 4px 0; color: #cfeede; }
   .fuel-row b { color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
 
+  .setup-dial { margin-bottom: 12px; }
+  .setup-dial-label { font-size: 0.8rem; font-weight: bold; color: #ffd54a; margin-bottom: 6px; }
+  .setup-dial-options { display: flex; gap: 6px; }
+  .setup-opt-btn { flex: 1; padding: 8px 4px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15); background: #0f231a; color: white; font-size: 0.7rem; cursor: pointer; text-align: center; }
+  .setup-opt-btn.selected { border-color: #ffd54a; background: #1e3b2a; }
+  .setup-opt-desc { font-size: 0.66rem; color: #9fd8b8; margin-top: 4px; min-height: 2.4em; }
+
   @keyframes hudPulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.55; }
@@ -116,8 +123,14 @@
       <div class="circuit-data-grid" id="circuit-data-grid"></div>
     </div>
 
+    <div id="setup-panel" class="panel hidden">
+      <h2>Acerto do carro</h2>
+      <p>Escolha o acerto pra sessão — ele vale pro resto do fim de semana (classificatória, sprint e corrida usam o mesmo acerto).</p>
+      <div id="setup-dials"></div>
+    </div>
+
     <div id="strategy-panel" class="panel">
-      <h2>Estratégia de largada</h2>
+      <h2 id="strategy-title">Estratégia de largada</h2>
       <p id="strategy-hint">Escolha o composto de pneu pra largada. Fique de olho no céu — o tempo pode mudar.</p>
       <div class="compound-row" id="compound-row"></div>
       <div id="refuel-block" class="hidden">
@@ -184,21 +197,32 @@
     const sessionType = window.WSPF1Calendario.currentSessionType(temporadaState);
 
     const strategyPanelEl = document.getElementById('strategy-panel');
+    const setupPanelEl = document.getElementById('setup-panel');
     const raceViewEl = document.getElementById('race-view');
     const emptyOverlayEl = document.getElementById('empty-overlay');
 
+    const isPractice = sessionType === 'treino_livre';
+    const PRACTICE_LAPS = 12;
+    const PRACTICE_REAL_MS = 70000;
+
     let selectedCompound = 'medio';
     let selectedRefuel = 'none';
+    let selectedSetup = window.WSPF1Corrida.defaultCarSetup();
 
-    if (!weekend || (sessionType !== 'sprint' && sessionType !== 'corrida')) {
+    const validSession = isPractice || sessionType === 'sprint' || sessionType === 'corrida';
+    if (!weekend || !validSession) {
       emptyOverlayEl.classList.remove('hidden');
       strategyPanelEl.classList.add('hidden');
     } else {
+      if (isPractice) initSetupPanel();
       initStrategy();
     }
 
     document.getElementById('circuit-name').textContent = weekend ? weekend.circuit : 'Circuito';
-    document.getElementById('session-tag').textContent = sessionType === 'sprint' ? 'Corrida Sprint' : 'Corrida';
+    document.getElementById('session-tag').textContent = isPractice ? 'Treino Livre' : (sessionType === 'sprint' ? 'Corrida Sprint' : 'Corrida');
+    if (isPractice) {
+      document.getElementById('strategy-title').textContent = 'Pneu do treino';
+    }
 
     if (weekend) renderCircuitInfo(weekend);
 
@@ -221,6 +245,44 @@
       const rainChance = Math.round((window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[w.clima] || 0.2) * 100);
       const hint = document.getElementById('strategy-hint');
       if (hint) hint.textContent = 'Escolha o composto de pneu pra largada. Clima ' + w.clima + ' — cerca de ' + rainChance + '% de chance de chuva durante a corrida.';
+    }
+
+    function initSetupPanel() {
+      setupPanelEl.classList.remove('hidden');
+      const options = window.WSPF1Corrida.CAR_SETUP_OPTIONS;
+      const dialsEl = document.getElementById('setup-dials');
+      const dialLabels = { aero: 'Aerodinâmica', altura: 'Altura do carro', pressao: 'Pressão dos pneus' };
+      Object.keys(options).forEach((dialKey) => {
+        const dial = document.createElement('div');
+        dial.className = 'setup-dial';
+        const label = document.createElement('div');
+        label.className = 'setup-dial-label';
+        label.textContent = dialLabels[dialKey];
+        dial.appendChild(label);
+
+        const optsRow = document.createElement('div');
+        optsRow.className = 'setup-dial-options';
+        const descEl = document.createElement('div');
+        descEl.className = 'setup-opt-desc';
+        descEl.textContent = options[dialKey][selectedSetup[dialKey]].desc;
+
+        Object.keys(options[dialKey]).forEach((optKey) => {
+          const opt = options[dialKey][optKey];
+          const btn = document.createElement('button');
+          btn.className = 'setup-opt-btn' + (optKey === selectedSetup[dialKey] ? ' selected' : '');
+          btn.textContent = opt.label;
+          btn.addEventListener('click', () => {
+            selectedSetup[dialKey] = optKey;
+            [...optsRow.children].forEach((b) => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            descEl.textContent = opt.desc;
+          });
+          optsRow.appendChild(btn);
+        });
+        dial.appendChild(optsRow);
+        dial.appendChild(descEl);
+        dialsEl.appendChild(dial);
+      });
     }
 
     function initStrategy() {
@@ -266,7 +328,7 @@
     function renderFuelTable() {
       const C = window.WSPF1Corrida;
       const isSprint = sessionType === 'sprint';
-      const totalLaps = isSprint ? Math.max(6, Math.round(weekend.laps / 3)) : weekend.laps;
+      const totalLaps = isPractice ? PRACTICE_LAPS : (isSprint ? Math.max(6, Math.round(weekend.laps / 3)) : weekend.laps);
       const fuelNeeded = C.calcFuelNeeded(totalLaps);
       const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP;
       const stintLaps = C.calcStintLaps(selectedCompound, 90);
@@ -306,6 +368,9 @@
     }
 
     function startRace() {
+      if (isPractice) {
+        window.WSPF1Calendario.applyCarSetup(temporadaState, selectedSetup);
+      }
       const entrants = buildEntrants();
       let pitStopMsByTeam = null;
       if (window.WSPF1Equipe) {
@@ -314,16 +379,19 @@
       }
       raceState = window.WSPF1Motor.createRaceState(entrants, {
         isSprint: sessionType === 'sprint',
-        baseLaps: weekend.laps,
-        raceRealMs: NORMAL_RACE_REAL_MS,
-        hasFailureEvent: weekend.hasFailureEvent,
+        baseLaps: isPractice ? PRACTICE_LAPS : weekend.laps,
+        raceRealMs: isPractice ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS,
+        hasFailureEvent: isPractice ? false : weekend.hasFailureEvent,
         circuit: weekend.circuit,
         startCompound: selectedCompound,
         refuelPlan: selectedRefuel,
         pitStopMsByTeam,
-        rainChance: window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[weekend.clima],
+        rainChance: isPractice ? 0 : window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[weekend.clima],
+        carSetup: weekend.carSetup || selectedSetup,
       });
       strategyPanelEl.classList.add('hidden');
+      setupPanelEl.classList.add('hidden');
+      document.getElementById('circuit-info-panel').classList.add('hidden');
       raceViewEl.classList.remove('hidden');
       lastTs = null;
       rafId = requestAnimationFrame(loop);
@@ -580,7 +648,12 @@
       if (rafId) cancelAnimationFrame(rafId);
       const table = window.WSPF1Motor.standings(raceState);
       const order = table.map((c) => c.id);
-      const result = window.WSPF1Calendario.recordSessionResult(temporadaState, order);
+      window.WSPF1Calendario.recordSessionResult(temporadaState, order);
+
+      if (isPractice) {
+        finishPractice(table);
+        return;
+      }
 
       const pointsTable = sessionType === 'sprint' ? window.WSPF1Calendario.SPRINT_POINTS : window.WSPF1Calendario.RACE_POINTS;
       let playerPoints = 0;
@@ -619,6 +692,25 @@
         });
         window.WSPF1Pilotos.saveSquad(equipe);
       }
+    }
+
+    function finishPractice(table) {
+      const playerIdx = table.findIndex((c) => c.isPlayer);
+      const listEl = document.getElementById('result-list');
+      listEl.innerHTML = '';
+      table.slice(0, 10).forEach((car, i) => {
+        const row = document.createElement('div');
+        row.className = 'result-row' + (car.isPlayer ? ' player' : '');
+        row.innerHTML = '<span>' + (i + 1) + '. ' + car.driverName + '</span><span>' + car.lapsCompleted + ' voltas</span>';
+        listEl.appendChild(row);
+      });
+
+      document.getElementById('result-title').textContent = 'Relatório do Treino Livre';
+      const options = window.WSPF1Corrida.CAR_SETUP_OPTIONS;
+      const setupSummary = ['aero', 'altura', 'pressao'].map((k) => options[k][selectedSetup[k]].label).join(' · ');
+      document.getElementById('points-line').textContent = (playerIdx >= 0 ? (playerIdx + 1) + 'º no treino. ' : '')
+        + 'Acerto aplicado pro resto do fim de semana: ' + setupSummary;
+      document.getElementById('result-overlay').classList.remove('hidden');
     }
 
     document.getElementById('result-continue-btn').addEventListener('click', () => {

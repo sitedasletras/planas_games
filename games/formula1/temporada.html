@@ -157,11 +157,11 @@
         });
 
         const type = Cal.currentSessionType(state);
-        if (type === 'treino_livre' || type === 'classificatoria') {
+        if (type === 'classificatoria') {
           instantBtn.classList.remove('hidden');
           instantBtn.textContent = 'Rodar ' + Cal.SESSION_TYPES[type].label;
           instantBtn.onclick = () => runInstant(type, weekend);
-        } else if (type === 'sprint' || type === 'corrida') {
+        } else if (type === 'treino_livre' || type === 'sprint' || type === 'corrida') {
           raceLink.classList.remove('hidden');
           raceLink.textContent = 'Ir pra ' + Cal.SESSION_TYPES[type].label;
         }
