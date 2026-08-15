@@ -2,7 +2,7 @@
 
 html, body {
   background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   color: white;
   min-height: 100vh;
 }
@@ -20,6 +20,12 @@ html, body {
   align-items: center;
   gap: 12px;
   padding: 14px;
+  background: rgba(22, 40, 31, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 213, 74, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .back-btn {
@@ -30,8 +36,10 @@ html, body {
 }
 
 .landing-topbar h1 {
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
   font-size: 1.2rem;
   color: #ffd54a;
+  letter-spacing: 0.5px;
 }
 
 .club-card {
@@ -46,8 +54,9 @@ html, body {
   width: 90px;
   height: 90px;
   border-radius: 50%;
-  background: #16281f;
+  background: radial-gradient(circle at 35% 30%, #1e3a2a, #0c1a13 75%);
   border: 3px solid #ffd54a;
+  box-shadow: 0 0 18px rgba(255, 213, 74, 0.25), inset 0 0 12px rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,7 +64,8 @@ html, body {
 }
 
 .club-name {
-  font-size: 1.3rem;
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
+  font-size: 1.2rem;
   font-weight: bold;
   letter-spacing: 1px;
 }
@@ -80,13 +90,16 @@ html, body {
   color: white;
   font-weight: bold;
   font-size: 1.05rem;
-  background: #16281f;
+  background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(0,0,0,0.15)), #16281f;
   border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  transition: transform 0.12s ease;
 }
 
 .action-btn.primary {
   background: linear-gradient(160deg, #2f8f4e, #14401f);
   border-color: #ffd54a;
+  box-shadow: 0 2px 12px rgba(255, 213, 74, 0.2);
 }
 
 .action-btn:active {

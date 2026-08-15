@@ -4,31 +4,44 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>WSP Fórmula 1 — Temporada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body {
     background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
     color: white;
     min-height: 100vh;
   }
   .wrap { max-width: 460px; margin: 0 auto; min-height: 100vh; padding-bottom: 24px; }
-  .topbar { display: flex; align-items: center; gap: 10px; padding: 14px; }
+  .topbar {
+    display: flex; align-items: center; gap: 10px; padding: 14px;
+    background: rgba(22, 40, 31, 0.85); backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 213, 74, 0.15);
+    position: sticky; top: 0; z-index: 5;
+  }
   .back-btn { color: #ffd54a; text-decoration: none; font-size: 1.3rem; font-weight: bold; }
-  .topbar h1 { font-size: 1.15rem; color: #ffd54a; }
+  .topbar h1 { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1.15rem; color: #ffd54a; letter-spacing: 0.4px; }
 
-  .panel { margin: 10px 14px; padding: 14px; background: #16281f; border: 1px solid #345c48; border-radius: 12px; }
-  .panel h2 { font-size: 0.9rem; color: #ffd54a; margin-bottom: 8px; }
+  .panel { margin: 10px 14px; padding: 14px; background: linear-gradient(160deg, rgba(255,255,255,0.03), rgba(0,0,0,0.15)), #16281f; border: 1px solid #345c48; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .panel h2 { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 0.88rem; color: #ffd54a; margin-bottom: 8px; }
   .season-tag { font-size: 0.72rem; color: #9fd8b8; margin-bottom: 4px; }
 
-  .weekend-title { font-size: 1.1rem; font-weight: bold; }
+  .weekend-title { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1.05rem; font-weight: bold; }
   .weekend-meta { font-size: 0.78rem; color: #9fd8b8; margin-top: 4px; }
   .sprint-badge { display: inline-block; margin-top: 6px; font-size: 0.68rem; background: #1e3b2a; border: 1px solid #ffd54a; color: #ffd54a; padding: 2px 8px; border-radius: 8px; }
 
   .session-steps { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
   .session-step { flex: 1 1 auto; text-align: center; font-size: 0.62rem; padding: 6px 4px; border-radius: 8px; background: #0f231a; color: #6f9382; }
   .session-step.done { color: #3fd67a; }
-  .session-step.active { background: #1e3b2a; color: #ffd54a; border: 1px solid #ffd54a; }
+  .session-step.active { background: #1e3b2a; color: #ffd54a; border: 1px solid #ffd54a; animation: stepPulse 1.6s ease infinite; }
+
+  @keyframes stepPulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(255, 213, 74, 0); }
+    50% { box-shadow: 0 0 8px rgba(255, 213, 74, 0.45); }
+  }
 
   .primary-btn {
     display: block; width: 100%; padding: 14px; margin-top: 8px; border: none; border-radius: 12px;
@@ -46,7 +59,7 @@
   .std-pos { width: 20px; color: #9fd8b8; }
   .std-name { flex: 1; }
   .std-name small { display: block; color: #9fd8b8; font-size: 0.65rem; }
-  .std-pts { font-weight: bold; }
+  .std-pts { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-weight: bold; }
 
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 18px; }
   .overlay.hidden { display: none; }

@@ -1,8 +1,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 html, body {
-  background: #0a1a14;
-  font-family: 'Segoe UI', Arial, sans-serif;
+  background: radial-gradient(circle at top, #17301f 0%, #0a1a14 60%);
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   color: white;
 }
 
@@ -18,7 +18,9 @@ html, body {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #16281f;
+  background: rgba(22, 40, 31, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 213, 74, 0.15);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -32,8 +34,10 @@ html, body {
 }
 
 .clube-topbar h1 {
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
   font-size: 1.15rem;
   color: #ffd54a;
+  letter-spacing: 0.5px;
 }
 
 .budget-card {
@@ -42,9 +46,14 @@ html, body {
   background: linear-gradient(160deg, #2f8f4e, #14401f);
   border: 2px solid #ffd54a;
   border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.budget-value {
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
 }
 
 .budget-label {
@@ -335,12 +344,14 @@ html, body {
 }
 
 .dept-card {
-  background: #16281f;
+  background: linear-gradient(160deg, rgba(255,255,255,0.03), rgba(0,0,0,0.15)), #16281f;
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 10px;
   padding: 12px;
   display: flex;
   gap: 12px;
   align-items: center;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.2);
 }
 
 .dept-icon {
@@ -422,7 +433,7 @@ html, body {
 }
 
 .upgrade-btn {
-  background: #2f9e44;
+  background: linear-gradient(160deg, #3aab52, #227735);
   color: white;
   border: none;
   padding: 6px 10px;
@@ -430,7 +441,10 @@ html, body {
   font-size: 0.72rem;
   font-weight: bold;
   cursor: pointer;
+  transition: transform 0.12s ease;
 }
+
+.upgrade-btn:active { transform: scale(0.96); }
 
 .upgrade-btn:disabled {
   background: #333;

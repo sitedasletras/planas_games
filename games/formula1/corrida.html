@@ -4,22 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>WSP Fórmula 1 — Corrida</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body {
     background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
     color: white;
     min-height: 100vh;
   }
   .wrap { max-width: 460px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
-  .topbar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+  .topbar {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    background: rgba(22, 40, 31, 0.85); backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 213, 74, 0.15);
+    position: sticky; top: 0; z-index: 5;
+  }
   .back-btn { color: #ffd54a; text-decoration: none; font-size: 1.3rem; font-weight: bold; }
-  .topbar h1 { font-size: 1.05rem; color: #ffd54a; flex: 1; }
+  .topbar h1 { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1.05rem; color: #ffd54a; flex: 1; letter-spacing: 0.4px; }
   .topbar .session-tag { font-size: 0.7rem; background: #16281f; border: 1px solid #ffd54a; color: #ffd54a; padding: 4px 8px; border-radius: 8px; }
 
-  .panel { margin: 10px 14px; padding: 14px; background: #16281f; border: 1px solid #345c48; border-radius: 12px; }
-  .panel h2 { font-size: 0.95rem; color: #ffd54a; margin-bottom: 10px; }
+  .panel { margin: 10px 14px; padding: 14px; background: linear-gradient(160deg, rgba(255,255,255,0.03), rgba(0,0,0,0.15)), #16281f; border: 1px solid #345c48; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .panel h2 { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 0.92rem; color: #ffd54a; margin-bottom: 10px; }
   .panel p { font-size: 0.8rem; color: #9fd8b8; margin-bottom: 6px; }
 
   .compound-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
@@ -43,11 +51,17 @@
   .primary-btn:active { transform: scale(0.98); }
 
   .hud { display: flex; justify-content: space-between; gap: 8px; margin: 10px 14px; }
-  .hud-box { flex: 1; background: #16281f; border: 1px solid #345c48; border-radius: 10px; padding: 8px; text-align: center; }
+  .hud-box { flex: 1; background: #16281f; border: 1px solid #345c48; border-radius: 10px; padding: 8px; text-align: center; box-shadow: 0 1px 6px rgba(0,0,0,0.2); }
   .hud-label { font-size: 0.6rem; color: #9fd8b8; text-transform: uppercase; letter-spacing: 0.5px; }
-  .hud-value { font-size: 1rem; font-weight: bold; color: #ffd54a; }
+  .hud-value { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1rem; font-weight: bold; color: #ffd54a; }
+  .hud-value.p1 { animation: hudPulse 1.2s ease infinite; color: #3fd67a; }
 
-  canvas#track { display: block; margin: 6px auto; background: #0d1f17; border-radius: 14px; border: 1px solid #345c48; }
+  @keyframes hudPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  canvas#track { display: block; margin: 6px auto; background: radial-gradient(circle at 50% 40%, #123425, #0a1811 80%); border-radius: 14px; border: 1px solid #345c48; box-shadow: inset 0 0 30px rgba(0,0,0,0.5); }
 
   .ticker {
     margin: 6px 14px; padding: 8px 12px; background: #0f231a; border-radius: 8px;
@@ -156,6 +170,9 @@
     const raceViewEl = document.getElementById('race-view');
     const emptyOverlayEl = document.getElementById('empty-overlay');
 
+    let selectedCompound = 'medio';
+    let selectedRefuel = 'none';
+
     if (!weekend || (sessionType !== 'sprint' && sessionType !== 'corrida')) {
       emptyOverlayEl.classList.remove('hidden');
       strategyPanelEl.classList.add('hidden');
@@ -165,9 +182,6 @@
 
     document.getElementById('circuit-name').textContent = weekend ? weekend.circuit : 'Circuito';
     document.getElementById('session-tag').textContent = sessionType === 'sprint' ? 'Corrida Sprint' : 'Corrida';
-
-    let selectedCompound = 'medio';
-    let selectedRefuel = 'none';
 
     function initStrategy() {
       const isSprint = sessionType === 'sprint';
@@ -277,14 +291,49 @@
       return 'hsl(' + hue + ', 65%, 58%)';
     }
 
+    // rastro leve atrás do carro do jogador + faíscas na chegada dos 3
+    // primeiros — mesmo espírito das partículas do futebol, versão corrida
+    let particles = [];
+    let playerTrail = [];
+    const seenFinishers = new Set();
+
+    function spawnBurst(x, y, color) {
+      for (let i = 0; i < 12; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.6 + Math.random() * 1.8;
+        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, color });
+      }
+    }
+
+    function updateEffects() {
+      particles.forEach((p) => { p.x += p.vx; p.y += p.vy; p.life -= 0.045; });
+      particles = particles.filter((p) => p.life > 0);
+      playerTrail = playerTrail.filter((p) => (p.life -= 0.08) > 0);
+    }
+
+    function drawParticles(ctx) {
+      particles.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+
     function render() {
       const canvas = document.getElementById('track');
       const ctx = canvas.getContext('2d');
       const cx = canvas.width / 2, cy = canvas.height / 2;
       const rx = canvas.width / 2 - 30, ry = canvas.height / 2 - 30;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updateEffects();
 
-      ctx.strokeStyle = '#345c48';
+      const trackGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      trackGradient.addColorStop(0, '#3a6650');
+      trackGradient.addColorStop(1, '#22402f');
+      ctx.strokeStyle = trackGradient;
       ctx.lineWidth = 22;
       ctx.beginPath();
       ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
@@ -297,15 +346,51 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
+      // linha de largada/chegada (padrão quadriculado) no topo do traçado
+      const startPoint = pointOnTrack(0, cx, cy, rx, ry);
+      for (let i = -1; i <= 1; i++) {
+        ctx.fillStyle = (i % 2 === 0) ? 'rgba(255,255,255,0.85)' : 'rgba(20,20,20,0.85)';
+        ctx.fillRect(startPoint.x - 11 + (i + 1) * 8, startPoint.y - 11, 8, 22);
+      }
+
+      drawParticles(ctx);
+      playerTrail.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life) * 0.5;
+        ctx.fillStyle = '#ffd54a';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
       raceState.cars.forEach((car) => {
         if (car.retired) return;
         const t = car.distance / 100;
         const p = pointOnTrack(t, cx, cy, rx, ry);
-        ctx.beginPath();
-        ctx.fillStyle = teamColor(car);
+
+        if (car.finishedAt != null && !seenFinishers.has(car.id)) {
+          seenFinishers.add(car.id);
+          if (raceState.cars.filter((c) => c.finishedAt != null).length <= 3) spawnBurst(p.x, p.y, teamColor(car));
+        }
+
+        if (car.isPlayer && car.finishedAt == null) {
+          playerTrail.push({ x: p.x, y: p.y, life: 1 });
+        }
+
         const radius = car.isPlayer ? 6 : 4;
+        const carGradient = ctx.createRadialGradient(p.x - 1, p.y - 1, 0.5, p.x, p.y, radius);
+        const baseColor = teamColor(car);
+        carGradient.addColorStop(0, car.isPlayer ? '#fff3c4' : baseColor);
+        carGradient.addColorStop(1, baseColor);
+        ctx.beginPath();
+        ctx.fillStyle = carGradient;
+        if (car.isPlayer) {
+          ctx.shadowColor = '#ffd54a';
+          ctx.shadowBlur = 8;
+        }
         ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
         if (car.isPlayer) {
           ctx.strokeStyle = 'white';
           ctx.lineWidth = 1.5;
@@ -327,7 +412,9 @@
       const table = window.WSPF1Motor.standings(raceState);
       const playerIdx = table.findIndex((c) => c.isPlayer);
       const player = playerIdx >= 0 ? table[playerIdx] : null;
-      document.getElementById('hud-pos').textContent = player ? (playerIdx + 1) + 'º' : '-';
+      const posEl = document.getElementById('hud-pos');
+      posEl.textContent = player ? (playerIdx + 1) + 'º' : '-';
+      posEl.classList.toggle('p1', !!player && playerIdx === 0);
       document.getElementById('hud-lap').textContent = player ? player.lapsCompleted + '/' + raceState.totalLaps : '0/' + raceState.totalLaps;
       document.getElementById('hud-tire').textContent = player ? (window.WSPF1Corrida.TIRE_COMPOUNDS[player.tireCompound].icon + ' ' + Math.round(player.tireWear) + '%') : '-';
       document.getElementById('hud-fuel').textContent = player ? Math.round(player.fuelKg) + 'kg' : '-';
