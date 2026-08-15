@@ -50,11 +50,13 @@
         teamName: e.teamName,
         driverName: e.driverName,
         isPlayer: !!e.isPlayer,
-        pace: e.pace,
+        pace: (e.isPlayer && C()) ? e.pace * C().drivingStylePaceFactor(opts.drivingStyle) : e.pace,
         motorLevel: e.motorLevel || 0,
         chassiLevel: e.chassiLevel || 0,
         tireSupplier: e.tireSupplier || null,
-        wearFactor: e.isPlayer && C() ? C().setupWearFactor(opts.carSetup) : 1,
+        wearFactor: e.isPlayer && C()
+          ? C().setupWearFactor(opts.carSetup) * C().drivingStyleWearMult(opts.drivingStyle)
+          : 1,
         grid: i,
         lapsCompleted: 0,
         distance: 0,

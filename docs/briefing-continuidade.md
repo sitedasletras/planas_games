@@ -209,7 +209,11 @@ necessidade de retrabalhar nada disso.
 3. **Fórmula 2, Fórmula Indy, Fórmula E**: `formula-racing-manager-spec.md`
    é o roteiro-base pros quatro, não só F1. Quando entrar nesses, reusar
    a arquitetura do F1 (grid/calendario/corridamotor já são bem
-   genéricos) em vez de recomeçar do zero.
+   genéricos) em vez de recomeçar do zero. **Regra explícita do usuário
+   (15/08): circuitos ovais são pra Fórmula Indy, não pra F1** — o
+   `CIRCUIT_POOL` de `games/formula1/calendario.js` não deve ganhar
+   nenhum circuito oval; quando o oval fizer sentido, ele entra no pool
+   da Fórmula Indy.
 4. **Vôlei, Basquete**: ainda sem nenhum trabalho iniciado.
 5. **Matchmaking progressivo robô→humano**: documentado em
    `docs/matchmaking-robos-humanos-spec.md`, não iniciado, vale pra todos

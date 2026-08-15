@@ -60,11 +60,12 @@
   }
 
   // quantas voltas o composto aguenta antes de bater na margem de segurança
-  function calcStintLaps(compoundKey, safetyMarginPct) {
+  function calcStintLaps(compoundKey, safetyMarginPct, aggressiveness) {
     const compound = TIRE_COMPOUNDS[compoundKey];
     if (!compound) return 0;
     const margin = safetyMarginPct == null ? 92 : safetyMarginPct;
-    return Math.max(1, Math.floor(margin / compound.wearRate));
+    const mult = aggressiveness == null ? 1 : aggressiveness;
+    return Math.max(1, Math.floor(margin / (compound.wearRate * mult)));
   }
 
   const FUEL_BASE_CONSUMPTION_PER_LAP = 1.8; // kg por volta, carro cheio de tanque
@@ -201,6 +202,29 @@
 
   // ---------- Acerto do carro (treino livre) ----------
   // 3 ajustes com trade-off real: ganhar ritmo custa desgaste de pneu (ou
+  // ---------- Estilo de pilotagem ----------
+  // decisão de corrida (escolhida na estratégia pré-largada, não no
+  // treino): mais agressivo ganha ritmo mas gasta o pneu mais rápido —
+  // é o eixo que fecha a "planilha" de combustível/pneu com um número que
+  // a pessoa realmente controla e vê recalcular na hora.
+  const DRIVING_STYLES = {
+    conservador: { label: 'Conservador', desc: 'Poupa o pneu, perde um pouco de ritmo.', paceMod: -0.012, wearMult: 0.82 },
+    equilibrado: { label: 'Equilibrado', desc: 'Ritmo e desgaste padrão.', paceMod: 0, wearMult: 1 },
+    agressivo: { label: 'Agressivo', desc: 'Mais rápido, desgasta o pneu bem mais rápido.', paceMod: 0.018, wearMult: 1.28 },
+  };
+
+  function defaultDrivingStyle() { return 'equilibrado'; }
+
+  function drivingStylePaceFactor(style) {
+    const s = DRIVING_STYLES[style];
+    return s ? 1 + s.paceMod : 1;
+  }
+
+  function drivingStyleWearMult(style) {
+    const s = DRIVING_STYLES[style];
+    return s ? s.wearMult : 1;
+  }
+
   // vice-versa) — escolhido no treino livre e vale pro resto do fim de
   // semana (classificatória, sprint e corrida), não só pro treino em si
   const CAR_SETUP_OPTIONS = {
@@ -267,5 +291,6 @@
     rollMotorPerformances, motorPerformanceFactor,
     CAR_SETUP_OPTIONS, defaultCarSetup, setupPaceFactor, setupWearFactor,
     ASPHALT_IDEAL_ALTURA, setupAsphaltMatchFactor,
+    DRIVING_STYLES, defaultDrivingStyle, drivingStylePaceFactor, drivingStyleWearMult,
   };
 })();

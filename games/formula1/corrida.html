@@ -139,6 +139,10 @@
         <div class="refuel-row" id="refuel-row"></div>
       </div>
 
+      <p style="margin-top:10px;">Estilo de pilotagem:</p>
+      <div class="refuel-row" id="driving-style-row"></div>
+      <div class="setup-opt-desc" id="driving-style-desc"></div>
+
       <div class="fuel-table" id="fuel-table"></div>
 
       <button class="primary-btn" id="start-btn">🏁 Largar</button>
@@ -209,6 +213,7 @@
     let selectedCompound = 'medio';
     let selectedRefuel = 'none';
     let selectedSetup = window.WSPF1Corrida.defaultCarSetup();
+    let selectedDrivingStyle = window.WSPF1Corrida.defaultDrivingStyle();
 
     const validSession = isPractice || sessionType === 'sprint' || sessionType === 'corrida';
     const weekendGated = weekend && weekend.sessionIdx === 0 && !window.WSPF1Calendario.isWeekendAvailable(temporadaState);
@@ -331,6 +336,25 @@
         });
       }
 
+      const styles = window.WSPF1Corrida.DRIVING_STYLES;
+      const styleRow = document.getElementById('driving-style-row');
+      const styleDescEl = document.getElementById('driving-style-desc');
+      styleDescEl.textContent = styles[selectedDrivingStyle].desc;
+      Object.keys(styles).forEach((key) => {
+        const style = styles[key];
+        const btn = document.createElement('button');
+        btn.className = 'refuel-btn' + (key === selectedDrivingStyle ? ' selected' : '');
+        btn.textContent = style.label;
+        btn.addEventListener('click', () => {
+          selectedDrivingStyle = key;
+          [...styleRow.children].forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          styleDescEl.textContent = style.desc;
+          renderFuelTable();
+        });
+        styleRow.appendChild(btn);
+      });
+
       document.getElementById('start-btn').addEventListener('click', startRace);
       renderFuelTable();
     }
@@ -343,13 +367,17 @@
       const totalLaps = isPractice ? PRACTICE_LAPS : (isSprint ? Math.max(6, Math.round(weekend.laps / 3)) : weekend.laps);
       const fuelNeeded = C.calcFuelNeeded(totalLaps);
       const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP;
-      const stintLaps = C.calcStintLaps(selectedCompound, 90);
+      const styleWearMult = C.drivingStyleWearMult(selectedDrivingStyle);
+      const stintLaps = C.calcStintLaps(selectedCompound, 90, styleWearMult);
       const stopsNeeded = Math.max(0, Math.ceil(totalLaps / stintLaps) - 1);
+      const stylePaceFactor = C.drivingStylePaceFactor(selectedDrivingStyle);
+      const stylePacePct = Math.round((stylePaceFactor - 1) * 100);
 
       const rows = [
         ['Voltas da sessão', totalLaps],
         ['Combustível/volta', fuelPerLap.toFixed(1) + ' kg'],
         ['Combustível total necessário', fuelNeeded + ' kg'],
+        ['Estilo de pilotagem', C.DRIVING_STYLES[selectedDrivingStyle].label + ' (' + (stylePacePct >= 0 ? '+' : '') + stylePacePct + '% ritmo)'],
         ['Composto escolhido aguenta', stintLaps + ' voltas'],
         ['Paradas previstas com esse composto', stopsNeeded],
       ];
@@ -400,6 +428,7 @@
         pitStopMsByTeam,
         rainChance: isPractice ? 0 : window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[weekend.clima],
         carSetup: weekend.carSetup || selectedSetup,
+        drivingStyle: selectedDrivingStyle,
       });
       strategyPanelEl.classList.add('hidden');
       setupPanelEl.classList.add('hidden');
