@@ -147,8 +147,9 @@
       <p id="strategy-hint">Escolha o composto de pneu pra largada. Fique de olho no céu — o tempo pode mudar.</p>
       <div class="compound-row" id="compound-row"></div>
       <div id="refuel-block" class="hidden">
-        <p>Reabastecimento (só na Sprint):</p>
+        <p>Estratégia de combustível: até que volta você quer rodar com esse tanque? O carro sai mais leve/rápido, mas é <b>obrigado</b> a parar pra reabastecer + trocar pneu nessa volta.</p>
         <div class="refuel-row" id="refuel-row"></div>
+        <div class="setup-opt-desc" id="refuel-desc"></div>
       </div>
 
       <p style="margin-top:10px;">Estilo de pilotagem:</p>
@@ -232,7 +233,7 @@
     const PRACTICE_REAL_MS = 70000;
 
     let selectedCompound = 'medio';
-    let selectedRefuel = 'none';
+    let selectedFuelTargetLap = null; // null = tanque cheio, sem parada de combustível planejada
     let selectedSetup = window.WSPF1Corrida.defaultCarSetup();
     let selectedDrivingStyle = window.WSPF1Corrida.defaultDrivingStyle();
 
@@ -333,8 +334,16 @@
       });
     }
 
+    // total de voltas da sessão atual (treino/sprint/corrida têm regras
+    // diferentes de duração) — usado tanto pra montar os presets de volta-
+    // alvo quanto pra planilha de combustível
+    function sessionTotalLaps() {
+      if (isPractice) return PRACTICE_LAPS;
+      if (sessionType === 'sprint') return Math.max(6, Math.round(weekend.laps / 3));
+      return weekend.laps;
+    }
+
     function initStrategy() {
-      const isSprint = sessionType === 'sprint';
       const compoundRow = document.getElementById('compound-row');
       const compounds = window.WSPF1Corrida.TIRE_COMPOUNDS;
       Object.keys(compounds).filter((k) => k === 'macio' || k === 'medio' || k === 'duro').forEach((key) => {
@@ -351,17 +360,27 @@
         compoundRow.appendChild(btn);
       });
 
-      if (isSprint) {
+      if (!isPractice) {
         document.getElementById('refuel-block').classList.remove('hidden');
         const refuelRow = document.getElementById('refuel-row');
-        [['none', 'Sem reabastecer — tanque cheio, mais pesado'], ['planned', 'Reabastecer — larga leve, para no meio']].forEach(([key, label]) => {
+        const refuelDescEl = document.getElementById('refuel-desc');
+        const totalLaps = sessionTotalLaps();
+        const presets = [null, Math.round(totalLaps * 0.35), Math.round(totalLaps * 0.6)]
+          .filter((lap, i) => i === 0 || (lap > 1 && lap < totalLaps));
+        const descFor = (lap) => lap == null
+          ? 'Tanque cheio — mais pesado a corrida toda, sem parada de combustível planejada (só se o pneu obrigar).'
+          : 'Sai leve, só com combustível pra volta ' + lap + '. Vai parar na volta ' + lap + ' pra reabastecer e trocar pneu — obrigatório.';
+        refuelDescEl.textContent = descFor(selectedFuelTargetLap);
+        presets.forEach((lap) => {
           const btn = document.createElement('button');
-          btn.className = 'refuel-btn' + (key === selectedRefuel ? ' selected' : '');
-          btn.textContent = label;
+          btn.className = 'refuel-btn' + (lap === selectedFuelTargetLap ? ' selected' : '');
+          btn.textContent = lap == null ? 'Tanque cheio' : 'Parar na volta ' + lap;
           btn.addEventListener('click', () => {
-            selectedRefuel = key;
+            selectedFuelTargetLap = lap;
             [...refuelRow.children].forEach((b) => b.classList.remove('selected'));
             btn.classList.add('selected');
+            refuelDescEl.textContent = descFor(lap);
+            renderFuelTable();
           });
           refuelRow.appendChild(btn);
         });
@@ -394,23 +413,27 @@
     // já calculava por baixo dos panos, agora visíveis antes de largar
     function renderFuelTable() {
       const C = window.WSPF1Corrida;
-      const isSprint = sessionType === 'sprint';
-      const totalLaps = isPractice ? PRACTICE_LAPS : (isSprint ? Math.max(6, Math.round(weekend.laps / 3)) : weekend.laps);
+      const totalLaps = sessionTotalLaps();
       const fuelNeeded = C.calcFuelNeeded(totalLaps);
       const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP;
       const styleWearMult = C.drivingStyleWearMult(selectedDrivingStyle);
       const stintLaps = C.calcStintLaps(selectedCompound, 90, styleWearMult);
-      const stopsNeeded = Math.max(0, Math.ceil(totalLaps / stintLaps) - 1);
+      const tireStopsNeeded = Math.max(0, Math.ceil(totalLaps / stintLaps) - 1);
       const stylePaceFactor = C.drivingStylePaceFactor(selectedDrivingStyle);
       const stylePacePct = Math.round((stylePaceFactor - 1) * 100);
+      const fuelForTarget = selectedFuelTargetLap ? C.calcFuelForStint(selectedFuelTargetLap) : fuelNeeded;
+      // pelo menos 1 parada é garantida pelo motor (pneu nunca aguenta a
+      // corrida toda) — a planilha já mostra isso pra não prometer "sem
+      // parar" com nenhum composto
+      const stopsNeeded = Math.max(1, tireStopsNeeded, selectedFuelTargetLap ? 1 : 0);
 
       const rows = [
         ['Voltas da sessão', totalLaps],
         ['Combustível/volta', fuelPerLap.toFixed(1) + ' kg'],
-        ['Combustível total necessário', fuelNeeded + ' kg'],
+        [selectedFuelTargetLap ? 'Combustível de largada (até a volta ' + selectedFuelTargetLap + ')' : 'Combustível total (tanque cheio)', fuelForTarget + ' kg'],
         ['Estilo de pilotagem', C.DRIVING_STYLES[selectedDrivingStyle].label + ' (' + (stylePacePct >= 0 ? '+' : '') + stylePacePct + '% ritmo)'],
         ['Composto escolhido aguenta', stintLaps + ' voltas'],
-        ['Paradas previstas com esse composto', stopsNeeded],
+        ['Paradas obrigatórias', stopsNeeded],
       ];
       document.getElementById('fuel-table').innerHTML = rows.map(([label, value]) => (
         '<div class="fuel-row"><span>' + label + '</span><b>' + value + '</b></div>'
@@ -455,7 +478,7 @@
         hasFailureEvent: isPractice ? false : weekend.hasFailureEvent,
         circuit: weekend.circuit,
         startCompound: selectedCompound,
-        refuelPlan: selectedRefuel,
+        fuelTargetLap: selectedFuelTargetLap,
         pitStopMsByTeam,
         rainChance: isPractice ? 0 : window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[weekend.clima],
         carSetup: weekend.carSetup || selectedSetup,

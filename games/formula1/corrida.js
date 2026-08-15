@@ -5,10 +5,15 @@
   // mecânicas/batidas. Formulas puras (sem DOM) pra serem consumidas pelo
   // motor de corrida (canvas) e pela tela de estratégia mais adiante.
 
+  // wearRate calibrado pra que NENHUM composto seco aguente uma corrida
+  // inteira sem trocar — o circuito mais curto da temporada tem 44 voltas,
+  // então até o duro (o mais durável) precisa ficar bem abaixo disso
+  // (stint(90%) = 90/wearRate voltas): macio 25, médio 35, duro 43 — sempre
+  // exige pelo menos 1 parada, em qualquer circuito, com qualquer composto
   const TIRE_COMPOUNDS = {
-    macio: { label: 'Macio', icon: '🔴', color: '#e63946', gripFactor: 1.08, wearRate: 2.6 },
-    medio: { label: 'Médio', icon: '🟡', color: '#f4a300', gripFactor: 1.00, wearRate: 1.6 },
-    duro: { label: 'Duro', icon: '⚪', color: '#e8e8e8', gripFactor: 0.94, wearRate: 1.0 },
+    macio: { label: 'Macio', icon: '🔴', color: '#e63946', gripFactor: 1.08, wearRate: 3.6 },
+    medio: { label: 'Médio', icon: '🟡', color: '#f4a300', gripFactor: 1.00, wearRate: 2.6 },
+    duro: { label: 'Duro', icon: '⚪', color: '#e8e8e8', gripFactor: 0.94, wearRate: 2.1 },
     intermediario: { label: 'Intermediário', icon: '🟢', color: '#2a9d5c', gripFactor: 0.85, wearRate: 1.8 },
     chuva: { label: 'Chuva Intensa', icon: '🔵', color: '#1d4ed8', gripFactor: 0.72, wearRate: 1.4 },
   };

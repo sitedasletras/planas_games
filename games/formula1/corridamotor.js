@@ -48,10 +48,35 @@
     const totalLaps = opts.isSprint ? Math.max(6, Math.round(opts.baseLaps / 3)) : opts.baseLaps;
     const raceRealMs = opts.isSprint ? Math.round((opts.raceRealMs || 300000) / 3) : (opts.raceRealMs || 300000);
     const fullFuelKg = C() ? C().calcFuelNeeded(totalLaps) : totalLaps * 2;
+    // reabastecimento planejado, sprint (binário, corridas curtas não
+    // precisam de granularidade) OU corrida principal com volta-alvo
+    // explícita (opts.fuelTargetLap) — o jogador escolhe até que volta
+    // quer rodar com aquele tanque, o carro sai mais leve/rápido e é
+    // OBRIGADO a parar pra reabastecer + trocar pneu nessa volta
     const refuelPlan = opts.isSprint ? (opts.refuelPlan || 'none') : 'none';
+    const fuelTargetLap = opts.fuelTargetLap != null
+      ? Math.max(1, Math.min(totalLaps - 1, Math.round(opts.fuelTargetLap)))
+      : null;
+    // teto de segurança: mesmo que o composto escolhido "aguentasse" a
+    // corrida toda (folga de acerto/estilo), ninguém corre sem parar —
+    // pelo menos 1 parada em 75% da corrida, o mais tardar
+    const tireStintCap = C() ? C().calcStintLaps(opts.startCompound || 'medio', 90) : Math.floor(totalLaps * 0.6);
+    const hardStopCap = Math.max(1, Math.floor(totalLaps * 0.75));
+    const defaultPlannedPitLap = opts.isSprint
+      ? null
+      : Math.min(hardStopCap, tireStintCap);
 
     const cars = entrants.map((e, i) => {
-      const startFuel = refuelPlan === 'planned' ? Math.round(fullFuelKg * 0.5) : fullFuelKg;
+      let startFuel = fullFuelKg;
+      let plannedPitLap = defaultPlannedPitLap;
+      if (refuelPlan === 'planned') {
+        startFuel = Math.round(fullFuelKg * 0.5);
+        plannedPitLap = Math.max(1, Math.floor(totalLaps / 2));
+      } else if (fuelTargetLap) {
+        const fuelForTarget = C() ? C().calcFuelForStint(fuelTargetLap) : fullFuelKg * (fuelTargetLap / totalLaps);
+        startFuel = Math.min(fullFuelKg, Math.round(fuelForTarget * 1.05)); // pequena margem, não seca na hora
+        plannedPitLap = defaultPlannedPitLap != null ? Math.min(defaultPlannedPitLap, fuelTargetLap) : fuelTargetLap;
+      }
       return {
         id: e.id,
         teamId: e.teamId,
@@ -73,9 +98,8 @@
         pitMsRemaining: 0,
         pitTotalMs: 0,
         pitStopsDone: 0,
-        plannedPitLap: refuelPlan === 'planned'
-          ? Math.max(1, Math.floor(totalLaps / 2))
-          : (opts.isSprint ? null : (C() ? Math.min(totalLaps - 2, C().calcStintLaps(opts.startCompound || 'medio', 90)) : Math.floor(totalLaps * 0.55))),
+        plannedPitLap,
+        fuelPlanned: e.isPlayer && (refuelPlan === 'planned' || !!fuelTargetLap),
         pendingPitCompound: null,
         pendingRefuel: false,
         retired: false,
@@ -175,7 +199,9 @@
     }
     if (car.plannedPitLap != null && car.lapsCompleted >= car.plannedPitLap && car.pitStopsDone === 0) {
       car.pendingPitCompound = nextStrategyCompound(car.tireCompound);
-      car.pendingRefuel = car.fuelKg < state.fullFuelKg * 0.4;
+      // parada planejada de combustível (o jogador escolheu a volta-alvo)
+      // sempre reabastece de verdade — não é só um palpite por nível de tanque
+      car.pendingRefuel = car.fuelPlanned || car.fuelKg < state.fullFuelKg * 0.4;
     }
   }
 
