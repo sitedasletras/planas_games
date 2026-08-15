@@ -97,6 +97,7 @@
         pitting: false,
         pitMsRemaining: 0,
         pitTotalMs: 0,
+        lastPitDurationSec: null,
         pitStopsDone: 0,
         plannedPitLap,
         fuelPlanned: e.isPlayer && (refuelPlan === 'planned' || !!fuelTargetLap),
@@ -219,10 +220,12 @@
     car.pendingPitCompound = null;
     car.plannedPitLap = null;
     car.pitStopsDone++;
+    car.lastPitDurationSec = Math.round((car.pitTotalMs / 1000) * 10) / 10;
     if (car.pendingRefuel) {
       car.fuelKg = state.fullFuelKg * 0.5;
       car.pendingRefuel = false;
     }
+    if (car.isPlayer) pushLog(state, '🔧 ' + car.driverName + ' sai dos boxes (' + car.lastPitDurationSec.toFixed(1) + 's parado).');
   }
 
   // chamada externa (jogador manda o carro pro pit num pneu específico) —

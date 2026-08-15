@@ -102,6 +102,8 @@
   .lb-pos { width: 22px; font-weight: bold; color: #ffd54a; }
   .lb-name { flex: 1; }
   .lb-name small { display: block; color: #9fd8b8; font-size: 0.65rem; }
+  .lb-gap { text-align: right; min-width: 56px; font-size: 0.7rem; color: #cfeede; }
+  .lb-gap small { display: block; color: #9fd8b8; font-size: 0.6rem; }
   .lb-tire { font-size: 0.9rem; }
   .lb-retired { opacity: 0.45; text-decoration: line-through; }
 
@@ -1033,21 +1035,45 @@
       document.getElementById('hud-fuel').textContent = player ? Math.round(player.fuelKg) + 'kg' : '-';
     }
 
+    // duração média de volta "de telemetria" (flavor), só pra converter
+    // distância/tempo interno (comprimido) num intervalo em segundos que
+    // pareça uma corrida de F1 de verdade — mesmo espírito do velocímetro
+    const AVG_LAP_TIME_SECONDS = 92;
+
+    function formatGapToLeader(car, leader) {
+      if (car.id === leader.id) return 'Líder';
+      if (car.retired) return 'Abandonou';
+      if (car.finishedAt != null && leader.finishedAt != null) {
+        const flavorSecPerMs = (raceState.totalLaps * AVG_LAP_TIME_SECONDS) / raceState.raceRealMs;
+        const gapSec = Math.max(0, (car.finishedAt - leader.finishedAt) * flavorSecPerMs);
+        return '+' + gapSec.toFixed(1) + 's';
+      }
+      const leaderProgress = leader.lapsCompleted * 100 + leader.distance;
+      const carProgress = car.lapsCompleted * 100 + car.distance;
+      const gapLaps = Math.max(0, (leaderProgress - carProgress) / 100);
+      if (gapLaps >= 1) return '+' + Math.floor(gapLaps) + (Math.floor(gapLaps) === 1 ? ' volta' : ' voltas');
+      return '+' + (gapLaps * AVG_LAP_TIME_SECONDS).toFixed(1) + 's';
+    }
+
+    // grade completa (não só top 6 + jogador) — com intervalo pro líder e
+    // tempo do último pit stop, pra dar noção de corrida sem precisar de
+    // narração
     function renderLeaderboard() {
       const table = window.WSPF1Motor.standings(raceState);
+      const leader = table[0];
       const box = document.getElementById('leaderboard');
       box.innerHTML = '';
-      const top = table.slice(0, 6);
-      const playerOutsideTop = table.find((c) => c.isPlayer && !top.includes(c));
-      const rows = playerOutsideTop ? [...top, playerOutsideTop] : top;
-      rows.forEach((car) => {
+      table.forEach((car) => {
         const pos = table.indexOf(car) + 1;
         const row = document.createElement('div');
         row.className = 'lb-row' + (car.isPlayer ? ' player' : '') + (car.retired ? ' lb-retired' : '');
         row.style.borderLeft = '4px solid ' + teamColor(car);
         const compound = window.WSPF1Corrida.TIRE_COMPOUNDS[car.tireCompound];
+        const gapText = car.retired ? car.retiredReason ? car.retiredReason.label : 'Abandonou' : formatGapToLeader(car, leader);
+        const pitText = car.pitting ? '🔧 nos boxes' : (car.lastPitDurationSec != null ? '⏱ ' + car.lastPitDurationSec.toFixed(1) + 's' : '');
         row.innerHTML = '<span class="lb-pos">' + pos + '</span>'
           + '<span class="lb-name">' + car.driverName + '<small>' + car.teamName + '</small></span>'
+          + '<span class="lb-gap">' + gapText + '<small>' + pitText + '</small></span>'
           + '<span class="lb-tire">' + (car.retired ? '❌' : (compound ? compound.icon : '')) + '</span>';
         box.appendChild(row);
       });
