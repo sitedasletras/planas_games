@@ -1,0 +1,254 @@
+.lock-card {
+  margin: 14px;
+  background: linear-gradient(160deg, #2f8f4e, #14401f);
+  border: 2px solid #ffd54a;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+}
+
+.lock-card .lock-icon {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+}
+
+.lock-card h2 {
+  color: #ffd54a;
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+
+.lock-card ul {
+  text-align: left;
+  font-size: 0.82rem;
+  color: #e8f5ec;
+  margin: 10px 0 16px;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
+.unlock-btn {
+  background: #ffd54a;
+  color: #1c1c1c;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: bold;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.unlock-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.custom-section {
+  margin: 14px;
+  background: #16281f;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.custom-section h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9fd8b8;
+  margin-bottom: 10px;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.field-row label {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #ccc;
+}
+
+.player-edit-row {
+  align-items: flex-start;
+}
+
+.player-edit-position {
+  font-size: 0.68rem;
+  color: #9fd8b8;
+  margin-top: 3px;
+}
+
+.field-row input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1.4;
+  background: #0e1c15;
+  border: 1px solid #345c48;
+  color: white;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.player-number-input {
+  flex: none !important;
+  width: 40px !important;
+  padding: 8px 4px !important;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.field-row input[type="color"] {
+  width: 44px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
+.save-btn {
+  background: #2f9e44;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.player-edit-hint {
+  font-size: 0.72rem;
+  color: #9fd8b8;
+  margin-bottom: 10px;
+}
+
+.save-all-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+
+.emblem-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.emblem-option {
+  aspect-ratio: 1;
+  background: #0e1c15;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.emblem-option.active {
+  border-color: #ffd54a;
+}
+
+.exclusive-emblem-title {
+  font-size: 0.7rem;
+  color: #ffd54a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.emblem-option.exclusive {
+  background: linear-gradient(160deg, #3a2f0e, #16281f);
+  border-color: rgba(255, 213, 74, 0.4);
+}
+
+.jersey-preset-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.jersey-preset-option {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.shape-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.shape-option {
+  flex: 1;
+  padding: 8px;
+  background: #0e1c15;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: #ccc;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.shape-option.active {
+  border-color: #ffd54a;
+  color: #ffd54a;
+}
+
+.crest-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0 16px;
+}
+
+.crest-shape {
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.6rem;
+  border: 3px solid var(--detail, #ffd54a);
+}
+
+.crest-shape.circulo { border-radius: 50%; }
+.crest-shape.escudo { border-radius: 12px 12px 45% 45%; }
+.crest-shape.diamante { border-radius: 12px; transform: rotate(45deg); }
+.crest-shape.diamante span { transform: rotate(-45deg); display: block; }
+
+.jersey-preview {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.jersey-swatch {
+  width: 60px;
+  height: 70px;
+  border-radius: 10px 10px 4px 4px;
+  position: relative;
+}
+
+.jersey-swatch .stripe {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 18px;
+  border-radius: 0 0 4px 4px;
+}

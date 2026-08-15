@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Fórmula 1 — Pilotos</title>
+<link rel="stylesheet" href="escuderia.css">
+<style>
+  .driver-card { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  .driver-head { display: flex; align-items: center; gap: 10px; }
+  .driver-flag { font-size: 1.6rem; }
+  .driver-role { font-size: 0.68rem; color: #9fd8b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .driver-traits { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .trait-chip { font-size: 0.62rem; background: #0e1c15; border: 1px solid #345c48; color: #cfeede; padding: 2px 6px; border-radius: 8px; }
+  .driver-stats { display: flex; gap: 10px; font-size: 0.72rem; color: #cfeede; flex-wrap: wrap; }
+  .driver-edit-row { display: flex; gap: 6px; }
+  .driver-edit-row input[type="text"] { flex: 1; min-width: 0; background: #0e1c15; border: 1px solid #345c48; border-radius: 6px; padding: 6px 8px; color: white; font-size: 0.8rem; }
+  .driver-edit-row input.number-input { max-width: 56px; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="clube-wrap">
+    <div class="clube-topbar">
+      <a class="back-btn" href="index.html">←</a>
+      <h1>Pilotos</h1>
+    </div>
+
+    <div class="campus-tier-note" style="margin:14px;">Sua dupla titular disputa Sprint e Corrida; o piloto reserva fica de fora das sessões, mas conta pro elenco.</div>
+
+    <div class="dept-list" id="driver-list"></div>
+  </div>
+
+  <script src="pilotos.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const P = window.WSPF1Pilotos;
+    const equipe = P.loadSquad();
+    const listEl = document.getElementById('driver-list');
+
+    function flagFor(code) {
+      const nat = P.NATIONALITIES.find((n) => n.key === code);
+      return nat ? nat.flag : '🏳️';
+    }
+
+    function render() {
+      listEl.innerHTML = '';
+      const order = { titular_1: 0, titular_2: 1, reserva: 2 };
+      equipe.drivers.slice().sort((a, b) => order[a.role] - order[b.role]).forEach((d) => {
+        const card = document.createElement('div');
+        card.className = 'dept-card driver-card';
+
+        const head = document.createElement('div');
+        head.className = 'driver-head';
+        const flag = document.createElement('div');
+        flag.className = 'driver-flag';
+        flag.textContent = flagFor(d.nationality);
+        head.appendChild(flag);
+        const info = document.createElement('div');
+        info.style.flex = '1';
+        const roleEl = document.createElement('div');
+        roleEl.className = 'driver-role';
+        roleEl.textContent = P.ROLES[d.role].label + ' · ' + P.CAREER_STAGES[P.careerStageFor(d.age)].label;
+        info.appendChild(roleEl);
+        const name = document.createElement('div');
+        name.className = 'dept-name';
+        name.textContent = d.name;
+        info.appendChild(name);
+        head.appendChild(info);
+        card.appendChild(head);
+
+        if (d.traits && d.traits.length) {
+          const traitsRow = document.createElement('div');
+          traitsRow.className = 'driver-traits';
+          d.traits.forEach((t) => {
+            const chip = document.createElement('span');
+            chip.className = 'trait-chip';
+            chip.textContent = P.TRAITS[t] ? P.TRAITS[t].label : t;
+            traitsRow.appendChild(chip);
+          });
+          card.appendChild(traitsRow);
+        }
+
+        const stats = document.createElement('div');
+        stats.className = 'driver-stats';
+        stats.innerHTML = '<span>⭐ ' + d.rating + '</span><span>🎂 ' + d.age + ' anos</span>'
+          + '<span>🏆 ' + (d.careerVitorias || 0) + ' vitórias</span><span>📊 ' + (d.careerPoints || 0) + ' pts carreira</span>'
+          + '<span>💪 ' + Math.round(d.condition == null ? 100 : d.condition) + '% condição</span>';
+        card.appendChild(stats);
+
+        const editRow = document.createElement('div');
+        editRow.className = 'driver-edit-row';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = d.name;
+        editRow.appendChild(nameInput);
+        const numInput = document.createElement('input');
+        numInput.type = 'text';
+        numInput.className = 'number-input';
+        numInput.value = d.number;
+        editRow.appendChild(numInput);
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'upgrade-btn';
+        saveBtn.textContent = 'Salvar';
+        saveBtn.addEventListener('click', () => {
+          const rName = P.renamePlayer(equipe, d.id, nameInput.value);
+          const rNum = P.renumberPlayer(equipe, d.id, numInput.value);
+          if (!rName.ok) { alert('Nome inválido.'); return; }
+          if (!rNum.ok) { alert(rNum.reason === 'taken' ? 'Número já usado por outro piloto.' : 'Número inválido (1 a 99).'); return; }
+          render();
+        });
+        editRow.appendChild(saveBtn);
+        card.appendChild(editRow);
+
+        listEl.appendChild(card);
+      });
+    }
+
+    render();
+  })();
+  </script>
+</body>
+</html>

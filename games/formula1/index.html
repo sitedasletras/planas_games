@@ -7,17 +7,6 @@
 <title>WSP Fórmula 1</title>
 <link rel="stylesheet" href="landing.css">
 <style>
-  .action-btn.locked {
-    opacity: 0.45;
-    pointer-events: none;
-  }
-  .locked-tag {
-    margin-left: auto;
-    font-size: 0.68rem;
-    background: rgba(0,0,0,0.3);
-    padding: 3px 8px;
-    border-radius: 6px;
-  }
   .week-note {
     text-align: center;
     font-size: 0.72rem;
@@ -39,39 +28,36 @@
     </div>
 
     <div class="landing-actions">
-      <a class="action-btn locked" href="#" id="race-btn">
+      <a class="action-btn primary" href="corrida.html" id="race-btn">
         <span class="action-icon">🏁</span>
         <span>Corrida</span>
-        <span class="locked-tag">Em breve</span>
       </a>
-      <a class="action-btn locked" href="#">
+      <a class="action-btn" href="temporada.html">
         <span class="action-icon">🏆</span>
         <span>Temporada</span>
-        <span class="locked-tag">Em breve</span>
       </a>
-      <a class="action-btn locked" href="#">
+      <a class="action-btn" href="pilotos.html">
         <span class="action-icon">🧑‍🚀</span>
         <span>Pilotos</span>
-        <span class="locked-tag">Em breve</span>
       </a>
-      <a class="action-btn locked" href="#">
+      <a class="action-btn" href="escuderia.html">
         <span class="action-icon">🏎️</span>
         <span>Equipe</span>
-        <span class="locked-tag">Em breve</span>
       </a>
-      <a class="action-btn locked" href="#">
+      <a class="action-btn" href="personalizacao.html">
         <span class="action-icon">🎨</span>
         <span>Personalização</span>
-        <span class="locked-tag">Em breve</span>
       </a>
     </div>
 
-    <p class="week-note">Módulo em construção — a base de dados (equipe, pilotos e regras de corrida) já está pronta, a corrida em si chega ao longo da semana.</p>
+    <p class="week-note">Boa corrida! Passe pela Temporada pra ver o próximo final de semana de GP.</p>
   </div>
 
   <script src="pilotos.js"></script>
   <script src="equipe.js"></script>
   <script src="corrida.js"></script>
+  <script src="grid.js"></script>
+  <script src="calendario.js"></script>
   <script>
     if (window.WSPF1Pilotos) {
       document.getElementById('club-name').textContent = window.WSPF1Pilotos.loadSquad().teamName;
