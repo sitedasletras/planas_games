@@ -183,6 +183,31 @@
     };
   }
 
+  // temporadas salvas antes da reforma de dados reais de circuito (país,
+  // cidade, curvas, sentido, clima, ultrapassagem, asfalto) só tinham nome e
+  // voltas — preenche o que falta puxando do CIRCUIT_POOL atual, por nome
+  // quando existe, senão por um circuito determinístico do pool
+  function backfillWeekendCircuitData(state) {
+    if (!state.weekends) return false;
+    let changed = false;
+    state.weekends.forEach((w, i) => {
+      if (w.pais && w.cidade && w.asfalto) return;
+      const src = CIRCUIT_POOL.find((c) => c.name === w.circuit) || CIRCUIT_POOL[i % CIRCUIT_POOL.length];
+      w.circuit = src.name;
+      w.pais = src.pais;
+      w.cidade = src.cidade;
+      w.laps = w.laps || src.laps;
+      w.type = src.type;
+      w.curves = src.curves;
+      w.sentido = src.sentido;
+      w.clima = src.clima;
+      w.ultrapassagem = src.ultrapassagem;
+      w.asfalto = src.asfalto;
+      changed = true;
+    });
+    return changed;
+  }
+
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -195,6 +220,7 @@
         }
         if (parsed.nextWeekendAt === undefined) { parsed.nextWeekendAt = null; changed = true; }
         if (parsed.nextSeasonAt === undefined) { parsed.nextSeasonAt = null; changed = true; }
+        if (backfillWeekendCircuitData(parsed)) changed = true;
         if (changed) saveState(parsed);
         return parsed;
       }
