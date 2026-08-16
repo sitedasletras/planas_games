@@ -36,41 +36,45 @@
   //
   // asfalto: aspereza/ondulação real do piso (mm) — some pra decisão de
   // altura do carro no treino livre (corrida.js/setupAsphaltMatchFactor).
+  // curiosidade: teaser curto de história/geografia REAL do lugar (nunca o
+  // nome oficial do GP/circuito, mesma regra do nome fictício) — pedido do
+  // usuário depois de perguntar se os circuitos existem de verdade: em vez
+  // de só confirmar por texto, deixar a curiosidade visível na própria tela
   const CIRCUIT_POOL = [
     // -------- calendário real 2026 --------
-    { name: 'Circuito Beira-Lago', pais: 'Austrália', cidade: 'Melbourne', laps: 58, type: 'misto', curves: 14, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 } },
-    { name: 'Circuito do Dragão', pais: 'China', cidade: 'Xangai', laps: 56, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
-    { name: 'Circuito Oito do Oriente', pais: 'Japão', cidade: 'Suzuka', laps: 53, type: 'permanente', curves: 18, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 } },
-    { name: 'Circuito das Dunas', pais: 'Bahrein', cidade: 'Sakhir', laps: 57, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 3 } },
-    { name: 'Circuito da Corniche', pais: 'Arábia Saudita', cidade: 'Jidá', laps: 50, type: 'rua', curves: 27, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'liso', mm: 1 } },
-    { name: 'Circuito das Palmeiras', pais: 'Estados Unidos', cidade: 'Miami', laps: 57, type: 'misto', curves: 19, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
-    { name: 'Circuito da Ilha Notre', pais: 'Canadá', cidade: 'Montreal', laps: 70, type: 'misto', curves: 14, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 5 } },
-    { name: 'Circuito das Ruas do Principado', pais: 'Mônaco', cidade: 'Monte Carlo', laps: 78, type: 'rua', curves: 19, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 } },
-    { name: 'Circuito da Vila de Prata', pais: 'Reino Unido', cidade: 'Silverstone', laps: 52, type: 'permanente', curves: 18, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
-    { name: 'Circuito das Florestas Ardenas', pais: 'Bélgica', cidade: 'Spa', laps: 44, type: 'permanente', curves: 19, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 } },
-    { name: 'Circuito do Anel Húngaro', pais: 'Hungria', cidade: 'Budapeste', laps: 70, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'medio', mm: 2 } },
-    { name: 'Circuito Vau de Areia', pais: 'Países Baixos', cidade: 'Zandvoort', laps: 72, type: 'permanente', curves: 14, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'liso', mm: 1 } },
-    { name: 'Circuito Templo da Velocidade', pais: 'Itália', cidade: 'Monza', laps: 53, type: 'permanente', curves: 11, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 } },
-    { name: 'Circuito Urbano da Capital', pais: 'Espanha', cidade: 'Madri', laps: 56, type: 'misto', curves: 20, sentido: 'horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
-    { name: 'Circuito da Cidade dos Ventos', pais: 'Azerbaijão', cidade: 'Baku', laps: 51, type: 'rua', curves: 20, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
-    { name: 'Circuito da Baía Noturna', pais: 'Singapura', cidade: 'Marina Bay', laps: 62, type: 'rua', curves: 19, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'difícil', asfalto: { tipo: 'medio', mm: 3 } },
-    { name: 'Circuito das Colinas do Texas', pais: 'Estados Unidos', cidade: 'Austin', laps: 56, type: 'permanente', curves: 20, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 4 } },
-    { name: 'Circuito da Grande Altitude', pais: 'México', cidade: 'Cidade do México', laps: 71, type: 'permanente', curves: 17, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
-    { name: 'Circuito Entre Lagos', pais: 'Brasil', cidade: 'São Paulo', laps: 71, type: 'permanente', curves: 15, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 } },
-    { name: 'Circuito da Avenida Dourada', pais: 'Estados Unidos', cidade: 'Las Vegas', laps: 50, type: 'rua', curves: 17, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
-    { name: 'Circuito das Areias do Golfo', pais: 'Catar', cidade: 'Lusail', laps: 57, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
-    { name: 'Circuito da Ilha Dourada', pais: 'Emirados Árabes Unidos', cidade: 'Abu Dhabi', laps: 58, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 } },
+    { name: 'Circuito Beira-Lago', pais: 'Austrália', cidade: 'Melbourne', laps: 58, type: 'misto', curves: 14, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 }, curiosidade: 'O traçado corre ao redor de um lago de verdade, bem no meio de um parque público — nos dias sem corrida, o lugar volta a ser espaço de lazer da cidade.' },
+    { name: 'Circuito do Dragão', pais: 'China', cidade: 'Xangai', laps: 56, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 }, curiosidade: 'O desenho do traçado foi inspirado num caractere chinês, e tem uma volta longa em espiral que lembra a forma de um dragão.' },
+    { name: 'Circuito Oito do Oriente', pais: 'Japão', cidade: 'Suzuka', laps: 53, type: 'permanente', curves: 18, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 }, curiosidade: 'É um dos poucos circuitos do mundo desenhado em forma de oito — a pista cruza por cima de si mesma numa ponte no meio do traçado.' },
+    { name: 'Circuito das Dunas', pais: 'Bahrein', cidade: 'Sakhir', laps: 57, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 3 }, curiosidade: 'Erguido literalmente em cima de dunas de areia no deserto — a corrida costuma começar de tarde e terminar já com o sol se pondo no horizonte.' },
+    { name: 'Circuito da Corniche', pais: 'Arábia Saudita', cidade: 'Jidá', laps: 50, type: 'rua', curves: 27, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'liso', mm: 1 }, curiosidade: 'Corre pela orla à beira do Mar Vermelho — apesar de ter mais curvas que qualquer outro circuito da temporada, é também um dos mais rápidos do calendário.' },
+    { name: 'Circuito das Palmeiras', pais: 'Estados Unidos', cidade: 'Miami', laps: 57, type: 'misto', curves: 19, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 }, curiosidade: 'Foi montado no estacionamento de um estádio de futebol americano — tem até uma "marina" com iates decorativos, mas o mar de verdade fica longe dali.' },
+    { name: 'Circuito da Ilha Notre', pais: 'Canadá', cidade: 'Montreal', laps: 70, type: 'misto', curves: 14, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 5 }, curiosidade: 'Fica numa ilha artificial no meio de um rio — a ilha foi criada com a terra escavada durante a construção do metrô da cidade.' },
+    { name: 'Circuito das Ruas do Principado', pais: 'Mônaco', cidade: 'Monte Carlo', laps: 78, type: 'rua', curves: 19, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 }, curiosidade: 'Disputado nas ruas apertadas de um dos menores países do mundo, passando bem perto do porto onde ficam ancorados os iates — é o traçado mais estreito da temporada.' },
+    { name: 'Circuito da Vila de Prata', pais: 'Reino Unido', cidade: 'Silverstone', laps: 52, type: 'permanente', curves: 18, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 }, curiosidade: 'Foi erguido em cima de uma antiga base aérea da Segunda Guerra Mundial — partes do traçado ainda seguem o desenho das pistas de pouso originais.' },
+    { name: 'Circuito das Florestas Ardenas', pais: 'Bélgica', cidade: 'Spa', laps: 44, type: 'permanente', curves: 19, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 }, curiosidade: 'Fica no meio de uma floresta tão grande que o clima pode mudar completamente de um lado do circuito pro outro — dá pra chover forte numa curva e estar seco poucos segundos depois.' },
+    { name: 'Circuito do Anel Húngaro', pais: 'Hungria', cidade: 'Budapeste', laps: 70, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'medio', mm: 2 }, curiosidade: 'Fica numa região de colinas perto da capital húngara e costuma ficar coberto de uma poeira fina, já que quase não recebe outro uso durante o resto do ano.' },
+    { name: 'Circuito Vau de Areia', pais: 'Países Baixos', cidade: 'Zandvoort', laps: 72, type: 'permanente', curves: 14, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'liso', mm: 1 }, curiosidade: 'Encostado nas dunas de areia do litoral holandês — o próprio nome da cidade significa "vau de areia" em holandês, e o circuito tem curvas com inclinação, raras na categoria.' },
+    { name: 'Circuito Templo da Velocidade', pais: 'Itália', cidade: 'Monza', laps: 53, type: 'permanente', curves: 11, sentido: 'horário', clima: 'seco', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 }, curiosidade: 'Fica dentro de um parque que já foi propriedade de uma família real — ao lado da pista atual ainda existem os restos abandonados de um antigo autódromo ovalado inclinado, hoje tomado pelo mato.' },
+    { name: 'Circuito Urbano da Capital', pais: 'Espanha', cidade: 'Madri', laps: 56, type: 'misto', curves: 20, sentido: 'horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 }, curiosidade: 'Mistura ruas de verdade da capital espanhola com trechos de pista construídos do zero, passando ao lado de um grande centro de convenções.' },
+    { name: 'Circuito da Cidade dos Ventos', pais: 'Azerbaijão', cidade: 'Baku', laps: 51, type: 'rua', curves: 20, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 }, curiosidade: 'A capital do Azerbaijão é apelidada de "cidade dos ventos" por causa das rajadas fortes vindas do mar — o circuito passa colado nas muralhas de pedra da cidade antiga.' },
+    { name: 'Circuito da Baía Noturna', pais: 'Singapura', cidade: 'Marina Bay', laps: 62, type: 'rua', curves: 19, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'difícil', asfalto: { tipo: 'medio', mm: 3 }, curiosidade: 'Foi um dos primeiros circuitos do mundo a receber uma corrida totalmente noturna, sob holofotes — a umidade no ar costuma passar dos 80%, mesmo de noite.' },
+    { name: 'Circuito das Colinas do Texas', pais: 'Estados Unidos', cidade: 'Austin', laps: 56, type: 'permanente', curves: 20, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 4 }, curiosidade: 'A primeira curva sobe uma ladeira bem íngreme logo depois da largada — do alto dela já dá pra avistar o horizonte da cidade ao longe.' },
+    { name: 'Circuito da Grande Altitude', pais: 'México', cidade: 'Cidade do México', laps: 71, type: 'permanente', curves: 17, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 }, curiosidade: 'Fica a mais de 2.200 metros de altitude — o ar rarefeito muda o comportamento aerodinâmico dos carros, e um trecho do traçado passa dentro de um antigo estádio.' },
+    { name: 'Circuito Entre Lagos', pais: 'Brasil', cidade: 'São Paulo', laps: 71, type: 'permanente', curves: 15, sentido: 'anti-horário', clima: 'chuvoso', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 6 }, curiosidade: 'O bairro onde fica leva esse nome porque está cercado por duas represas — o circuito tem um desnível de mais de 40 metros entre o ponto mais alto e o mais baixo.' },
+    { name: 'Circuito da Avenida Dourada', pais: 'Estados Unidos', cidade: 'Las Vegas', laps: 50, type: 'rua', curves: 17, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 }, curiosidade: 'Boa parte do traçado corre bem no meio da avenida principal da cidade, entre os hotéis e cassinos mais famosos — por ser corrida noturna no deserto, a temperatura despenca à noite.' },
+    { name: 'Circuito das Areias do Golfo', pais: 'Catar', cidade: 'Lusail', laps: 57, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 }, curiosidade: 'Erguido do zero no deserto ao norte da capital do país, com iluminação forte o bastante pra correr totalmente de noite.' },
+    { name: 'Circuito da Ilha Dourada', pais: 'Emirados Árabes Unidos', cidade: 'Abu Dhabi', laps: 58, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'liso', mm: 1 }, curiosidade: 'Construído numa ilha artificial, passa ao lado de um hotel de luxo cuja fachada muda de cor à noite — a corrida começa no fim da tarde e termina já escuro.' },
     // -------- históricos famosos (dão variedade extra na rotação) --------
-    { name: 'Circuito das Montanhas Eifel', pais: 'Alemanha', cidade: 'Nürburg', laps: 59, type: 'permanente', curves: 15, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 5 } },
-    { name: 'Circuito do Rio Santerno', pais: 'Itália', cidade: 'Ímola', laps: 62, type: 'permanente', curves: 19, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 5 } },
-    { name: 'Circuito da Floresta Negra', pais: 'Alemanha', cidade: 'Hockenheim', laps: 67, type: 'permanente', curves: 17, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 4 } },
-    { name: 'Circuito do Algarve', pais: 'Portugal', cidade: 'Portimão', laps: 65, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 } },
-    { name: 'Circuito do Planalto Africano', pais: 'África do Sul', cidade: 'Joanesburgo', laps: 67, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
-    { name: 'Circuito do Bósforo', pais: 'Turquia', cidade: 'Istambul', laps: 57, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 } },
-    { name: 'Circuito das Monções', pais: 'Malásia', cidade: 'Sepang', laps: 55, type: 'permanente', curves: 15, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 } },
-    { name: 'Circuito das Montanhas Estírias', pais: 'Áustria', cidade: 'Spielberg', laps: 71, type: 'permanente', curves: 10, sentido: 'horário', clima: 'instável', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 } },
-    { name: 'Circuito do Mistral', pais: 'França', cidade: 'Le Castellet', laps: 53, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 2 } },
-    { name: 'Circuito das Colinas Toscanas', pais: 'Itália', cidade: 'Mugello', laps: 58, type: 'permanente', curves: 15, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 5 } },
+    { name: 'Circuito das Montanhas Eifel', pais: 'Alemanha', cidade: 'Nürburg', laps: 59, type: 'permanente', curves: 15, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'ondulado', mm: 5 }, curiosidade: 'Fica numa região de montanhas cheia de floresta — bem perto existe um trecho de pista tão longo e imprevisível que virou fama mundial como um dos mais desafiadores já construídos.' },
+    { name: 'Circuito do Rio Santerno', pais: 'Itália', cidade: 'Ímola', laps: 62, type: 'permanente', curves: 19, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 5 }, curiosidade: 'Corre praticamente colado ao rio que dá nome à região — é um dos traçados mais antigos e estreitos do calendário, com pouquíssima área de escape.' },
+    { name: 'Circuito da Floresta Negra', pais: 'Alemanha', cidade: 'Hockenheim', laps: 67, type: 'permanente', curves: 17, sentido: 'horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 4 }, curiosidade: 'Fica na borda de uma floresta densa e famosa — a versão original do traçado tinha retas quilométricas cortando o meio do mato, reduzidas numa reforma pra deixar a corrida mais segura.' },
+    { name: 'Circuito do Algarve', pais: 'Portugal', cidade: 'Portimão', laps: 65, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 6 }, curiosidade: 'Perto do litoral do Algarve português, o circuito tem tanto desnível que em alguns trechos o piloto só enxerga a pista depois de passar o topo da subida.' },
+    { name: 'Circuito do Planalto Africano', pais: 'África do Sul', cidade: 'Joanesburgo', laps: 67, type: 'permanente', curves: 16, sentido: 'anti-horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 }, curiosidade: 'Erguido no alto planalto sul-africano, a mais de 1.500 metros de altitude — o ar rarefeito de lá sempre foi um desafio e tanto pros motores.' },
+    { name: 'Circuito do Bósforo', pais: 'Turquia', cidade: 'Istambul', laps: 57, type: 'permanente', curves: 14, sentido: 'anti-horário', clima: 'instável', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 3 }, curiosidade: 'Fica perto do estreito que separa a Europa da Ásia — tem uma curva famosa de várias fases seguidas, já eleita uma das melhores do mundo.' },
+    { name: 'Circuito das Monções', pais: 'Malásia', cidade: 'Sepang', laps: 55, type: 'permanente', curves: 15, sentido: 'horário', clima: 'chuvoso', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 }, curiosidade: 'No meio da vegetação tropical malaia, é famoso por pancadas de chuva de monção que aparecem do nada e transformam a pista em poucos minutos.' },
+    { name: 'Circuito das Montanhas Estírias', pais: 'Áustria', cidade: 'Spielberg', laps: 71, type: 'permanente', curves: 10, sentido: 'horário', clima: 'instável', ultrapassagem: 'fácil', asfalto: { tipo: 'medio', mm: 2 }, curiosidade: 'Cercado pelas montanhas de uma região austríaca, é um dos traçados mais curtos do calendário — a paisagem alpina fica visível de qualquer ponto da pista.' },
+    { name: 'Circuito do Mistral', pais: 'França', cidade: 'Le Castellet', laps: 53, type: 'permanente', curves: 15, sentido: 'horário', clima: 'seco', ultrapassagem: 'média', asfalto: { tipo: 'medio', mm: 2 }, curiosidade: 'Batizado por causa do vento forte e seco que sopra pelo sul da França — a região é tão ventosa que virou até parque de geração de energia eólica.' },
+    { name: 'Circuito das Colinas Toscanas', pais: 'Itália', cidade: 'Mugello', laps: 58, type: 'permanente', curves: 15, sentido: 'horário', clima: 'instável', ultrapassagem: 'difícil', asfalto: { tipo: 'ondulado', mm: 5 }, curiosidade: 'Encravado nas colinas da Toscana, entre vinhedos, é um dos traçados mais rápidos e ondulados da temporada, seguindo o relevo natural da região.' },
   ];
 
   const CLIMATE_RAIN_CHANCE = { seco: 0.08, instável: 0.28, chuvoso: 0.5 };
@@ -156,6 +160,7 @@
         clima: circuit.clima,
         ultrapassagem: circuit.ultrapassagem,
         asfalto: circuit.asfalto,
+        curiosidade: circuit.curiosidade,
         hasSprint: sprintSet.has(i),
         hasFailureEvent: failureSet.has(i),
         sessions,
@@ -191,7 +196,15 @@
     if (!state.weekends) return false;
     let changed = false;
     state.weekends.forEach((w, i) => {
-      if (w.pais && w.cidade && w.asfalto) return;
+      // save já migrado antes (tem pais/cidade/asfalto) mas ainda sem a
+      // curiosidade (campo novo) — completa só isso, sem reprocessar tudo
+      if (w.pais && w.cidade && w.asfalto) {
+        if (!w.curiosidade) {
+          const found = CIRCUIT_POOL.find((c) => c.name === w.circuit);
+          if (found && found.curiosidade) { w.curiosidade = found.curiosidade; changed = true; }
+        }
+        return;
+      }
       const src = CIRCUIT_POOL.find((c) => c.name === w.circuit) || CIRCUIT_POOL[i % CIRCUIT_POOL.length];
       w.circuit = src.name;
       w.pais = src.pais;
@@ -203,6 +216,7 @@
       w.clima = src.clima;
       w.ultrapassagem = src.ultrapassagem;
       w.asfalto = src.asfalto;
+      w.curiosidade = src.curiosidade;
       changed = true;
     });
     return changed;

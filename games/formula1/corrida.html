@@ -70,6 +70,12 @@
   .circuit-shape-wrap { display: flex; justify-content: center; margin-bottom: 10px; background: #0f231a; border-radius: 10px; padding: 8px; }
   #circuit-shape-preview { max-width: 100%; height: auto; }
 
+  .circuit-curiosidade {
+    margin-top: 10px; padding: 10px 12px; background: #0f231a; border-left: 3px solid #ffd54a;
+    border-radius: 0 8px 8px 0; font-size: 0.76rem; color: #cfeede; line-height: 1.4;
+  }
+  .circuit-curiosidade::before { content: '💡 '; }
+
   .fuel-table { margin-top: 10px; border-top: 1px solid #345c48; padding-top: 10px; }
   .fuel-row { display: flex; justify-content: space-between; font-size: 0.76rem; padding: 4px 0; color: #cfeede; }
   .fuel-row b { color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
@@ -170,6 +176,7 @@
         <canvas id="circuit-shape-preview" width="260" height="160"></canvas>
       </div>
       <div class="circuit-data-grid" id="circuit-data-grid"></div>
+      <p id="circuit-curiosidade" class="circuit-curiosidade hidden"></p>
     </div>
 
     <div id="setup-panel" class="panel hidden">
@@ -448,6 +455,11 @@
       grid.innerHTML = items.map(([label, value]) => (
         '<div class="circuit-data-item"><div class="circuit-data-label">' + label + '</div><div class="circuit-data-value">' + value + '</div></div>'
       )).join('');
+      const curiosidadeEl = document.getElementById('circuit-curiosidade');
+      if (curiosidadeEl) {
+        curiosidadeEl.textContent = w.curiosidade || '';
+        curiosidadeEl.classList.toggle('hidden', !w.curiosidade);
+      }
       panel.classList.remove('hidden');
       const rainChance = Math.round((window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[w.clima] || 0.2) * 100);
       const hint = document.getElementById('strategy-hint');
