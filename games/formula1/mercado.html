@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Fórmula 1 — Mercado de Pilotos</title>
+<script>
+  // se o navegador restaurar essa página do cache de voltar/avançar
+  // (bfcache), os dados podem estar velhos (ex: orçamento/temporada
+  // mudou em outra aba) — recarrega pra pegar o localStorage atual
+  window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="escuderia.css">
+<style>
+  .market-header { display: flex; align-items: center; justify-content: space-between; margin: 14px 14px 8px; }
+  .market-header h2 { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 0.92rem; color: #ffd54a; }
+  .market-header .reroll-btn { position: static; }
+
+  .driver-card { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  .driver-card .dept-name { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 0.98rem; }
+  .driver-head { display: flex; align-items: center; gap: 10px; }
+  .driver-flag { font-size: 1.6rem; }
+  .driver-role { font-size: 0.68rem; color: #9fd8b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .driver-traits { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .trait-chip { font-size: 0.62rem; background: #0e1c15; border: 1px solid #345c48; color: #cfeede; padding: 2px 6px; border-radius: 8px; }
+  .driver-stats { display: flex; gap: 10px; font-size: 0.72rem; color: #cfeede; flex-wrap: wrap; }
+  .driver-actions { display: flex; gap: 8px; }
+  .driver-actions button { flex: 1; }
+  .empty-market-note { margin: 0 14px 14px; font-size: 0.78rem; color: #9fd8b8; }
+</style>
+</head>
+<body>
+  <div class="clube-wrap">
+    <div class="clube-topbar">
+      <a class="back-btn" href="index.html">←</a>
+      <h1>Mercado de Pilotos</h1>
+    </div>
+
+    <div class="budget-card">
+      <span class="budget-label">Caixa da equipe</span>
+      <span class="budget-value" id="budget-value">R$ 0</span>
+    </div>
+
+    <div class="campus-tier-note" style="margin:14px;">Contrate pilotos pro seu elenco — eles entram como reserva. Pra colocar alguém como 1º ou 2º piloto, troque a função na tela de Pilotos depois de contratar. Dispensa só é permitida com o piloto na reserva (troque a função antes, se for o caso).</div>
+
+    <div class="market-header">
+      <h2>🔍 Candidatos disponíveis</h2>
+      <button class="reroll-btn" id="market-reroll" title="Ver outros candidatos">🔄</button>
+    </div>
+    <div class="dept-list" id="market-list"></div>
+
+    <h2 class="section-title" style="margin:18px 14px 8px;">Seu elenco</h2>
+    <div class="dept-list" id="squad-list"></div>
+  </div>
+
+  <script src="pilotos.js"></script>
+  <script src="equipe.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const P = window.WSPF1Pilotos;
+    const Equipe = window.WSPF1Equipe;
+    const equipe = P.loadSquad();
+    const club = Equipe.loadClub();
+
+    const MARKET_SIZE = 6;
+    let candidates = P.generateCandidates(MARKET_SIZE);
+
+    const budgetEl = document.getElementById('budget-value');
+    const marketListEl = document.getElementById('market-list');
+    const squadListEl = document.getElementById('squad-list');
+
+    function formatMoney(n) {
+      return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
+    }
+
+    function flagFor(code) {
+      const nat = P.NATIONALITIES.find((n) => n.key === code);
+      return nat ? nat.flag : '🏳️';
+    }
+
+    function traitsRowFor(traits) {
+      if (!traits || !traits.length) return null;
+      const row = document.createElement('div');
+      row.className = 'driver-traits';
+      traits.forEach((t) => {
+        const chip = document.createElement('span');
+        chip.className = 'trait-chip';
+        chip.textContent = P.TRAITS[t] ? P.TRAITS[t].label : t;
+        row.appendChild(chip);
+      });
+      return row;
+    }
+
+    function buildDriverCard(d) {
+      const card = document.createElement('div');
+      card.className = 'dept-card driver-card';
+
+      const head = document.createElement('div');
+      head.className = 'driver-head';
+      const flag = document.createElement('div');
+      flag.className = 'driver-flag';
+      flag.textContent = flagFor(d.nationality);
+      head.appendChild(flag);
+      const info = document.createElement('div');
+      info.style.flex = '1';
+      const roleEl = document.createElement('div');
+      roleEl.className = 'driver-role';
+      roleEl.textContent = P.CAREER_STAGES[P.careerStageFor(d.age)].label + (d.role ? ' · ' + P.ROLES[d.role].label : '');
+      info.appendChild(roleEl);
+      const name = document.createElement('div');
+      name.className = 'dept-name';
+      name.textContent = d.name;
+      info.appendChild(name);
+      head.appendChild(info);
+      card.appendChild(head);
+
+      const traitsRow = traitsRowFor(d.traits);
+      if (traitsRow) card.appendChild(traitsRow);
+
+      const stats = document.createElement('div');
+      stats.className = 'driver-stats';
+      stats.innerHTML = '<span>⭐ ' + d.rating + '</span><span>🎂 ' + d.age + ' anos</span>'
+        + '<span>📈 POT ' + d.potential + '</span><span>💰 ' + formatMoney(d.salary) + '/corrida</span>';
+      card.appendChild(stats);
+
+      return card;
+    }
+
+    function renderMarket() {
+      marketListEl.innerHTML = '';
+      if (!candidates.length) {
+        const note = document.createElement('div');
+        note.className = 'empty-market-note';
+        note.textContent = 'Nenhum candidato agora — toque em 🔄 pra atualizar o mercado.';
+        marketListEl.appendChild(note);
+        return;
+      }
+      candidates.forEach((c) => {
+        const card = buildDriverCard(c);
+        const actions = document.createElement('div');
+        actions.className = 'driver-actions';
+        const signBtn = document.createElement('button');
+        signBtn.className = 'upgrade-btn';
+        signBtn.textContent = 'Contratar — ' + formatMoney(c.fee);
+        signBtn.disabled = club.budget < c.fee;
+        signBtn.addEventListener('click', () => {
+          if (club.budget < c.fee) return;
+          club.budget -= c.fee;
+          Equipe.saveClub(club);
+          P.signPlayer(equipe, c);
+          candidates = candidates.filter((x) => x.id !== c.id);
+          render();
+        });
+        actions.appendChild(signBtn);
+        card.appendChild(actions);
+        marketListEl.appendChild(card);
+      });
+    }
+
+    function renderSquad() {
+      squadListEl.innerHTML = '';
+      const order = { titular_1: 0, titular_2: 1, reserva: 2 };
+      equipe.drivers.slice().sort((a, b) => order[a.role] - order[b.role]).forEach((d) => {
+        const card = buildDriverCard(d);
+        const actions = document.createElement('div');
+        actions.className = 'driver-actions';
+        const cost = P.releaseCost(d);
+        const dismissBtn = document.createElement('button');
+        dismissBtn.className = 'reroll-btn';
+        const isReserva = d.role === 'reserva';
+        dismissBtn.textContent = 'Dispensar — ' + formatMoney(cost);
+        dismissBtn.disabled = !isReserva || club.budget < cost;
+        dismissBtn.title = isReserva ? '' : 'Só dá pra dispensar quem está na reserva — troque a função na tela de Pilotos primeiro.';
+        dismissBtn.addEventListener('click', () => {
+          if (!confirm('Dispensar ' + d.name + ' por ' + formatMoney(cost) + ' de rescisão?')) return;
+          club.budget -= cost;
+          Equipe.saveClub(club);
+          P.releasePlayer(equipe, d.id);
+          render();
+        });
+        actions.appendChild(dismissBtn);
+        card.appendChild(actions);
+        squadListEl.appendChild(card);
+      });
+    }
+
+    function render() {
+      budgetEl.textContent = formatMoney(club.budget);
+      renderMarket();
+      renderSquad();
+    }
+
+    document.getElementById('market-reroll').addEventListener('click', () => {
+      candidates = P.generateCandidates(MARKET_SIZE);
+      renderMarket();
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>
