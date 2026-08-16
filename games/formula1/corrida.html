@@ -513,7 +513,11 @@
       const compoundRow = document.getElementById('compound-row');
       compoundRow.innerHTML = '';
       const compounds = window.WSPF1Corrida.TIRE_COMPOUNDS;
-      Object.keys(compounds).filter((k) => k === 'macio' || k === 'medio' || k === 'duro').forEach((key) => {
+      // CORREÇÃO (bug real reportado pelo usuário): só mostrava os 3
+      // compostos de piso seco pra largada, mesmo quando o clima previsto
+      // era chuvoso — agora mostra os 5 (inclui intermediário/chuva), o
+      // jogador decide com base na % de chance de chuva já exibida acima
+      Object.keys(compounds).forEach((key) => {
         const c = compounds[key];
         const btn = document.createElement('button');
         btn.className = 'compound-btn' + (key === strategy.compound ? ' selected' : '');
@@ -714,16 +718,24 @@
     // rua/misto/permanente). Rua = mais pontos, mais "dentes" pra dentro
     // (chicanes), body angular (linha reta entre pontos). Permanente = menos
     // perturbação, curvas suaves (Catmull-Rom).
+    // CORREÇÃO (bug real reportado pelo usuário): a perturbação de raio era
+    // pequena demais (0.15-0.36) — depois de suavizado pelo Catmull-Rom, o
+    // traçado sempre saía parecendo uma elipse levemente ondulada, mesmo
+    // pra circuitos anunciados com 19 curvas. Agora a perturbação é bem
+    // maior e todo tipo de circuito (não só rua) ganha chance de "dente"
+    // (curva fechada de verdade puxando bem pra dentro, tipo Eau Rouge/
+    // La Source em Spa), pra o desenho refletir a quantidade de curvas.
     function buildTrackShape(circuitName, circuitType, curveCount, sentido) {
       const rng = seededRng((circuitName || 'circuito') + '|' + (circuitType || ''));
-      const n = Math.max(9, Math.min(16, Math.round((curveCount || 14) * 0.62)));
+      const n = Math.max(10, Math.min(18, Math.round((curveCount || 14) * 0.75)));
       const isStreet = circuitType === 'rua';
-      const wobble = isStreet ? 0.36 : (circuitType === 'misto' ? 0.24 : 0.15);
+      const wobble = isStreet ? 0.55 : (circuitType === 'misto' ? 0.5 : 0.42);
+      const spikeChance = isStreet ? 0.35 : 0.22;
       const points = [];
       for (let i = 0; i < n; i++) {
         const angle = (i / n) * Math.PI * 2;
         let radius = 1 - wobble / 2 + rng() * wobble;
-        if (isStreet && rng() < 0.3) radius *= 0.6; // chicane: dente mais fundo pra dentro
+        if (rng() < spikeChance) radius *= 0.45 + rng() * 0.15; // curva fechada de verdade
         points.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius * 0.72 });
       }
       // sentido anti-horário: espelha o contorno no eixo x
