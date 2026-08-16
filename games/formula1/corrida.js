@@ -53,13 +53,28 @@
     return supplier.profile[axis] != null ? supplier.profile[axis] : 1;
   }
 
+  // CORREÇÃO (pedido explícito do usuário — "não pode ser o fator
+  // decisivo"): TIRE_SUPPLIERS guarda a porcentagem EXIBIDA (banda
+  // 86%-98%, regra global de fornecedores), mas usar esse número cru
+  // como multiplicador direto de grip dava até 12% de diferença só pelo
+  // fornecedor de pneu — grande demais pra um "tempero", já que o pneu
+  // sozinho já teria mais peso que motor+chassi juntos. Comprime a mesma
+  // banda 86-98% num multiplicador estreito (~0.97 a ~1.03), mesma escala
+  // usada pro rendimento de motor e pro efeito de chassi.
+  function tireSupplierEffectFactor(supplierKey, compoundKey) {
+    const raw = tireSupplierFactor(supplierKey, compoundKey);
+    const pct = Math.round(raw * 100);
+    const clamped = Math.max(86, Math.min(98, pct));
+    return 0.97 + ((clamped - 86) / (98 - 86)) * 0.06;
+  }
+
   function tireEffectiveGrip(compoundKey, weatherKey, supplierKey) {
     const compound = TIRE_COMPOUNDS[compoundKey];
     const weather = WEATHER_CONDITIONS[weatherKey];
     if (!compound || !weather) return compound ? compound.gripFactor : 1;
     const ideal = weather.idealTires.includes(compoundKey);
     const base = ideal ? compound.gripFactor : compound.gripFactor * (1 - TIRE_MISMATCH_PENALTY);
-    return supplierKey ? base * tireSupplierFactor(supplierKey, compoundKey) : base;
+    return supplierKey ? base * tireSupplierEffectFactor(supplierKey, compoundKey) : base;
   }
 
   // desgaste acumulado (%) depois de N voltas com o composto — 100% = precisa trocar
@@ -104,23 +119,35 @@
   // ---------- Tempo de parada no box ----------
   // melhorar a estrutura de boxes (mecânicos + telemetria) e a engenharia
   // (motor/chassi/aerodinâmica) reduz o tempo parado — é o retorno concreto
-  // de investir em "peças do carro" que o usuário pediu
-  const PIT_STOP_BASE_MS = 25000; // nível 0 nos dois grupos
-  const PIT_STOP_MIN_MS = 9000; // nível 20 nos dois grupos
+  // de investir em "peças do carro" que o usuário pediu.
+  // CORREÇÃO (bug real reportado pelo usuário): a corrida roda num relógio
+  // COMPRIMIDO — a corrida inteira (44 a 78 voltas) cabe em raceRealMs
+  // (5min por padrão), então 1 volta "comprimida" dura só uns 5-6s. Um
+  // valor fixo de 25000ms (25s reais de pit real) nesse relógio custava
+  // 4-5 VOLTAS inteiras de chão, não uma fração de volta como na F1 de
+  // verdade (pit real ~20-25s contra volta de ~80-100s = 20-30% de uma
+  // volta). Agora o tempo de pit é uma FRAÇÃO da volta média da própria
+  // corrida (avgLapMs = raceRealMs/totalLaps), então sempre custa uma
+  // fatia de volta plausível, não múltiplas voltas inteiras.
+  const PIT_STOP_LAP_FRACTION_MAX = 0.40; // nível 0 nos dois grupos
+  const PIT_STOP_LAP_FRACTION_MIN = 0.12; // nível 20 nos dois grupos
+  const DEFAULT_AVG_LAP_MS = 5400; // fallback quando avgLapMs não é informado
 
-  function pitStopMs(boxesLevel, engenhariaLevel) {
+  function pitStopMs(boxesLevel, engenhariaLevel, avgLapMs) {
     const boxes = Math.max(0, Math.min(20, boxesLevel || 0));
     const engenharia = Math.max(0, Math.min(20, engenhariaLevel || 0));
     const weightedLevel = boxes * 0.7 + engenharia * 0.3;
-    const t = PIT_STOP_BASE_MS - (PIT_STOP_BASE_MS - PIT_STOP_MIN_MS) * (weightedLevel / 20);
-    return Math.round(t);
+    const frac = PIT_STOP_LAP_FRACTION_MAX - (PIT_STOP_LAP_FRACTION_MAX - PIT_STOP_LAP_FRACTION_MIN) * (weightedLevel / 20);
+    const lapMs = avgLapMs != null ? avgLapMs : DEFAULT_AVG_LAP_MS;
+    return Math.round(lapMs * frac);
   }
 
-  function pitStopMsForClub(club) {
-    if (!club || !window.WSPF1Equipe) return PIT_STOP_BASE_MS;
+  function pitStopMsForClub(club, avgLapMs) {
+    const lapMs = avgLapMs != null ? avgLapMs : DEFAULT_AVG_LAP_MS;
+    if (!club || !window.WSPF1Equipe) return Math.round(lapMs * PIT_STOP_LAP_FRACTION_MAX);
     const boxesLevel = window.WSPF1Equipe.facilityGroupLevel(club, 'boxes');
     const engenhariaLevel = window.WSPF1Equipe.facilityGroupLevel(club, 'engenharia');
-    return pitStopMs(boxesLevel, engenhariaLevel);
+    return pitStopMs(boxesLevel, engenhariaLevel, lapMs);
   }
 
   // ---------- Falhas mecânicas e batidas ----------
@@ -370,9 +397,9 @@
 
   window.WSPF1Corrida = {
     TIRE_COMPOUNDS, WEATHER_CONDITIONS, TIRE_MISMATCH_PENALTY, TIRE_SUPPLIERS,
-    tireEffectiveGrip, tireSupplierFactor, calcTireWear, calcStintLaps,
+    tireEffectiveGrip, tireSupplierFactor, tireSupplierEffectFactor, calcTireWear, calcStintLaps,
     FUEL_BASE_CONSUMPTION_PER_LAP, FUEL_SAFETY_MARGIN_PCT, calcFuelNeeded, calcFuelForStint, motorFuelMult,
-    PIT_STOP_BASE_MS, PIT_STOP_MIN_MS, pitStopMs, pitStopMsForClub,
+    PIT_STOP_LAP_FRACTION_MAX, PIT_STOP_LAP_FRACTION_MIN, DEFAULT_AVG_LAP_MS, pitStopMs, pitStopMsForClub,
     FAILURE_TYPES, SEASON_FAILURE_EVENTS_MIN, SEASON_FAILURE_EVENTS_MAX,
     scheduleFailureEvents, failureChanceForRace, rollFailureType, pickAffectedEntrant,
     CAMBIO_RELIABILITY_MIN, CAMBIO_RELIABILITY_MAX, cambioReliabilityMult,

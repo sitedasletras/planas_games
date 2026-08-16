@@ -37,10 +37,10 @@
     return null; // seco: qualquer composto "seco" serve, IA não força nada
   }
 
-  function pitStopMsForCar(car, opts) {
+  function pitStopMsForCar(car, opts, avgLapMs) {
     if (opts.pitStopMsByTeam && opts.pitStopMsByTeam[car.teamId] != null) return opts.pitStopMsByTeam[car.teamId];
     const lvl = ((car.motorLevel || 0) + (car.chassiLevel || 0)) / 2;
-    return C() ? C().pitStopMs(lvl, lvl) : 20000;
+    return C() ? C().pitStopMs(lvl, lvl, avgLapMs) : Math.round((avgLapMs || 5400) * 0.3);
   }
 
   // entrants já devem vir ordenados pela posição de largada (grid da classificatória)
@@ -50,32 +50,63 @@
     const fullFuelKg = C() ? C().calcFuelNeeded(totalLaps) : totalLaps * 2;
     // reabastecimento planejado, sprint (binário, corridas curtas não
     // precisam de granularidade) OU corrida principal com volta-alvo
-    // explícita (opts.fuelTargetLap) — o jogador escolhe até que volta
-    // quer rodar com aquele tanque, o carro sai mais leve/rápido e é
-    // OBRIGADO a parar pra reabastecer + trocar pneu nessa volta
+    // explícita — o jogador escolhe até que volta quer rodar com aquele
+    // tanque, o carro sai mais leve/rápido e é OBRIGADO a parar pra
+    // reabastecer + trocar pneu nessa volta
     const refuelPlan = opts.isSprint ? (opts.refuelPlan || 'none') : 'none';
-    const fuelTargetLap = opts.fuelTargetLap != null
-      ? Math.max(1, Math.min(totalLaps - 1, Math.round(opts.fuelTargetLap)))
-      : null;
+    const defaultDrivingStyle = C() ? C().defaultDrivingStyle() : 'equilibrado';
     // teto de segurança: mesmo que o composto escolhido "aguentasse" a
     // corrida toda (folga de acerto/estilo), ninguém corre sem parar —
     // pelo menos 1 parada em 75% da corrida, o mais tardar
-    const tireStintCap = C() ? C().calcStintLaps(opts.startCompound || 'medio', 90) : Math.floor(totalLaps * 0.6);
     const hardStopCap = Math.max(1, Math.floor(totalLaps * 0.75));
-    const defaultPlannedPitLap = opts.isSprint
-      ? null
-      : Math.min(hardStopCap, tireStintCap);
+
+    // cada carro do jogador pode ter composto/volta-alvo/estilo PRÓPRIOS
+    // (opts.playerStrategies, chave = id do entrant) — pedido explícito do
+    // usuário: os dois pilotos não são obrigados a rodar o mesmo plano.
+    // Essa tabela projeta só a 1ª parada; da segunda em diante quem manda
+    // é o pedido manual do jogador durante a corrida (requestPit). Rival
+    // sem estratégia específica usa composto neutro e plano por desgaste
+    // de pneu — não copia a escolha do jogador.
+    function strategyForEntrant(e) {
+      const custom = (e.isPlayer && opts.playerStrategies) ? opts.playerStrategies[e.id] : null;
+      if (custom) {
+        return {
+          startCompound: custom.startCompound || opts.startCompound || 'medio',
+          fuelTargetLap: custom.fuelTargetLap != null
+            ? Math.max(1, Math.min(totalLaps - 1, Math.round(custom.fuelTargetLap)))
+            : null,
+          drivingStyle: (custom.drivingStyle && C() && C().DRIVING_STYLES[custom.drivingStyle]) ? custom.drivingStyle : defaultDrivingStyle,
+        };
+      }
+      // sem plano específico pra este carro: pro jogador ainda respeita
+      // opts.startCompound/fuelTargetLap/drivingStyle no nível raiz (chamador
+      // simples, sem playerStrategies — ex.: sessões de teste), rival nunca
+      // copia a escolha do jogador
+      return {
+        startCompound: e.isPlayer ? (opts.startCompound || 'medio') : 'medio',
+        fuelTargetLap: e.isPlayer && opts.fuelTargetLap != null
+          ? Math.max(1, Math.min(totalLaps - 1, Math.round(opts.fuelTargetLap)))
+          : null,
+        drivingStyle: e.isPlayer && opts.drivingStyle && C() && C().DRIVING_STYLES[opts.drivingStyle]
+          ? opts.drivingStyle
+          : defaultDrivingStyle,
+      };
+    }
 
     const cars = entrants.map((e, i) => {
+      const strategy = strategyForEntrant(e);
+      const tireStintCap = C() ? C().calcStintLaps(strategy.startCompound, 90) : Math.floor(totalLaps * 0.6);
+      const defaultPlannedPitLap = opts.isSprint ? null : Math.min(hardStopCap, tireStintCap);
+
       let startFuel = fullFuelKg;
       let plannedPitLap = defaultPlannedPitLap;
       if (refuelPlan === 'planned') {
         startFuel = Math.round(fullFuelKg * 0.5);
         plannedPitLap = Math.max(1, Math.floor(totalLaps / 2));
-      } else if (fuelTargetLap) {
-        const fuelForTarget = C() ? C().calcFuelForStint(fuelTargetLap) : fullFuelKg * (fuelTargetLap / totalLaps);
+      } else if (strategy.fuelTargetLap) {
+        const fuelForTarget = C() ? C().calcFuelForStint(strategy.fuelTargetLap) : fullFuelKg * (strategy.fuelTargetLap / totalLaps);
         startFuel = Math.min(fullFuelKg, Math.round(fuelForTarget * 1.05)); // pequena margem, não seca na hora
-        plannedPitLap = defaultPlannedPitLap != null ? Math.min(defaultPlannedPitLap, fuelTargetLap) : fuelTargetLap;
+        plannedPitLap = defaultPlannedPitLap != null ? Math.min(defaultPlannedPitLap, strategy.fuelTargetLap) : strategy.fuelTargetLap;
       }
       return {
         id: e.id,
@@ -93,7 +124,7 @@
         grid: i,
         lapsCompleted: 0,
         distance: 0,
-        tireCompound: opts.startCompound || 'medio',
+        tireCompound: strategy.startCompound,
         tireWear: 0,
         fuelKg: startFuel,
         pitting: false,
@@ -102,13 +133,16 @@
         lastPitDurationSec: null,
         pitStopsDone: 0,
         plannedPitLap,
-        fuelPlanned: e.isPlayer && (refuelPlan === 'planned' || !!fuelTargetLap),
+        fuelPlanned: e.isPlayer && (refuelPlan === 'planned' || !!strategy.fuelTargetLap),
         pendingPitCompound: null,
         pendingRefuel: false,
         retired: false,
         retiredReason: null,
         finishedAt: null,
         displaySpeedKmh: 0,
+        // estilo de pilotagem É POR CARRO agora — ajustável ao vivo (ver
+        // setDrivingStyle) individualmente pra cada piloto do jogador
+        drivingStyle: strategy.drivingStyle,
       };
     });
 
@@ -153,19 +187,18 @@
       finished: false,
       log: [],
       pitStopMsByTeam: opts.pitStopMsByTeam || null,
-      // estilo de pilotagem do jogador — ajustável AO VIVO durante a
-      // corrida (setDrivingStyle), não só fixado na largada
-      playerDrivingStyle: (opts.drivingStyle && C() && C().DRIVING_STYLES[opts.drivingStyle])
-        ? opts.drivingStyle
-        : (C() ? C().defaultDrivingStyle() : 'equilibrado'),
     };
   }
 
-  // chamada externa: muda o estilo de pilotagem do jogador em tempo real,
-  // no meio da corrida — o próximo tick de stepRace já aplica o novo ritmo/
-  // desgaste/consumo, sem precisar recriar o raceState
-  function setDrivingStyle(state, style) {
-    if (C() && C().DRIVING_STYLES[style]) state.playerDrivingStyle = style;
+  // chamada externa: muda o estilo de pilotagem de UM carro específico em
+  // tempo real, no meio da corrida — o próximo tick de stepRace já aplica
+  // o novo ritmo/desgaste/consumo, sem precisar recriar o raceState. Cada
+  // carro do jogador tem seu próprio estilo (car.drivingStyle), não é mais
+  // um valor único pros dois pilotos.
+  function setDrivingStyle(state, carId, style) {
+    if (!C() || !C().DRIVING_STYLES[style]) return;
+    const car = state.cars.find((c) => c.id === carId);
+    if (car) car.drivingStyle = style;
   }
 
   function pushLog(state, text) {
@@ -210,7 +243,12 @@
 
   function startPit(car, state, opts) {
     car.pitting = true;
-    car.pitMsRemaining = pitStopMsForCar(car, opts) + (car.pendingRefuel ? 3000 : 0);
+    const avgLapMs = state.raceRealMs / state.totalLaps;
+    // reabastecer custa um tempinho a mais parado, mas também numa fração
+    // plausível da volta (não um valor fixo desalinhado do relógio
+    // comprimido) — ~6% de uma volta média
+    const refuelMs = car.pendingRefuel ? Math.round(avgLapMs * 0.06) : 0;
+    car.pitMsRemaining = pitStopMsForCar(car, opts, avgLapMs) + refuelMs;
     car.pitTotalMs = car.pitMsRemaining; // usado pela tela pra desenhar o carro andando no pit lane
     if (car.isPlayer) pushLog(state, '🔧 ' + car.driverName + ' entra nos boxes.');
   }
@@ -262,9 +300,10 @@
       }
 
       // fatores do estilo de pilotagem só valem pro jogador, e são lidos do
-      // state a cada tick (não fixados na largada) — mudar de estilo ao
-      // vivo já reflete no próximo tick
-      const style = car.isPlayer && C() ? state.playerDrivingStyle : null;
+      // PRÓPRIO CARRO a cada tick (não fixados na largada, e não mais um
+      // valor único pros dois pilotos) — mudar de estilo ao vivo já
+      // reflete no próximo tick, só pro carro em questão
+      const style = car.isPlayer && C() ? car.drivingStyle : null;
       const stylePaceFactor = style ? C().drivingStylePaceFactor(style) : 1;
       const styleWearMult = style ? C().drivingStyleWearMult(style) : 1;
       const styleFuelMult = style ? C().drivingStyleFuelMult(style) : 1;

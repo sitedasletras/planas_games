@@ -103,10 +103,21 @@
 
   // Ritmo do time do jogador: sobe com os níveis de motor/chassi/aerodinâmica —
   // é o retorno de investir na escuderia refletido direto na pista.
+  // CORREÇÃO (pedido explícito do usuário): a fórmula antiga partia de 58 e
+  // só chegava perto do grid com departamentos bem avançados — só que os
+  // times rivais SEMPRE vivem na banda 88-97 (generateRivalTeam em grid.js),
+  // não importa o nível deles (o nível deles NÃO afeta o próprio ritmo, só
+  // confiabilidade). Um jogador em início de temporada (motor baixo) ficava
+  // muito pra trás, virando "3 voltas de diferença em 13". Agora o
+  // jogador nível 0 já entra perto do MEIO da banda dos rivais (não no
+  // piso) — uma equipe nova não é necessariamente pior que a média do
+  // grid — e o desenvolvimento leva até o topo da banda (97), o mesmo
+  // teto que o rival mais rápido pode ter.
   function playerTeamPace(club) {
     const dep = (club && club.departments) || {};
     const motor = dep.motor || 0, chassi = dep.chassi || 0, aero = dep.aerodinamica || 0;
-    return Math.min(99, 58 + (motor + chassi + aero) * 0.75);
+    const sum = Math.min(60, motor + chassi + aero); // 3 departamentos, 0-20 cada, teto 60
+    return 91 + (sum / 60) * 6;
   }
 
   // fator de rendimento do motor nesta temporada — motores oscilam de uma
@@ -146,16 +157,27 @@
       const motorLevel = club.departments.motor || 0;
       const chassiLevel = club.departments.chassi || 0;
       const motorFactor = motorFactorFor(club.motorSupplier);
-      const chassiFactor = window.WSPF1Equipe.chassiPaceFactor(club.chassiSupplier);
+      const chassiFactor = window.WSPF1Equipe.chassiPaceEffectFactor(club.chassiSupplier);
       const setupFactor = setupFactorForPlayer();
       equipe.drivers.filter((d) => d.role !== 'reserva').forEach((d) => {
+        // rivais variam só ±3 de rating em torno do próprio ritmo de
+        // equipe (generateRivalTeam) — usar 0.5 aqui deixava o piloto
+        // sozinho abrir uma diferença bem maior que isso; 0.15 deixa o
+        // piloto pesar sem virar sozinho o fator decisivo da corrida.
+        // TRAVA FINAL (bug real corrigido): motor/chassi/setup multiplicando
+        // em cima do teamPace já ajustado podiam empilhar até ~9% de fuga
+        // (3 fatores de ~3% cada) — mais que a banda 88-97 devia permitir.
+        // Trava o resultado final a no máximo ±3 do teamPace da própria
+        // equipe, pra nenhuma combinação de fatores virar sozinha decisiva.
+        const rawPace = (teamPace + ((d.rating || 65) - 65) * 0.15) * motorFactor * chassiFactor * setupFactor;
+        const cappedPace = Math.max(teamPace - 3, Math.min(teamPace + 3, rawPace));
         entrants.push({
           id: 'player_' + d.id,
           teamId: 'player',
           teamName: equipe.teamName,
           driverName: d.name,
           isPlayer: true,
-          pace: Math.max(40, Math.min(99, teamPace + ((d.rating || 65) - 65) * 0.5) * motorFactor * chassiFactor * setupFactor),
+          pace: Math.max(40, Math.min(99, cappedPace)),
           motorLevel, chassiLevel,
           motorSupplier: club.motorSupplier, tireSupplier: club.tireSupplier, cambioSupplier: club.cambioSupplier,
           traits: d.traits || [],
@@ -165,13 +187,17 @@
     grid.rivals.forEach((r) => {
       const motorFactor = motorFactorFor(r.motorSupplier);
       r.drivers.forEach((d, i) => {
+        // mesma trava do jogador: fica perto do basePace nominal da
+        // própria equipe (r.pace), motor não empilha até virar fuga
+        const rawPace = d.rating * motorFactor;
+        const cappedPace = Math.max(r.pace - 3, Math.min(r.pace + 3, rawPace));
         entrants.push({
           id: r.id + '_' + i,
           teamId: r.id,
           teamName: r.name,
           driverName: d.name,
           isPlayer: false,
-          pace: Math.max(40, Math.min(99, d.rating * motorFactor)),
+          pace: Math.max(40, Math.min(99, cappedPace)),
           motorLevel: r.motorLevel,
           chassiLevel: r.chassiLevel,
           motorSupplier: r.motorSupplier, tireSupplier: r.tireSupplier,

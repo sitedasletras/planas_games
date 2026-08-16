@@ -98,7 +98,6 @@
 
       <div class="session-steps" id="session-steps"></div>
 
-      <button class="primary-btn hidden" id="instant-btn"></button>
       <a class="primary-btn hidden" id="race-link" href="corrida.html"></a>
       <button class="primary-btn hidden" id="new-season-btn">🏆 Iniciar nova temporada</button>
     </div>
@@ -124,14 +123,6 @@
     </div>
   </div>
 
-  <div class="overlay hidden" id="report-overlay">
-    <div class="overlay-card">
-      <div class="overlay-title" id="report-title">Relatório</div>
-      <div class="overlay-sub" id="report-text"></div>
-      <button class="primary-btn" id="report-close-btn">Continuar</button>
-    </div>
-  </div>
-
   <script src="pilotos.js"></script>
   <script src="equipe.js"></script>
   <script src="corrida.js"></script>
@@ -149,10 +140,8 @@
       document.getElementById('season-tag').textContent = 'Temporada ' + state.seasonNumber + ' · Corrida ' + Math.min(state.weekendIndex + 1, Cal.SEASON_RACE_COUNT) + '/' + Cal.SEASON_RACE_COUNT;
 
       const weekend = Cal.currentWeekend(state);
-      const instantBtn = document.getElementById('instant-btn');
       const raceLink = document.getElementById('race-link');
       const newSeasonBtn = document.getElementById('new-season-btn');
-      instantBtn.classList.add('hidden');
       raceLink.classList.add('hidden');
       newSeasonBtn.classList.add('hidden');
 
@@ -197,12 +186,11 @@
           stepsEl.appendChild(step);
         });
 
+        // classificatória agora é sessão AO VIVO igual treino/sprint/corrida
+        // (pedido explícito do usuário: "eu tenho que entrar na pista, cada
+        // um faz seu tempo", não mais um resultado sorteado na hora)
         const type = Cal.currentSessionType(state);
-        if (type === 'classificatoria') {
-          instantBtn.classList.remove('hidden');
-          instantBtn.textContent = 'Rodar ' + Cal.SESSION_TYPES[type].label;
-          instantBtn.onclick = () => runInstant(type, weekend);
-        } else if (type === 'treino_livre' || type === 'sprint' || type === 'corrida') {
+        if (type === 'treino_livre' || type === 'classificatoria' || type === 'sprint' || type === 'corrida') {
           raceLink.classList.remove('hidden');
           raceLink.textContent = 'Ir pra ' + Cal.SESSION_TYPES[type].label;
         }
@@ -223,27 +211,6 @@
         box.appendChild(row);
       });
     }
-
-    function runInstant(type, weekend) {
-      const entrants = window.WSPF1Grid.fullGrid();
-      const order = type === 'treino_livre' ? Cal.resolveFreePractice(entrants) : Cal.resolveQualifying(entrants);
-      Cal.recordSessionResult(state, order);
-
-      const byId = {}; entrants.forEach((e) => { byId[e.id] = e; });
-      const playerPositions = order.map((id, i) => ({ id, i })).filter((x) => byId[x.id] && byId[x.id].isPlayer);
-      const best = playerPositions.length ? Math.min(...playerPositions.map((p) => p.i)) + 1 : null;
-
-      document.getElementById('report-title').textContent = Cal.SESSION_TYPES[type].icon + ' ' + Cal.SESSION_TYPES[type].label;
-      document.getElementById('report-text').textContent = best
-        ? (type === 'classificatoria' ? 'Melhor piloto da equipe larga em ' + best + 'º.' : 'Melhor piloto da equipe terminou o treino em ' + best + 'º.')
-        : 'Sessão concluída.';
-      document.getElementById('report-overlay').classList.remove('hidden');
-    }
-
-    document.getElementById('report-close-btn').addEventListener('click', () => {
-      document.getElementById('report-overlay').classList.add('hidden');
-      render();
-    });
 
     document.getElementById('new-season-btn').addEventListener('click', () => {
       state = Cal.startNewSeason(state);

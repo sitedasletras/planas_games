@@ -281,6 +281,20 @@
     return CHASSIS_PACE_PROFILES[name] != null ? CHASSIS_PACE_PROFILES[name] : 1;
   }
 
+  // CORREÇÃO (pedido explícito do usuário — "não pode ser o fator
+  // decisivo"): CHASSIS_PACE_PROFILES guarda a porcentagem EXIBIDA (banda
+  // 86%-98%, regra global de fornecedores), mas usar esse número cru como
+  // multiplicador de ritmo na física dava até 14% de diferença sozinho —
+  // maior que motor+chassi+pneu juntos deveriam pesar. Esta função
+  // comprime a mesma banda 86-98% num multiplicador bem mais estreito
+  // (~0.97 a ~1.03, igual ao rendimento de motor), então a MARCA continua
+  // valendo a escolha sem decidir a corrida sozinha.
+  function chassiPaceEffectFactor(name) {
+    const pct = Math.round(chassiPaceFactor(name) * 100);
+    const clamped = Math.max(86, Math.min(98, pct));
+    return 0.97 + ((clamped - 86) / (98 - 86)) * 0.06;
+  }
+
   // Fornecedor de câmbio: marca escolhida pelo jogador (contrato de 1
   // temporada, igual motor/chassi/pneu). "Câmbio" já existia como TIPO de
   // pane mecânica ligada ao departamento de chassi — em vez de repetir o
@@ -492,7 +506,7 @@
   window.WSPF1Equipe = {
     DEPARTMENTS, MAX_LEVEL, STARTING_BUDGET, SPONSOR_SLOTS, OTHER_EXPENSES_PER_MATCH,
     PREMIUM_COST, CREST_SHAPES, CREST_EMBLEMS, EXCLUSIVE_CREST_EMBLEMS, EXCLUSIVE_JERSEY_PRESETS, LIVERY_PRESETS, FACILITY_GROUPS, TORCIDA_NAME_MAX,
-    CAMPUS_TIER_CAPS, crestColor, MOTORES, CHASSIS, CHASSIS_PACE_PROFILES, chassiPaceFactor, CAMBIO,
+    CAMPUS_TIER_CAPS, crestColor, MOTORES, CHASSIS, CHASSIS_PACE_PROFILES, chassiPaceFactor, chassiPaceEffectFactor, CAMBIO,
     upgradeCost, effectiveUpgradeCost, groupForDept, loadClub, saveClub, upgradeDepartment, defaultClub,
     acceptSponsor, rerollSponsor, dismissDepartment, payMatchExpenses, payEndOfSeason,
     unlockPremium, saveCustomization,

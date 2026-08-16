@@ -243,6 +243,58 @@ necessidade de retrabalhar nada disso.
    (`cambioLockedSeason`, `setCambioSupplier`). É mecânica só do
    jogador (rivais não têm `cambioSupplier`), mesmo padrão já usado pro
    chassi. UI: novo card "⚙️ Marca do câmbio" em `escuderia.html`.
+8. **[IMPLEMENTADO 16/08] Bateria grande de correções/pedidos do usuário
+   numa sessão só:**
+   - **Bug real de ritmo (jogador ficava voltas inteiras pra trás mesmo
+     cedo na corrida)**: `playerTeamPace` (grid.js) usava uma escala
+     (58-99) incompatível com a banda 88-97 que os rivais sempre vivem
+     (`generateRivalTeam`) — corrigido pra partir de 91 (perto do meio da
+     banda) e ir até 97 com departamentos maxados. Também: chassi/pneu
+     estavam sendo aplicados como multiplicador CRU de 86-98% direto na
+     física (até 14% de diferença sozinho); agora comprimem pra um
+     efeito estreito (~0.97-1.03), igual o rendimento de motor já fazia
+     (`chassiPaceEffectFactor` em equipe.js, `tireSupplierEffectFactor`
+     em corrida.js — a porcentagem exibida continua 86-98%, só o efeito
+     de física ficou pequeno). Trava final de ±3 em volta do pace nominal
+     da própria equipe (jogador E rival) pra nenhuma combinação de
+     fatores empilhar até virar decisiva sozinha.
+   - **Bug real de tempo de pit stop (27s de pit custando 4+ voltas de
+     chão)**: a corrida roda num relógio comprimido (raceRealMs/
+     totalLaps por volta, uns 5-6s), mas `PIT_STOP_BASE_MS`/`MIN_MS`
+     eram valores fixos de 9-25 SEGUNDOS REAIS nesse mesmo relógio —
+     custava várias voltas inteiras. Agora `pitStopMs`/`pitStopMsForClub`
+     recebem `avgLapMs` e o pit custa uma FRAÇÃO de volta (12%-40%
+     conforme boxes/engenharia), do jeito que pit real custa fração de
+     volta na F1 de verdade.
+   - **Estratégia de pit manual**: a "planilha" pré-corrida agora deixa
+     claro que só projeta a 1ª parada; o antigo botão único "Chamar pro
+     pit" (lógica automática de 2 ramos) virou um seletor real de 5
+     compostos por carro (`#driver-controls` em corrida.html) — o
+     jogador escolhe o pneu de CADA parada, quantas quiser, sem mínimo
+     forçado além do que o próprio pneu exige.
+   - **Plano de estratégia por piloto**: composto/volta-alvo de
+     combustível/estilo de pilotagem eram um valor ÚNICO pros dois
+     carros do jogador; agora `corridamotor.js` aceita
+     `opts.playerStrategies` (mapa por id de entrant) e cada carro tem
+     `car.drivingStyle` próprio (`setDrivingStyle` agora recebe carId).
+     UI: abas por piloto na tela de estratégia (`#driver-tab-row`) e um
+     card de controle por carro na corrida ao vivo.
+   - **Desenho do circuito na estratégia**: `#circuit-shape-preview`
+     (canvas) no painel de dados do circuito, reusando `buildTrackShape`/
+     `strokeTrackShape` que o canvas ao vivo já usava.
+   - **Classificatória virou sessão ao vivo** (igual treino livre) em vez
+     de instantânea — `temporada.html` não tem mais botão "Rodar
+     Classificatória" (`instant-btn`/`runInstant` removidos, eram código
+     morto depois da mudança); agora roteia pra `corrida.html` como
+     qualquer sessão ao vivo. `recordSessionResult` (calendario.js) já
+     sabia tratar isso (`if (type === 'classificatoria') w.gridOrder =
+     order`), só faltava a sessão rodar de verdade.
+   - **Pontuação**: já estava correta antes desse pedido — `RACE_POINTS`
+     (25-18-15-12-10-8-6-4-2-1) e `SPRINT_POINTS` (8-7-6-5-4-3-2-1) em
+     `calendario.js` já batem com a pontuação real da F1. Confirmado,
+     nenhuma mudança necessária.
+   - Regressão completa (18 harness Node + Playwright) rodada depois de
+     cada mudança, sem quebrar nada do que já existia.
 
 ## Outras notas importantes
 
