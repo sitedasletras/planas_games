@@ -1,0 +1,343 @@
+name: Aplicar upgrade visual F1
+
+on:
+  push:
+    branches:
+      - visual-f1-upgrade
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Aplicar melhorias visuais
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('games/formula1/corrida.html')
+          text = path.read_text(encoding='utf-8')
+          original = text
+
+          old_render = '''      ctx.clearRect(0, 0, canvas.width, canvas.height);
+          updateEffects();
+
+          const trackGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          trackGradient.addColorStop(0, '#3a6650');
+          trackGradient.addColorStop(1, '#22402f');
+          strokeTrackShape(ctx, cx, cy, rx, ry);
+          ctx.strokeStyle = trackGradient;
+          ctx.lineWidth = 22;
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 8]);
+          strokeTrackShape(ctx, cx, cy, rx, ry);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          drawPitLane(ctx, cx, cy, rx, ry);'''
+
+          if old_render not in text:
+              old_render = '''      ctx.clearRect(0, 0, canvas.width, canvas.height);
+          updateEffects();
+
+          const trackGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          trackGradient.addColorStop(0, '#3a6650');
+          trackGradient.addColorStop(1, '#22402f');
+          strokeTrackShape(ctx, cx, cy, rx, ry);
+          ctx.strokeStyle = trackGradient;
+          ctx.lineWidth = 22;
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 8]);
+          strokeTrackShape(ctx, cx, cy, rx, ry);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          drawPitLane(ctx, cx, cy, rx, ry);'''
+
+          new_render = '''      ctx.clearRect(0, 0, canvas.width, canvas.height);
+          updateEffects();
+
+          // Fundo em faixas, inspirado em áreas gramadas reais de circuitos.
+          for (let y = 0; y < canvas.height; y += 24) {
+            ctx.fillStyle = ((y / 24) % 2 === 0) ? '#2d5a3f' : '#245231';
+            ctx.fillRect(0, y, canvas.width, 24);
+          }
+
+          drawTrackSurface(ctx, cx, cy, rx, ry);
+          drawTrackKerbs(ctx, cx, cy, rx, ry);
+
+          drawPitLane(ctx, cx, cy, rx, ry);'''
+
+          if old_render not in text:
+              raise SystemExit('Bloco principal de renderização não encontrado; nenhuma alteração foi aplicada.')
+          text = text.replace(old_render, new_render, 1)
+
+          marker = '''    function render() {'''
+          helpers = r'''    function drawTrackSurface(ctx, cx, cy, rx, ry) {
+      // Barreira externa.
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.strokeStyle = '#cc3333';
+      ctx.lineWidth = 36;
+      ctx.stroke();
+
+      // Área de escape.
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.strokeStyle = '#b8b0a0';
+      ctx.lineWidth = 30;
+      ctx.stroke();
+
+      // Borda branca e asfalto.
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 25;
+      ctx.stroke();
+
+      const trackGradient = ctx.createLinearGradient(0, 0, ctx.canvas.width, ctx.canvas.height);
+      trackGradient.addColorStop(0, '#3a6650');
+      trackGradient.addColorStop(1, '#22402f');
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.strokeStyle = trackGradient;
+      ctx.lineWidth = 22;
+      ctx.stroke();
+
+      // Tracejado central discreto.
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 8]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      drawStartGrid(ctx, cx, cy, rx, ry);
+    }
+
+    function drawStartGrid(ctx, cx, cy, rx, ry) {
+      const p = pointOnTrack(0, cx, cy, rx, ry);
+      const angle = headingOnTrack(0, rx, ry);
+      const cols = 6, rows = 4;
+      const cellW = 22 / cols, cellH = 12 / rows;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          ctx.fillStyle = ((row + col) % 2 === 0) ? '#ffffff' : '#151515';
+          ctx.fillRect(-6 + col * cellW, -11 + row * cellH, cellW + 0.2, cellH + 0.2);
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawTrackKerbs(ctx, cx, cy, rx, ry) {
+      const arr = currentTrackSampled && currentTrackSampled.samples;
+      if (!arr || arr.length < 6) return;
+      const threshold = 0.34;
+      const step = 3;
+      for (let i = 0; i < arr.length; i += step) {
+        const prev = arr[(i - 2 + arr.length) % arr.length];
+        const cur = arr[i];
+        const next = arr[(i + 2) % arr.length];
+        const ax = cur.x - prev.x, ay = cur.y - prev.y;
+        const bx = next.x - cur.x, by = next.y - cur.y;
+        const al = Math.hypot(ax, ay) || 1, bl = Math.hypot(bx, by) || 1;
+        const dot = Math.max(-1, Math.min(1, (ax * bx + ay * by) / (al * bl)));
+        const curvature = Math.acos(dot);
+        if (curvature < threshold) continue;
+
+        const tx = bx / bl, ty = by / bl;
+        const leftNx = -ty, leftNy = tx;
+        const cross = ax * by - ay * bx;
+        const outerSign = cross > 0 ? -1 : 1;
+        const edgeOffset = 13.2;
+        const cp = mapToCanvas(cur, cx, cy, rx, ry);
+        const scaleX = Math.max(0.5, rx), scaleY = Math.max(0.5, ry);
+        const nx = leftNx * outerSign;
+        const ny = leftNy * outerSign;
+        const edge = { x: cp.x + nx * edgeOffset * scaleX / 2, y: cp.y + ny * edgeOffset * scaleY / 2 };
+        const tangentAngle = Math.atan2(ty * ry, tx * rx);
+
+        ctx.save();
+        ctx.translate(edge.x, edge.y);
+        ctx.rotate(tangentAngle);
+        ctx.fillStyle = ((i / step) % 2 === 0) ? '#cc0000' : '#ffffff';
+        ctx.fillRect(-1.8, -4.5, 3.6, 9);
+        ctx.restore();
+      }
+    }
+
+    function render() {'''
+          if marker not in text:
+              raise SystemExit('Função render não encontrada.')
+          text = text.replace(marker, helpers, 1)
+
+          old_pixels = '''    const CAR_PIXELS = [
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
+      ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
+      ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
+    ];'''
+          new_pixels = '''    const CAR_PIXELS = [
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', 't', '.', '.', '.', 'w', 'w', '.', '.'],
+      ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'i', 'i', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'h', 'h', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'h', 'h', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
+      ['g', 'd', 'd', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
+      ['.', 'd', 'd', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
+    ];'''
+          if old_pixels not in text:
+              raise SystemExit('CAR_PIXELS não encontrado.')
+          text = text.replace(old_pixels, new_pixels, 1)
+
+          text = text.replace("const cell = isPlayer ? 0.95 : 0.74;", "const cell = isPlayer ? 1.1 : 0.85;", 1)
+          old_fill = '''          ctx.fillStyle = px === 'w' ? '#141414'
+            : px === 'c' ? 'rgba(8,8,8,0.9)'
+            : px === 'g' ? colors.wing
+            : px === 'n' ? colors.nose
+            : colors.body;'''
+          new_fill = '''          ctx.fillStyle = px === 'w' ? '#141414'
+            : px === 'c' ? 'rgba(8,8,8,0.9)'
+            : px === 'h' ? '#626a70'
+            : px === 'i' ? '#0b0d0e'
+            : px === 't' ? '#ff8c42'
+            : px === 'd' ? shadeColor(colors.wing, -18)
+            : px === 'g' ? colors.wing
+            : px === 'n' ? colors.nose
+            : colors.body;'''
+          if old_fill not in text:
+              raise SystemExit('Mapeamento de cores do carro não encontrado.')
+          text = text.replace(old_fill, new_fill, 1)
+
+          text = text.replace("return 'hsl(' + hue + ', 68%, 56%)';", "return 'hsl(' + hue + ', 78%, 54%)';", 1)
+          text = text.replace("const l = Math.max(6, Math.min(94, parseInt(m[3], 10) + deltaL));", "const l = Math.max(6, Math.min(94, parseInt(m[3], 10) + deltaL));", 1)
+
+          old_particles = '''    function drawParticles(ctx) {
+      particles.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+'''
+          new_particles = '''    function drawParticles(ctx) {
+      particles.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size || 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+'''
+          if old_particles not in text:
+              raise SystemExit('drawParticles não encontrado.')
+          text = text.replace(old_particles, new_particles, 1)
+
+          insertion = '''        if (car.isPlayer && car.finishedAt == null) {
+          playerTrail.push({ x: p.x, y: p.y, life: 1 });
+        }
+
+        drawCar(ctx, p.x, p.y, heading, car);'''
+          replacement = '''        if (car.isPlayer && car.finishedAt == null) {
+          playerTrail.push({ x: p.x, y: p.y, life: 1 });
+        }
+
+        // Faíscas em alta velocidade e spray quando a pista está molhada.
+        const speedKmh = Number(car.displaySpeedKmh || 0);
+        const weatherNow = String(raceState.weatherTier || raceState.weather || weekend.clima || '').toLowerCase();
+        const rainy = weatherNow.includes('chuva') || weatherNow.includes('rain');
+        const rearX = p.x - Math.cos(heading) * 6;
+        const rearY = p.y - Math.sin(heading) * 6;
+        if (speedKmh > 220 && Math.random() < 0.12) {
+          particles.push({ x: rearX, y: rearY, vx: -Math.cos(heading) * (0.8 + Math.random() * 1.4) + (Math.random() - 0.5), vy: -Math.sin(heading) * (0.8 + Math.random() * 1.4) + (Math.random() - 0.5), life: 0.55, color: '#ffd54a', size: 1.3 });
+        }
+        if (rainy && speedKmh > 90 && Math.random() < 0.16) {
+          particles.push({ x: rearX, y: rearY, vx: -Math.cos(heading) * (0.5 + Math.random() * 0.8) + (Math.random() - 0.5), vy: -Math.sin(heading) * (0.5 + Math.random() * 0.8) + (Math.random() - 0.5), life: 0.42, color: Math.random() < 0.5 ? 'rgba(235,235,235,0.8)' : 'rgba(180,190,195,0.7)', size: 1.7 });
+        }
+
+        drawCar(ctx, p.x, p.y, heading, car);'''
+          if insertion not in text:
+              raise SystemExit('Ponto de efeitos dos carros não encontrado.')
+          text = text.replace(insertion, replacement, 1)
+
+          old_minimap = '''      ctx.strokeStyle = 'rgba(159,216,184,0.5)';
+      ctx.lineWidth = 2;
+      strokeTrackShape(ctx, mcx, mcy, mrx, mry);
+      ctx.stroke();'''
+          new_minimap = '''      // Leito de asfalto do minimapa, com contorno mais nítido.
+      ctx.strokeStyle = 'rgba(34,64,47,0.92)';
+      ctx.lineWidth = 8;
+      strokeTrackShape(ctx, mcx, mcy, mrx, mry);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(184,176,160,0.72)';
+      ctx.lineWidth = 6;
+      strokeTrackShape(ctx, mcx, mcy, mrx, mry);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(58,102,80,0.95)';
+      ctx.lineWidth = 4;
+      strokeTrackShape(ctx, mcx, mcy, mrx, mry);
+      ctx.stroke();'''
+          if old_minimap not in text:
+              raise SystemExit('Bloco do minimapa não encontrado.')
+          text = text.replace(old_minimap, new_minimap, 1)
+
+          # O bloco antigo de largada foi incorporado a drawTrackSurface.
+          old_grid = '''      // linha de largada/chegada (padrão quadriculado) no topo do traçado
+      const startPoint = pointOnTrack(0, cx, cy, rx, ry);
+      for (let i = -1; i <= 1; i++) {
+        ctx.fillStyle = (i % 2 === 0) ? 'rgba(255,255,255,0.85)' : 'rgba(20,20,20,0.85)';
+        ctx.fillRect(startPoint.x - 11 + (i + 1) * 8, startPoint.y - 11, 8, 22);
+      }
+
+'''
+          if old_grid not in text:
+              raise SystemExit('Bloco antigo da largada não encontrado.')
+          text = text.replace(old_grid, '', 1)
+
+          if text == original:
+              raise SystemExit('Nenhuma alteração foi detectada.')
+
+          path.write_text(text, encoding='utf-8')
+          print('Alterações aplicadas:', len(original), '->', len(text), 'bytes')
+
+      - name: Validar JavaScript embutido
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('games/formula1/corrida.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:[^>]*)>(.*?)</script>', html, flags=re.S|re.I)
+          if not scripts:
+              raise SystemExit('Nenhum script encontrado')
+          Path('/tmp/corrida-inline.js').write_text(scripts[-1], encoding='utf-8')
+          PY
+          node --check /tmp/corrida-inline.js
+
+      - name: Commitar alteração visual e remover workflow temporário
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/visual-f1-upgrade.yml
+          git add games/formula1/corrida.html
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "feat: upgrade visual da corrida F1"
+          git push
