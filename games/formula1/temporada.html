@@ -79,6 +79,19 @@
   .overlay-title { font-size: 1.1rem; font-weight: bold; color: #ffd54a; margin-bottom: 10px; text-align: center; }
   .overlay-sub { font-size: 0.85rem; color: #cfeede; text-align: center; margin-bottom: 14px; }
   .hidden { display: none !important; }
+
+  .report-list { max-height: 40vh; overflow-y: auto; margin-bottom: 14px; }
+  .report-row { font-size: 0.8rem; color: #cfeede; padding: 7px 4px; border-bottom: 1px solid #234433; }
+  .report-empty { font-size: 0.8rem; color: #9fd8b8; text-align: center; padding: 10px 0; }
+
+  .contract-card { background: #0f231a; border: 1px solid #345c48; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .contract-card .cc-name { font-weight: bold; color: #ffd54a; font-size: 0.86rem; margin-bottom: 6px; }
+  .contract-card .cc-actions { display: flex; gap: 8px; }
+  .contract-card .cc-actions button { flex: 1; padding: 8px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15); background: #16281f; color: white; font-size: 0.76rem; font-weight: bold; cursor: pointer; }
+  .contract-card .cc-actions button.renew { border-color: #3fd67a; }
+  .contract-card .cc-actions button.release { border-color: #e63946; }
+  .contract-card.resolved { opacity: 0.5; }
+  .contract-card .cc-resolved-tag { font-size: 0.74rem; color: #9fd8b8; }
 </style>
 </head>
 <body>
@@ -120,6 +133,16 @@
     <div class="panel">
       <h2>Rendimento dos motores nesta temporada</h2>
       <div id="motor-performance-list"></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="season-report-overlay">
+    <div class="overlay-card">
+      <div class="overlay-title">🏁 Relatório da temporada</div>
+      <p class="overlay-sub">Isso aconteceu com o elenco durante a virada de temporada.</p>
+      <div class="report-list" id="season-report-list"></div>
+      <div id="contract-decisions"></div>
+      <button class="primary-btn" id="season-report-continue-btn" disabled>Continuar</button>
     </div>
   </div>
 
@@ -212,7 +235,108 @@
       });
     }
 
+    // virada de temporada: idade +1, evolução/declínio de rating E potência
+    // de clima, aposentadoria aos 40, contratos de 2 temporadas descontando
+    // — pedido explícito do usuário. O bônus de evolução vem do Diretor
+    // Esportivo (departamento cuja descrição já é "planeja o projeto
+    // esportivo da equipe a longo prazo" — o encaixe natural pro
+    // desenvolvimento de carreira dos pilotos).
     document.getElementById('new-season-btn').addEventListener('click', () => {
+      const P = window.WSPF1Pilotos;
+      const equipeAtual = P.loadSquad();
+      const club = window.WSPF1Equipe ? window.WSPF1Equipe.loadClub() : null;
+      const bonus = club ? ((club.departments && club.departments.diretor_esportivo) || 0) / 20 : 0;
+      const changes = P.advanceSeason(equipeAtual, bonus);
+      renderSeasonReport(changes, equipeAtual);
+    });
+
+    function stageLabel(key) {
+      const P = window.WSPF1Pilotos;
+      return (P.CAREER_STAGES[key] && P.CAREER_STAGES[key].label) || key;
+    }
+
+    function renderSeasonReport(changes, equipeAtual) {
+      const P = window.WSPF1Pilotos;
+      const listEl = document.getElementById('season-report-list');
+      const decisionsEl = document.getElementById('contract-decisions');
+      const continueBtn = document.getElementById('season-report-continue-btn');
+      listEl.innerHTML = '';
+      decisionsEl.innerHTML = '';
+
+      const textChanges = changes.filter((c) => c.type !== 'contrato_vencido');
+      if (!textChanges.length) {
+        const empty = document.createElement('div');
+        empty.className = 'report-empty';
+        empty.textContent = 'Nenhuma mudança de carreira nessa virada de temporada.';
+        listEl.appendChild(empty);
+      } else {
+        textChanges.forEach((c) => {
+          const row = document.createElement('div');
+          row.className = 'report-row';
+          if (c.type === 'evolucao') row.textContent = '📈 ' + c.name + ' evoluiu! Rating agora ' + c.rating + ' (+' + c.bump + ').';
+          else if (c.type === 'declinio') row.textContent = '📉 ' + c.name + ' caiu de rendimento. Rating agora ' + c.rating + ' (-' + c.drop + ').';
+          else if (c.type === 'fase') row.textContent = '🔄 ' + c.name + ' entrou na fase ' + stageLabel(c.to) + '.';
+          else if (c.type === 'aposentadoria') row.textContent = '🏁 ' + c.name + ' se aposentou aos ' + c.age + ' anos.';
+          else row.textContent = c.name + ' — ' + c.type;
+          listEl.appendChild(row);
+        });
+      }
+
+      // contratos vencidos: o jogador PRECISA decidir renovar ou dispensar
+      // cada um antes de liberar a próxima temporada (pedido explícito do
+      // usuário: "vira agente livre, você decide")
+      function refreshContinueState() {
+        const pending = P.expiredContracts(equipeAtual);
+        continueBtn.disabled = pending.length > 0;
+      }
+
+      const expired = changes.filter((c) => c.type === 'contrato_vencido');
+      expired.forEach((c) => {
+        const driver = equipeAtual.drivers.find((d) => d.id === c.id);
+        if (!driver) return; // pode já ter sido removido (aposentadoria na mesma virada)
+        const card = document.createElement('div');
+        card.className = 'contract-card';
+        const nameEl = document.createElement('div');
+        nameEl.className = 'cc-name';
+        nameEl.textContent = '📄 ' + driver.name + ' — contrato vencido, virou agente livre';
+        card.appendChild(nameEl);
+        const actions = document.createElement('div');
+        actions.className = 'cc-actions';
+        const renewBtn = document.createElement('button');
+        renewBtn.className = 'renew';
+        renewBtn.textContent = '✅ Renovar (2 temporadas)';
+        const releaseBtn = document.createElement('button');
+        releaseBtn.className = 'release';
+        releaseBtn.textContent = '❌ Dispensar';
+        function resolve(label) {
+          actions.remove();
+          card.classList.add('resolved');
+          const tag = document.createElement('div');
+          tag.className = 'cc-resolved-tag';
+          tag.textContent = label;
+          card.appendChild(tag);
+          refreshContinueState();
+        }
+        renewBtn.addEventListener('click', () => {
+          P.renewContract(equipeAtual, driver.id);
+          resolve('✅ Renovado por mais 2 temporadas.');
+        });
+        releaseBtn.addEventListener('click', () => {
+          P.releasePlayer(equipeAtual, driver.id);
+          resolve('❌ Dispensado — foi pro mercado.');
+        });
+        actions.appendChild(renewBtn);
+        actions.appendChild(releaseBtn);
+        card.appendChild(actions);
+        decisionsEl.appendChild(card);
+      });
+
+      refreshContinueState();
+      document.getElementById('season-report-overlay').classList.remove('hidden');
+    }
+
+    document.getElementById('season-report-continue-btn').addEventListener('click', () => {
+      document.getElementById('season-report-overlay').classList.add('hidden');
       state = Cal.startNewSeason(state);
       render();
     });

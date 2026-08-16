@@ -32,6 +32,9 @@
     background: #0e1c15; color: #cfeede; font-size: 0.68rem; font-weight: bold; cursor: pointer; text-align: center;
   }
   .driver-role-row button.active { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
+  .weather-specialty-chip { font-size: 0.66rem; background: #0e1c15; border: 1px solid #345c48; color: #9fd8b8; padding: 3px 8px; border-radius: 8px; align-self: flex-start; }
+  .contract-chip { font-size: 0.62rem; padding: 3px 8px; border-radius: 8px; align-self: flex-start; border: 1px solid #345c48; color: #9fd8b8; background: #0e1c15; }
+  .contract-chip.expiring { border-color: #ffd54a; color: #ffd54a; }
 </style>
 </head>
 <body>
@@ -96,6 +99,24 @@
           });
           card.appendChild(traitsRow);
         }
+
+        const specialtyChip = document.createElement('span');
+        specialtyChip.className = 'weather-specialty-chip';
+        if (d.weatherSpecialty && P.WEATHER_SPECIALTY_LABELS[d.weatherSpecialty]) {
+          const spec = P.WEATHER_SPECIALTY_LABELS[d.weatherSpecialty];
+          specialtyChip.textContent = spec.icon + ' Especialista em ' + spec.label + ' (potência ' + (d.weatherPotencia || 0) + '/20)';
+        } else {
+          specialtyChip.textContent = '🌗 Sem especialidade de clima';
+        }
+        card.appendChild(specialtyChip);
+
+        const yearsLeft = d.contractYearsLeft == null ? P.CONTRACT_LENGTH_SEASONS : d.contractYearsLeft;
+        const contractChip = document.createElement('span');
+        contractChip.className = 'contract-chip' + (yearsLeft <= 0 ? ' expiring' : '');
+        contractChip.textContent = yearsLeft <= 0
+          ? '📄 Contrato vencido — decida na Temporada'
+          : '📄 Contrato: ' + yearsLeft + ' temporada' + (yearsLeft === 1 ? '' : 's') + ' restante' + (yearsLeft === 1 ? '' : 's');
+        card.appendChild(contractChip);
 
         const stats = document.createElement('div');
         stats.className = 'driver-stats';

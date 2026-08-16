@@ -31,12 +31,6 @@
     return 'medio';
   }
 
-  function idealCompoundFor(weather) {
-    if (weather === 'chuva_forte') return 'chuva';
-    if (weather === 'chuva_leve') return 'intermediario';
-    return null; // seco: qualquer composto "seco" serve, IA não força nada
-  }
-
   function pitStopMsForCar(car, opts, avgLapMs) {
     if (opts.pitStopMsByTeam && opts.pitStopMsByTeam[car.teamId] != null) return opts.pitStopMsByTeam[car.teamId];
     const lvl = ((car.motorLevel || 0) + (car.chassiLevel || 0)) / 2;
@@ -143,6 +137,11 @@
         // estilo de pilotagem É POR CARRO agora — ajustável ao vivo (ver
         // setDrivingStyle) individualmente pra cada piloto do jogador
         drivingStyle: strategy.drivingStyle,
+        // especialidade de clima do piloto (1 dos 4 níveis, ou nenhuma) e a
+        // potência dela (0-20) — vem do cadastro do piloto (pilotos.js) via
+        // entrant, carro sem nenhum dos dois não ganha nem perde ritmo
+        weatherSpecialty: e.weatherSpecialty || null,
+        weatherPotencia: e.weatherPotencia != null ? e.weatherPotencia : 0,
       };
     });
 
@@ -159,27 +158,24 @@
       }
     }
 
-    let weatherEvent = null;
-    const rainChance = opts.rainChance != null ? opts.rainChance : 0.2;
-    if (!opts.isSprint && Math.random() < rainChance) {
-      weatherEvent = {
-        startLap: Math.floor(totalLaps * 0.3 + Math.random() * totalLaps * 0.3),
-        stage: 'chuva_leve',
-        escalateLap: null,
-        triggered: false,
-        escalated: false,
-      };
-      if (Math.random() < 0.4) weatherEvent.escalateLap = weatherEvent.startLap + Math.max(3, Math.floor(totalLaps * 0.15));
-    }
+    // clima: sequência determinística pra sessão INTEIRA (mesma semente que
+    // a tabela de previsão pré-sessão usou, em corrida.html) — nunca é mais
+    // um sorteio solto de "vai chover ou não" isolado do que foi mostrado
+    // pro jogador. Vale pras 4 sessões (treino/classificatória/sprint/
+    // corrida), não só corrida principal como era antes.
+    const weatherSeed = opts.weatherSeed || ((opts.circuit || 'circuito') + '|' + (opts.isSprint ? 'sprint' : 'corrida'));
+    const weatherTimeline = C()
+      ? C().buildWeatherTimeline(weatherSeed, totalLaps, opts.clima || 'seco')
+      : { tiers: new Array(totalLaps).fill('seco'), temps: new Array(totalLaps).fill(24) };
 
     return {
       cars,
       totalLaps,
       raceRealMs,
       elapsedMs: 0,
-      weather: 'seco',
+      weather: weatherTimeline.tiers[0],
+      weatherTimeline,
       scheduledFailure,
-      weatherEvent,
       baseSpeedPerMs: (totalLaps * 100) / raceRealMs,
       fullFuelKg,
       isSprint: !!opts.isSprint,
@@ -206,30 +202,32 @@
     if (state.log.length > 40) state.log.length = 40;
   }
 
+  // lê a mesma timeline que a tabela de previsão pré-sessão mostrou — nunca
+  // sorteia nada aqui, só segue a sequência já decidida na criação do
+  // raceState (buildWeatherTimeline), volta a volta, na volta do LÍDER
   function applyWeatherTick(state) {
-    const we = state.weatherEvent;
-    if (!we) return;
-    const leaderLap = Math.max(...state.cars.filter((c) => !c.retired).map((c) => c.lapsCompleted), 0);
-    if (!we.triggered && leaderLap >= we.startLap) {
-      we.triggered = true;
-      state.weather = we.stage;
-      pushLog(state, '🌧️ Começa a chover em ' + state.circuit + '!');
-    }
-    if (we.triggered && !we.escalated && we.escalateLap != null && leaderLap >= we.escalateLap) {
-      we.escalated = true;
-      state.weather = 'chuva_forte';
-      pushLog(state, '⛈️ A chuva piora — pista muito escorregadia!');
-    }
+    if (!state.weatherTimeline || !C()) return;
+    const leaderLap = Math.max(0, ...state.cars.filter((c) => !c.retired).map((c) => c.lapsCompleted));
+    const idx = Math.min(state.weatherTimeline.tiers.length - 1, leaderLap);
+    const nextTier = state.weatherTimeline.tiers[idx];
+    if (nextTier === state.weather) return;
+    const prevMm = (C().WEATHER_CONDITIONS[state.weather] || {}).mm || 0;
+    const nextMm = (C().WEATHER_CONDITIONS[nextTier] || {}).mm || 0;
+    state.weather = nextTier;
+    const cond = C().WEATHER_CONDITIONS[nextTier];
+    if (nextMm > prevMm) pushLog(state, (cond ? cond.icon : '🌧️') + ' O tempo piora em ' + state.circuit + ': ' + (cond ? cond.label : nextTier) + '!');
+    else pushLog(state, (cond ? cond.icon : '☀️') + ' O tempo melhora em ' + state.circuit + ': ' + (cond ? cond.label : nextTier) + '.');
   }
 
   function maybePlanPit(car, state, opts) {
     if (car.retired || car.pitting || car.pendingPitCompound) return;
-    const ideal = idealCompoundFor(state.weather);
-    if (ideal && car.tireCompound !== ideal) {
-      car.pendingPitCompound = ideal;
+    const cond = C() ? C().WEATHER_CONDITIONS[state.weather] : null;
+    const isWetWeather = state.weather !== 'seco';
+    if (isWetWeather && cond && !cond.idealTires.includes(car.tireCompound)) {
+      car.pendingPitCompound = cond.idealTires[0];
       return;
     }
-    if (!ideal && ['intermediario', 'chuva'].includes(car.tireCompound)) {
+    if (!isWetWeather && ['intermediario', 'chuva'].includes(car.tireCompound)) {
       car.pendingPitCompound = 'medio';
       return;
     }
@@ -311,20 +309,28 @@
       const grip = C() ? C().tireEffectiveGrip(car.tireCompound, state.weather, car.tireSupplier) : 1;
       const wearPenalty = distancePenaltyFromWear(car.tireWear);
       const fuelPenalty = distancePenaltyFromFuel(car.fuelKg, state.fullFuelKg);
+      // especialidade de clima do piloto: ganha ritmo no clima que domina,
+      // perde no oposto — vale pra jogador E rival, todo mundo tem a chance
+      // de ter (ou não) uma especialidade
+      const weatherSpecialtyFactor = C() ? C().weatherSpecialtyPaceFactor(car.weatherSpecialty, state.weather, car.weatherPotencia) : 1;
       const variance = 1 + (Math.random() - 0.5) * 0.06;
-      const speedFactor = (car.pace / 75) * stylePaceFactor * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance;
+      const speedFactor = (car.pace / 75) * stylePaceFactor * weatherSpecialtyFactor * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance;
       const speed = state.baseSpeedPerMs * speedFactor;
       car.displaySpeedKmh = Math.max(0, SPEED_DISPLAY_BASE_KMH * speedFactor);
 
       car.distance += speed * dtMs;
+      // clima mais severo (mais mm de chuva) acelera o desgaste do pneu e o
+      // consumo de combustível — além do grip que já mudava com pneu errado
+      const weatherWearMult = C() ? C().weatherWearMult(state.weather) : 1;
+      const weatherFuelMult = C() ? C().weatherFuelMult(state.weather) : 1;
       const wearAdd = C() ? C().calcTireWear(car.tireCompound, dtMs / (state.raceRealMs / state.totalLaps), 1) : 0;
-      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult);
+      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult * weatherWearMult);
       // combustível: motor mais potente (nível) bebe mais, E cada fabricante
       // de motor tem uma característica fixa de consumo própria — vale pra
       // todo mundo no grid, não só o jogador
       const motorFuelMult = C() ? C().motorFuelMult(car.motorLevel) : 1;
       const motorSupplierFuel = C() ? C().motorSupplierFuelFactor(car.motorSupplier) : 1;
-      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult * motorFuelMult * motorSupplierFuel);
+      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult * motorFuelMult * motorSupplierFuel * weatherFuelMult);
 
       while (car.distance >= 100 && car.finishedAt == null) {
         car.distance -= 100;

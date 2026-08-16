@@ -58,6 +58,45 @@
     return 'declinio';
   }
 
+  // idade de aposentadoria automática (pedido explícito do usuário)
+  const RETIREMENT_AGE = 40;
+
+  // duração padrão de um novo contrato, em temporadas (pedido explícito do
+  // usuário: "terão contratos de 2 anos")
+  const CONTRACT_LENGTH_SEASONS = 2;
+
+  // ---------- Especialidade de clima ----------
+  // pedido explícito do usuário: cada piloto pode ser especialista em UM dos
+  // 4 níveis de clima (corrida.js/WEATHER_TIER_KEYS), ou em nenhum — quem
+  // não tem especialidade não ganha nem perde ritmo (ver
+  // weatherSpecialtyPaceFactor em corrida.js). Rótulos duplicados aqui (não
+  // referenciam corrida.js direto) porque pilotos.html carrega só
+  // pilotos.js, sem corrida.js.
+  const WEATHER_SPECIALTY_KEYS = ['seco', 'ventos_fortes', 'chuva_grossa', 'chuva_intensa'];
+  const WEATHER_SPECIALTY_LABELS = {
+    seco: { label: 'Clima Seco', icon: '☀️' },
+    ventos_fortes: { label: 'Ventos Fortes', icon: '🌬️' },
+    chuva_grossa: { label: 'Chuva Grossa', icon: '🌧️' },
+    chuva_intensa: { label: 'Chuva Intensa', icon: '⛈️' },
+  };
+  const WEATHER_SPECIALTY_CHANCE = 0.7; // 70% dos pilotos nascem com alguma especialidade
+
+  function randomWeatherSpecialty() {
+    if (Math.random() >= WEATHER_SPECIALTY_CHANCE) return null;
+    return pick(WEATHER_SPECIALTY_KEYS);
+  }
+
+  // potência da especialidade (0-20, pedido explícito do usuário) — segue a
+  // mesma curva de carreira do rating (promessa fraca, auge no pico,
+  // declínio caindo)
+  const STAGE_POTENCIA_MULT = { promessa: 0.55, ascensao: 0.75, auge: 1.0, experiente: 0.85, declinio: 0.6 };
+  function randomWeatherPotencia(age) {
+    const stage = careerStageFor(age);
+    const base = 20 * (STAGE_POTENCIA_MULT[stage] || 0.7);
+    const variance = (Math.random() - 0.5) * 8;
+    return Math.max(0, Math.min(20, Math.round(base + variance)));
+  }
+
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
   function weightedPickObj(list) {
@@ -180,6 +219,7 @@
 
     const age = randomAge();
     const rating = randomRating(age);
+    const weatherSpecialty = randomWeatherSpecialty();
 
     return {
       id: 'd_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7),
@@ -198,6 +238,9 @@
       injuredUntil: null,
       injuryLabel: null,
       condition: 100,
+      weatherSpecialty,
+      weatherPotencia: weatherSpecialty ? randomWeatherPotencia(age) : 0,
+      contractYearsLeft: CONTRACT_LENGTH_SEASONS,
     };
   }
 
@@ -241,10 +284,25 @@
     return newDriver;
   }
 
+  // garante que titular_1/titular_2 nunca fiquem vagos depois de uma saída
+  // (aposentadoria ou dispensa) — promove reserva(s) disponível(is), mesma
+  // garantia que setDriverRole já dava pra troca manual de função
+  function promoteReserveIfVacant(equipe) {
+    if (!equipe.drivers.some((d) => d.role === 'titular_1')) {
+      const promoted = equipe.drivers.find((d) => d.role === 'reserva');
+      if (promoted) promoted.role = 'titular_1';
+    }
+    if (!equipe.drivers.some((d) => d.role === 'titular_2')) {
+      const promoted = equipe.drivers.find((d) => d.role === 'reserva');
+      if (promoted) promoted.role = 'titular_2';
+    }
+  }
+
   function releasePlayer(equipe, driverId) {
     const idx = equipe.drivers.findIndex((d) => d.id === driverId);
     if (idx < 0) return null;
     const [removed] = equipe.drivers.splice(idx, 1);
+    promoteReserveIfVacant(equipe);
     saveEquipe(equipe);
     return removed;
   }
@@ -312,6 +370,9 @@
           if (d.injuredUntil === undefined) { d.injuredUntil = null; changed = true; }
           if (d.injuryLabel === undefined) { d.injuryLabel = null; changed = true; }
           if (d.condition == null) { d.condition = 100; changed = true; }
+          if (d.weatherSpecialty === undefined) { d.weatherSpecialty = randomWeatherSpecialty(); changed = true; }
+          if (d.weatherPotencia == null) { d.weatherPotencia = d.weatherSpecialty ? randomWeatherPotencia(d.age) : 0; changed = true; }
+          if (d.contractYearsLeft == null) { d.contractYearsLeft = CONTRACT_LENGTH_SEASONS; changed = true; }
         });
         if (changed) saveEquipe(parsed);
         return parsed;
@@ -329,6 +390,7 @@
   function advanceSeason(equipe, trainingBonus) {
     const bonus = trainingBonus || 0;
     const changes = [];
+    const retiredIds = [];
     equipe.drivers.forEach((d) => {
       const oldStage = careerStageFor(d.age);
       d.age += 1;
@@ -346,12 +408,59 @@
         changes.push({ id: d.id, name: d.name, type: 'declinio', rating: d.rating, drop });
       }
 
+      // potência da especialidade de clima segue o mesmo arco de carreira
+      // do rating (auge/caída) — pedido explícito do usuário
+      if (d.weatherSpecialty) {
+        const wp = d.weatherPotencia || 0;
+        if ((oldStage === 'promessa' || oldStage === 'ascensao') && Math.random() < evolveChance) {
+          d.weatherPotencia = Math.min(20, wp + 1 + Math.floor(Math.random() * 2));
+        } else if (newStage === 'declinio' && Math.random() < 0.35) {
+          d.weatherPotencia = Math.max(0, wp - (1 + Math.floor(Math.random() * 2)));
+        }
+      }
+
       if (oldStage !== newStage) {
         changes.push({ id: d.id, name: d.name, type: 'fase', from: oldStage, to: newStage });
       }
+
+      // contrato de 2 temporadas — ao vencer, fica "agente livre": o
+      // jogador decide (renovar ou dispensar) na tela de temporada, o
+      // contador não desce abaixo de 0 enquanto a decisão não é tomada
+      const yearsLeft = (d.contractYearsLeft == null ? CONTRACT_LENGTH_SEASONS : d.contractYearsLeft) - 1;
+      d.contractYearsLeft = Math.max(0, yearsLeft);
+      if (d.contractYearsLeft <= 0) {
+        changes.push({ id: d.id, name: d.name, type: 'contrato_vencido' });
+      }
+
+      // aposentadoria automática aos 40 (pedido explícito do usuário)
+      if (d.age >= RETIREMENT_AGE) {
+        retiredIds.push(d.id);
+        changes.push({ id: d.id, name: d.name, type: 'aposentadoria', age: d.age });
+      }
     });
+
+    if (retiredIds.length) {
+      equipe.drivers = equipe.drivers.filter((d) => !retiredIds.includes(d.id));
+      promoteReserveIfVacant(equipe);
+    }
+
     saveEquipe(equipe);
     return changes;
+  }
+
+  // pilotos com contrato vencido (contractYearsLeft <= 0) — a tela de
+  // temporada usa isso pra pedir a decisão do jogador (renovar/dispensar)
+  // antes de liberar a próxima temporada
+  function expiredContracts(equipe) {
+    return equipe.drivers.filter((d) => (d.contractYearsLeft || 0) <= 0);
+  }
+
+  function renewContract(equipe, driverId) {
+    const driver = equipe.drivers.find((d) => d.id === driverId);
+    if (!driver) return { ok: false, reason: 'notfound' };
+    driver.contractYearsLeft = CONTRACT_LENGTH_SEASONS;
+    saveEquipe(equipe);
+    return { ok: true };
   }
 
   // ---------- Lesões / desgaste físico ----------
@@ -408,10 +517,12 @@
   window.WSPF1Pilotos = {
     ROLES, TRAITS, NATIONALITIES, CAREER_STAGES,
     MARKET_VALUE_MIN, MARKET_VALUE_MAX,
+    WEATHER_SPECIALTY_KEYS, WEATHER_SPECIALTY_LABELS, RETIREMENT_AGE, CONTRACT_LENGTH_SEASONS,
     careerStageFor, generateSquad, loadSquad, saveSquad: saveEquipe,
     releaseCost, transferFee, generateCandidates, signPlayer, releasePlayer,
     renamePlayer, renumberPlayer, renameClub, setDriverRole, advanceSeason, applyValorizacao,
     isInjured, setInjury, clearInjury, reduceInjuryBy,
     applyConditionRecovery, applyMatchConditionDrop,
+    expiredContracts, renewContract,
   };
 })();

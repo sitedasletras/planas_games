@@ -76,6 +76,14 @@
   }
   .circuit-curiosidade::before { content: '💡 '; }
 
+  .weather-forecast { margin-top: 10px; border-top: 1px solid #345c48; padding-top: 10px; }
+  .weather-forecast-title { font-size: 0.8rem; font-weight: bold; color: #ffd54a; margin-bottom: 8px; }
+  .wf-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: #0f231a; margin-bottom: 4px; font-size: 0.74rem; }
+  .wf-stage { flex: 1; color: #9fd8b8; }
+  .wf-cond { flex: 1.4; color: white; font-weight: bold; }
+  .wf-temp { min-width: 42px; text-align: right; color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
+  .weather-forecast-note { font-size: 0.66rem; color: #9fd8b8; margin-top: 6px; line-height: 1.35; }
+
   .fuel-table { margin-top: 10px; border-top: 1px solid #345c48; padding-top: 10px; }
   .fuel-row { display: flex; justify-content: space-between; font-size: 0.76rem; padding: 4px 0; color: #cfeede; }
   .fuel-row b { color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
@@ -176,6 +184,7 @@
         <canvas id="circuit-shape-preview" width="260" height="160"></canvas>
       </div>
       <div class="circuit-data-grid" id="circuit-data-grid"></div>
+      <div class="weather-forecast" id="weather-forecast"></div>
       <p id="circuit-curiosidade" class="circuit-curiosidade hidden"></p>
     </div>
 
@@ -364,29 +373,31 @@
       });
     }
 
-    // temperatura "de telemetria" do circuito — determinística por
-    // circuito (mesma semente), dentro de uma faixa plausível pro clima
-    // predominante daquele lugar. Some no HUD durante a corrida ao vivo.
-    const CLIMA_TEMP_RANGE = { seco: [24, 34], instável: [16, 26], chuvoso: [14, 22] };
-    const CLIMA_ICON = { seco: '☀️', instável: '🌦️', chuvoso: '⛈️' };
-    let raceTemperatureC = 24;
+    // clima da sessão INTEIRA, volta a volta, decidido de uma vez só e
+    // determinístico (mesma semente = mesma sequência sempre) — é o que
+    // permite a tabela de previsão (início/meio/fim) mostrar exatamente o
+    // que a sessão ao vivo vai seguir, nunca um palpite solto (pedido
+    // explícito do usuário: "a gente fica perdido" quando o tempo muda sem
+    // aviso). A MESMA semente é passada pro createRaceState mais abaixo.
+    let weatherSeed = null;
+    let weatherTimeline = null;
     if (weekend) {
-      const range = CLIMA_TEMP_RANGE[weekend.clima] || [18, 28];
-      const rng = seededRng(weekend.circuit + '|temp');
-      raceTemperatureC = Math.round(range[0] + rng() * (range[1] - range[0]));
+      weatherSeed = weekend.circuit + '|' + sessionType + '|s' + temporadaState.seasonNumber + '|w' + weekend.index;
+      weatherTimeline = window.WSPF1Corrida.buildWeatherTimeline(weatherSeed, sessionTotalLaps(), weekend.clima);
+      const cond0 = window.WSPF1Corrida.WEATHER_CONDITIONS[weatherTimeline.tiers[0]];
       const el = document.getElementById('weather-tag');
-      if (el) el.textContent = (CLIMA_ICON[weekend.clima] || '🌤️') + ' ' + raceTemperatureC + '°C';
+      if (el) el.textContent = (cond0 ? cond0.icon : '🌤️') + ' ' + weatherTimeline.temps[0] + '°C';
     }
 
-    // ao vivo, na corrida, a temperatura acompanha o clima real da
-    // simulação (que pode piorar de seco pra chuva forte), não mais só o
-    // "clima predominante" estático mostrado antes de largar
+    // ao vivo, na corrida, o HUD acompanha o clima real da simulação (que
+    // segue exatamente a mesma timeline mostrada na previsão pré-sessão)
     function updateWeatherTag() {
       const el = document.getElementById('weather-tag');
-      if (!el || !raceState) return;
+      if (!el || !raceState || !raceState.weatherTimeline) return;
+      const leaderLap = Math.max(0, ...raceState.cars.filter((c) => !c.retired).map((c) => c.lapsCompleted));
+      const idx = Math.min(raceState.weatherTimeline.tiers.length - 1, leaderLap);
       const cond = window.WSPF1Corrida.WEATHER_CONDITIONS[raceState.weather];
-      const tempNow = raceState.weather === 'seco' ? raceTemperatureC
-        : Math.round(raceTemperatureC - (raceState.weather === 'chuva_forte' ? 8 : 4));
+      const tempNow = raceState.weatherTimeline.temps[idx];
       el.textContent = (cond ? cond.icon : '☀️') + ' ' + tempNow + '°C';
     }
 
@@ -455,15 +466,33 @@
       grid.innerHTML = items.map(([label, value]) => (
         '<div class="circuit-data-item"><div class="circuit-data-label">' + label + '</div><div class="circuit-data-value">' + value + '</div></div>'
       )).join('');
+      renderWeatherForecast();
       const curiosidadeEl = document.getElementById('circuit-curiosidade');
       if (curiosidadeEl) {
         curiosidadeEl.textContent = w.curiosidade || '';
         curiosidadeEl.classList.toggle('hidden', !w.curiosidade);
       }
       panel.classList.remove('hidden');
-      const rainChance = Math.round((window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[w.clima] || 0.2) * 100);
       const hint = document.getElementById('strategy-hint');
-      if (hint) hint.textContent = 'Escolha o composto de pneu pra largada. Clima ' + w.clima + ' — cerca de ' + rainChance + '% de chance de chuva durante a corrida.';
+      if (hint) hint.textContent = 'Escolha o composto de pneu pra largada. A previsão do tempo da sessão está aqui em cima — o clima segue exatamente essa sequência, e nunca pula de nível de uma vez.';
+    }
+
+    // tabela de previsão (início/meio/fim) — mostra a MESMA sequência que a
+    // sessão ao vivo vai seguir (weatherTimeline compartilhada com
+    // createRaceState mais abaixo, mesma semente), não um palpite solto
+    function renderWeatherForecast() {
+      const el = document.getElementById('weather-forecast');
+      if (!el || !weatherTimeline) return;
+      const cps = window.WSPF1Corrida.weatherForecastCheckpoints(weatherTimeline, sessionTotalLaps());
+      const stageLabel = (i) => (i === 0 ? 'Início' : (i === cps.length - 1 ? 'Fim' : 'Meio'));
+      el.innerHTML = '<div class="weather-forecast-title">🌤️ Previsão do tempo da sessão</div>'
+        + cps.map((cp, i) => {
+          const cond = window.WSPF1Corrida.WEATHER_CONDITIONS[cp.tier];
+          return '<div class="wf-row"><span class="wf-stage">' + stageLabel(i) + ' (volta ' + cp.lap + ')</span>'
+            + '<span class="wf-cond">' + (cond ? cond.icon + ' ' + cond.label : cp.tier) + '</span>'
+            + '<span class="wf-temp">' + cp.tempC + '°C</span></div>';
+        }).join('')
+        + '<p class="weather-forecast-note">O clima muda no máximo 1 nível por vez (nunca pula de Chuva Intensa direto pra Clima Seco) — e pode ficar parado no mesmo nível a sessão inteira.</p>';
     }
 
     function initSetupPanel() {
@@ -682,7 +711,8 @@
         circuit: weekend.circuit,
         playerStrategies,
         pitStopMsByTeam,
-        rainChance: isShortSession ? 0 : window.WSPF1Calendario.CLIMATE_RAIN_CHANCE[weekend.clima],
+        clima: weekend.clima,
+        weatherSeed,
         carSetup: weekend.carSetup || selectedSetup,
       });
       strategyPanelEl.classList.add('hidden');

@@ -295,6 +295,62 @@ necessidade de retrabalhar nada disso.
      nenhuma mudança necessária.
    - Regressão completa (18 harness Node + Playwright) rodada depois de
      cada mudança, sem quebrar nada do que já existia.
+9. **[IMPLEMENTADO 16/08] Clima em 4 níveis + previsão do tempo +
+   especialidade de clima por piloto + carreira/contrato:**
+   - **Clima 4 níveis com mm** (pedido explícito, veio de foto de
+     caderno): `WEATHER_TIER_KEYS`/`WEATHER_CONDITIONS` em `corrida.js` —
+     Seco (0mm) → Ventos Fortes (2mm) → Chuva Grossa (4mm) → Chuva
+     Intensa (6mm). Só 2 compostos molhados existem (`intermediario`,
+     `chuva`), então Ventos Fortes E Chuva Grossa mapeiam pro
+     intermediário como ideal; só Chuva Intensa exige o pneu de chuva
+     cheio — decisão de design comunicada ao usuário, não corrigida.
+   - **Timeline determinística compartilhada** (o pedido central: "a
+     gente fica perdido quando o tempo muda sem aviso"):
+     `buildWeatherTimeline(seedStr, totalLaps, climaKey)` gera a
+     sequência de clima/temperatura da sessão INTEIRA, volta a volta, de
+     uma vez, com uma semente. `corrida.html` monta a MESMA semente
+     (`circuito|sessão|temporada|índice`) e chama a MESMA função tanto
+     pra desenhar a tabela de previsão (`weatherForecastCheckpoints` —
+     início/meio/fim) quanto pra passar como `weatherSeed`/`clima` pro
+     `createRaceState` em `corridamotor.js`, que usa a timeline pra
+     decidir `state.weather` a cada volta (`applyWeatherTick`
+     reescrito). Nunca pula mais de 1 nível de uma vez (regra explícita
+     do usuário), e pode ficar parado no mesmo nível a sessão inteira —
+     ambos verificados por harness (`node_check_climate.js`,
+     `node_check_weather.js`). Vale pras 4 sessões (treino, classificatória,
+     sprint, corrida) — antes só a corrida principal tinha chance de
+     chuva, e sprint nem isso.
+   - **Clima afeta desgaste/consumo**: `weatherWearMult`/`weatherFuelMult`
+     (mm × 3%/1.5% respectivamente) multiplicam o desgaste de pneu e o
+     consumo de combustível em `stepRace`, além do grip que já mudava
+     com pneu errado.
+   - **Especialidade de clima por piloto**: cada piloto pode ter UMA das
+     4 especialidades (ou nenhuma — sem ganho nem perda). Matriz fixa
+     `WEATHER_SPECIALTY_FACTOR` em `corrida.js` (dada pelo usuário +
+     derivada por "2 grupos" — seco/ventos formam um grupo, chuva
+     grossa/intensa o outro: 100% na própria especialidade, 50% no
+     parceiro do grupo, 0% no oposto mais próximo, -25% no mais
+     distante), escalada por potência 0-20 (referência = potência 10,
+     `weatherSpecialtyPaceFactor`), com teto de ±6% de ritmo (mesmo
+     espírito "não decide sozinho" dos outros sistemas). Pilotos do
+     jogador (`pilotos.js`) E rivais (`grid.js`) têm o campo, pra manter
+     justo.
+   - **Carreira/contrato** (`pilotos.js`): potência de clima evolui
+     junto com o rating (auge/declínio) em `advanceSeason`; aposentadoria
+     automática aos 40 anos; contratos de 2 temporadas — ao vencer, o
+     piloto "vira agente livre" e o jogador decide renovar ou dispensar
+     (pergunta feita ao usuário via AskUserQuestion, essa foi a opção
+     escolhida). `advanceSeason` — que existia mas nunca era chamada —
+     agora é disparada no clique de "Iniciar nova temporada"
+     (`temporada.html`), com um overlay de relatório (evoluções,
+     declínios, mudança de fase, aposentadorias) e cards de decisão de
+     contrato que TRAVAM o botão "Continuar" até todos serem resolvidos.
+     Aposentadoria/dispensa de titular promove reserva automaticamente
+     (`promoteReserveIfVacant`), nunca deixa vaga.
+   - Regressão completa rodada depois da mudança (harness Node +
+     Playwright cobrindo previsão de tempo, corrida ao vivo com clima,
+     especialidade em ação, aposentadoria+promoção, contrato
+     vencido→renovar/dispensar), sem quebrar nada do que já existia.
 
 ## Outras notas importantes
 

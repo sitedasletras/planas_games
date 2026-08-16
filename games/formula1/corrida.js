@@ -18,11 +18,132 @@
     chuva: { label: 'Chuva Intensa', icon: '🔵', color: '#1d4ed8', gripFactor: 0.72, wearRate: 1.4 },
   };
 
+  // Clima em 4 níveis (pedido explícito do usuário, com valores de mm de
+  // referência): Seco -> Ventos Fortes -> Chuva Grossa -> Chuva Intensa.
+  // A ordem do array é o que permite a regra "nunca pula de nível" nas
+  // funções de previsão/transição mais abaixo — nunca usar os objetos
+  // fora dessa ordem.
+  const WEATHER_TIER_KEYS = ['seco', 'ventos_fortes', 'chuva_grossa', 'chuva_intensa'];
   const WEATHER_CONDITIONS = {
-    seco: { label: 'Seco', icon: '☀️', idealTires: ['macio', 'medio', 'duro'] },
-    chuva_leve: { label: 'Chuva Leve', icon: '🌦️', idealTires: ['intermediario'] },
-    chuva_forte: { label: 'Chuva Forte', icon: '⛈️', idealTires: ['chuva'] },
+    seco: { label: 'Clima Seco', icon: '☀️', mm: 0, idealTires: ['macio', 'medio', 'duro'] },
+    ventos_fortes: { label: 'Ventos Fortes', icon: '🌬️', mm: 2, idealTires: ['intermediario'] },
+    chuva_grossa: { label: 'Chuva Grossa', icon: '🌧️', mm: 4, idealTires: ['intermediario'] },
+    chuva_intensa: { label: 'Chuva Intensa', icon: '⛈️', mm: 6, idealTires: ['chuva'] },
   };
+
+  // RNG determinístico a partir de uma string (mesma semente = mesma
+  // sequência sempre) — corrida.js não tinha isso ainda; corrida.html já
+  // tinha uma cópia local pro traçado do circuito, esta é a versão que
+  // qualquer módulo (inclusive o motor de corrida) pode reusar.
+  function seededRng(seedStr) {
+    let h = 1779033703 ^ (seedStr || '').length;
+    for (let i = 0; i < (seedStr || '').length; i++) {
+      h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h ^= h >>> 16;
+      return (h >>> 0) / 4294967296;
+    };
+  }
+
+  // temperatura de referência por clima predominante do circuito (mesmas
+  // faixas que corrida.html já usava antes de largar)
+  const CLIMA_TEMP_RANGE = { seco: [24, 34], instável: [16, 26], chuvoso: [14, 22] };
+  const WEATHER_TIER_COOL_PER_STEP = 3; // cada nível de clima mais chuvoso esfria ~3°C
+
+  // gera a sequência de clima (E temperatura) da sessão INTEIRA, volta a
+  // volta, de forma determinística (mesma semente = mesma sequência) — é
+  // o que permite a tabela de previsão (início/meio/fim) mostrar
+  // exatamente o que vai acontecer, e não um palpite solto: tanto a
+  // prévia quanto a corrida ao vivo chamam esta mesma função com a mesma
+  // semente. climaKey é o clima PREDOMINANTE do circuito (seco/instável/
+  // chuvoso) — define a chance de mudança a cada volta e o clima inicial
+  // mais provável. Nunca pula de nível (no máximo ±1 por volta), e pode
+  // perfeitamente ficar parado no mesmo nível a sessão inteira.
+  function buildWeatherTimeline(seedStr, totalLaps, climaKey) {
+    const rng = seededRng(seedStr);
+    const laps = Math.max(1, Math.round(totalLaps || 1));
+    const changeChance = { seco: 0.05, instável: 0.14, chuvoso: 0.22 }[climaKey] || 0.1;
+    let tierIdx = 0;
+    if (climaKey === 'chuvoso' && rng() < 0.35) tierIdx = 1 + Math.floor(rng() * 2);
+    else if (climaKey === 'instável' && rng() < 0.2) tierIdx = 1;
+    const range = CLIMA_TEMP_RANGE[climaKey] || [18, 28];
+    const tiers = new Array(laps);
+    const temps = new Array(laps);
+    for (let lap = 0; lap < laps; lap++) {
+      tiers[lap] = WEATHER_TIER_KEYS[tierIdx];
+      const base = range[0] + rng() * (range[1] - range[0]);
+      temps[lap] = Math.round(base - tierIdx * WEATHER_TIER_COOL_PER_STEP);
+      if (rng() < changeChance) {
+        const dir = rng() < 0.5 ? -1 : 1;
+        tierIdx = Math.max(0, Math.min(WEATHER_TIER_KEYS.length - 1, tierIdx + dir));
+      }
+    }
+    return { tiers, temps };
+  }
+
+  // amostra 3 pontos (início/meio/fim) de uma timeline pra tabela de
+  // previsão pré-sessão — sempre a MESMA timeline que a sessão ao vivo
+  // vai seguir, então a previsão nunca "mente"
+  function weatherForecastCheckpoints(timeline, totalLaps) {
+    const laps = Math.max(1, Math.round(totalLaps || 1));
+    const idxStart = 0;
+    const idxMid = Math.floor((laps - 1) / 2);
+    const idxEnd = laps - 1;
+    return [idxStart, idxMid, idxEnd].map((idx) => ({
+      lap: idx + 1,
+      tier: timeline.tiers[idx],
+      tempC: timeline.temps[idx],
+    }));
+  }
+
+  // clima mais severo (mais mm) aumenta o desgaste do pneu e o consumo de
+  // combustível — pedido explícito do usuário, além do grip que já mudava
+  // com pneu errado pra condição
+  const WEATHER_WEAR_MM_SPREAD = 0.03; // +3% de desgaste por mm de chuva
+  const WEATHER_FUEL_MM_SPREAD = 0.015; // +1.5% de consumo por mm de chuva
+
+  function weatherWearMult(weatherKey) {
+    const w = WEATHER_CONDITIONS[weatherKey];
+    if (!w) return 1;
+    return 1 + w.mm * WEATHER_WEAR_MM_SPREAD;
+  }
+
+  function weatherFuelMult(weatherKey) {
+    const w = WEATHER_CONDITIONS[weatherKey];
+    if (!w) return 1;
+    return 1 + w.mm * WEATHER_FUEL_MM_SPREAD;
+  }
+
+  // ---------- Especialidade de clima por piloto ----------
+  // pedido explícito do usuário: cada piloto pode ser especialista em UM
+  // dos 4 climas (ou nenhum). A matriz é fixa (não uma fórmula de
+  // distância simples) — os climas formam 2 grupos, seco (Seco + Ventos
+  // Fortes) e molhado (Chuva Grossa + Chuva Intensa): 100% na própria
+  // especialidade, 50% no "parceiro" do mesmo grupo, 0% no clima mais
+  // próximo do grupo oposto, -25% no mais distante. Os valores abaixo são
+  // a referência pra potência 10 (potência 0-20, escala linearmente —
+  // potência 5 = metade do valor, potência 20 = dobro, potência 0 = nulo).
+  const WEATHER_SPECIALTY_FACTOR = {
+    seco: { seco: 1, ventos_fortes: 0.5, chuva_grossa: 0, chuva_intensa: -0.25 },
+    ventos_fortes: { seco: 0.5, ventos_fortes: 1, chuva_grossa: 0, chuva_intensa: -0.25 },
+    chuva_grossa: { seco: -0.25, ventos_fortes: 0, chuva_grossa: 1, chuva_intensa: 0.5 },
+    chuva_intensa: { seco: -0.25, ventos_fortes: 0, chuva_grossa: 0.5, chuva_intensa: 1 },
+  };
+  const WEATHER_SPECIALTY_POTENCIA_REF = 10;
+  const WEATHER_SPECIALTY_MAX_PACE_SWING = 0.06; // ±6% de ritmo no pico (potência 10, na própria especialidade)
+
+  function weatherSpecialtyPaceFactor(specialtyKey, actualWeatherKey, potencia) {
+    if (!specialtyKey || !WEATHER_SPECIALTY_FACTOR[specialtyKey] || potencia == null) return 1;
+    const row = WEATHER_SPECIALTY_FACTOR[specialtyKey];
+    const basePercent = row[actualWeatherKey];
+    if (basePercent == null) return 1;
+    const scale = Math.max(0, potencia) / WEATHER_SPECIALTY_POTENCIA_REF;
+    return 1 + basePercent * scale * WEATHER_SPECIALTY_MAX_PACE_SWING;
+  }
 
   // pneu fora da condição ideal perde grip — reflete o carro escorregando
   // no seco com pneu de chuva, ou "cozinhando" o intermediário no seco
@@ -396,7 +517,11 @@
   }
 
   window.WSPF1Corrida = {
-    TIRE_COMPOUNDS, WEATHER_CONDITIONS, TIRE_MISMATCH_PENALTY, TIRE_SUPPLIERS,
+    TIRE_COMPOUNDS, WEATHER_CONDITIONS, WEATHER_TIER_KEYS, TIRE_MISMATCH_PENALTY, TIRE_SUPPLIERS,
+    seededRng, CLIMA_TEMP_RANGE, buildWeatherTimeline, weatherForecastCheckpoints,
+    weatherWearMult, weatherFuelMult,
+    WEATHER_SPECIALTY_FACTOR, WEATHER_SPECIALTY_POTENCIA_REF, WEATHER_SPECIALTY_MAX_PACE_SWING,
+    weatherSpecialtyPaceFactor,
     tireEffectiveGrip, tireSupplierFactor, tireSupplierEffectFactor, calcTireWear, calcStintLaps,
     FUEL_BASE_CONSUMPTION_PER_LAP, FUEL_SAFETY_MARGIN_PCT, calcFuelNeeded, calcFuelForStint, motorFuelMult,
     PIT_STOP_LAP_FRACTION_MAX, PIT_STOP_LAP_FRACTION_MIN, DEFAULT_AVG_LAP_MS, pitStopMs, pitStopMsForClub,

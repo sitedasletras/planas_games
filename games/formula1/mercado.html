@@ -30,6 +30,7 @@
   .driver-actions { display: flex; gap: 8px; }
   .driver-actions button { flex: 1; }
   .empty-market-note { margin: 0 14px 14px; font-size: 0.78rem; color: #9fd8b8; }
+  .weather-specialty-chip { font-size: 0.66rem; background: #0e1c15; border: 1px solid #345c48; color: #9fd8b8; padding: 3px 8px; border-radius: 8px; align-self: flex-start; }
 </style>
 </head>
 <body>
@@ -120,6 +121,16 @@
 
       const traitsRow = traitsRowFor(d.traits);
       if (traitsRow) card.appendChild(traitsRow);
+
+      const specialtyChip = document.createElement('span');
+      specialtyChip.className = 'weather-specialty-chip';
+      if (d.weatherSpecialty && P.WEATHER_SPECIALTY_LABELS[d.weatherSpecialty]) {
+        const spec = P.WEATHER_SPECIALTY_LABELS[d.weatherSpecialty];
+        specialtyChip.textContent = spec.icon + ' Especialista em ' + spec.label + ' (potência ' + (d.weatherPotencia || 0) + '/20)';
+      } else {
+        specialtyChip.textContent = '🌗 Sem especialidade de clima';
+      }
+      card.appendChild(specialtyChip);
 
       const stats = document.createElement('div');
       stats.className = 'driver-stats';

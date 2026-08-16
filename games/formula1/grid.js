@@ -49,16 +49,33 @@
     return keys.length ? keys[Math.floor(Math.random() * keys.length)] : null;
   }
 
+  // rivais também podem ter especialidade de clima (ou nenhuma), igual aos
+  // pilotos do jogador (pilotos.js) — pra manter justo, quem enfrenta o
+  // jogador na chuva também pode ganhar ou perder ritmo por causa disso
+  function randWeatherSpecialty() {
+    const pool = (window.WSPF1Corrida && window.WSPF1Corrida.WEATHER_TIER_KEYS) || ['seco', 'ventos_fortes', 'chuva_grossa', 'chuva_intensa'];
+    if (Math.random() >= 0.7) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function randWeatherPotencia(specialty) {
+    return specialty ? Math.round(Math.random() * 20) : 0;
+  }
+
   function generateRivalTeam(used, index) {
     const teamName = RIVAL_TEAM_NAMES[index] || ('Equipe Rival ' + (index + 1));
     // banda apertada de propósito (pedido explícito do usuário): a diferença
     // de ritmo entre equipes rivais tem que ser pequena o bastante pra
     // piloto/estratégia decidirem a corrida, não o sorteio da equipe
     const basePace = 88 + Math.random() * 9; // 88-97
-    const drivers = [0, 1].map(() => ({
-      name: uniqueName(used),
-      rating: Math.round(Math.max(50, Math.min(99, basePace + (Math.random() - 0.5) * 6))),
-    }));
+    const drivers = [0, 1].map(() => {
+      const weatherSpecialty = randWeatherSpecialty();
+      return {
+        name: uniqueName(used),
+        rating: Math.round(Math.max(50, Math.min(99, basePace + (Math.random() - 0.5) * 6))),
+        weatherSpecialty,
+        weatherPotencia: randWeatherPotencia(weatherSpecialty),
+      };
+    });
     return {
       id: 'rival_' + index,
       name: teamName,
@@ -87,6 +104,10 @@
         (parsed.rivals || []).forEach((r) => {
           if (!r.motorSupplier) { r.motorSupplier = randMotorSupplier(); changed = true; }
           if (!r.tireSupplier) { r.tireSupplier = randTireSupplier(); changed = true; }
+          (r.drivers || []).forEach((d) => {
+            if (d.weatherSpecialty === undefined) { d.weatherSpecialty = randWeatherSpecialty(); changed = true; }
+            if (d.weatherPotencia == null) { d.weatherPotencia = randWeatherPotencia(d.weatherSpecialty); changed = true; }
+          });
         });
         if (changed) saveGrid(parsed);
         return parsed;
@@ -181,6 +202,8 @@
           motorLevel, chassiLevel,
           motorSupplier: club.motorSupplier, tireSupplier: club.tireSupplier, cambioSupplier: club.cambioSupplier,
           traits: d.traits || [],
+          weatherSpecialty: d.weatherSpecialty || null,
+          weatherPotencia: d.weatherPotencia || 0,
         });
       });
     }
@@ -202,6 +225,8 @@
           chassiLevel: r.chassiLevel,
           motorSupplier: r.motorSupplier, tireSupplier: r.tireSupplier,
           traits: [],
+          weatherSpecialty: d.weatherSpecialty || null,
+          weatherPotencia: d.weatherPotencia || 0,
         });
       });
     });
