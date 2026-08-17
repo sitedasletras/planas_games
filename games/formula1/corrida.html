@@ -976,20 +976,20 @@
     // cantos ('w'), carroceria ('b'), cockpit/halo escuro ('c'), realce do
     // bico ('n'). Nariz do carro fica na coluna mais à direita (+x local).
     const CAR_PIXELS = [
-      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
-      ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
-      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
-      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
-      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
-      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'g'],
-      ['g', 'w', 'w', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'b', 'g'],
-      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', '.'],
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', 'n'],
+      ['g', 'w', 'w', 'd', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 't', 'c', 'c', 'h', 'b', 'b', 'b', 'b', 'n', '.'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 't', 'c', 'c', 'h', 'b', 'b', 'b', 'b', 'n', '.'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'w', 'w', 'd', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'n', 'g'],
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', 'n'],
     ];
     const CAR_ROWS = CAR_PIXELS.length, CAR_COLS = CAR_PIXELS[0].length;
 
     function drawCar(ctx, x, y, angle, car) {
       const isPlayer = car.isPlayer;
-      const cell = isPlayer ? 0.95 : 0.74;
+      const cell = isPlayer ? 1.1 : 0.82;
       const colors = carLiveryColors(car);
       const totalW = CAR_COLS * cell, totalH = CAR_ROWS * cell;
 
@@ -1007,6 +1007,9 @@
             : px === 'c' ? 'rgba(8,8,8,0.9)'
             : px === 'g' ? colors.wing
             : px === 'n' ? colors.nose
+            : px === 'h' ? 'rgba(40,40,40,0.85)'
+            : px === 't' ? 'rgba(200,60,0,0.75)'
+            : px === 'd' ? 'rgba(30,30,30,0.7)'
             : colors.body;
           ctx.fillRect((col - CAR_COLS / 2) * cell, (row - CAR_ROWS / 2) * cell, cell + 0.4, cell + 0.4);
         }
@@ -1082,6 +1085,37 @@
       ctx.globalAlpha = 1;
     }
 
+
+    function drawKerbs(ctx, cx, cy, rx, ry) {
+      var samples = currentTrackSampled.samples, n = samples.length, tw = 12;
+      for (var i = 0; i < n; i += 2) {
+        var prev = samples[(i-3+n)%n], curr = samples[i], next = samples[(i+3)%n];
+        var dx1=(curr.x-prev.x)*rx, dy1=(curr.y-prev.y)*ry;
+        var dx2=(next.x-curr.x)*rx, dy2=(next.y-curr.y)*ry;
+        var a1=Math.atan2(dy1,dx1), a2=Math.atan2(dy2,dx2), da=a2-a1;
+        while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2;
+        if(Math.abs(da)<0.06) continue;
+        var p=mapToCanvas(curr,cx,cy,rx,ry), tang=Math.atan2(dy2,dx2);
+        var norm=tang+Math.PI/2, sign=da>0?1:-1;
+        var ox=p.x+Math.cos(norm)*sign*(tw+1.5), oy=p.y+Math.sin(norm)*sign*(tw+1.5);
+        ctx.save(); ctx.translate(ox,oy); ctx.rotate(tang);
+        ctx.fillStyle=(Math.floor(i/2)%2===0)?'#cc2222':'#eeeeee';
+        ctx.fillRect(-1.8,-2.5,3.6,5); ctx.restore();
+      }
+    }
+    function drawGrassBackground(ctx,w,h) {
+      for(var i=0;i<8;i++){ctx.fillStyle=i%2===0?'rgba(18,52,37,0.4)':'rgba(25,65,45,0.4)';ctx.fillRect(0,(h/8)*i,w,h/8+1);}
+    }
+    function drawRunoffArea(ctx,cx,cy,rx,ry) {
+      strokeTrackShape(ctx,cx,cy,rx,ry); ctx.strokeStyle='rgba(160,150,130,0.15)'; ctx.lineWidth=30; ctx.stroke();
+    }
+    function drawTrackEdges(ctx,cx,cy,rx,ry) {
+      strokeTrackShape(ctx,cx,cy,rx,ry); ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=23; ctx.stroke();
+    }
+    function drawBarriers(ctx,cx,cy,rx,ry) {
+      strokeTrackShape(ctx,cx,cy,rx,ry); ctx.strokeStyle='rgba(180,40,40,0.3)'; ctx.lineWidth=26; ctx.stroke();
+    }
+
     function render() {
       const canvas = document.getElementById('track');
       const ctx = canvas.getContext('2d');
@@ -1089,7 +1123,10 @@
       const rx = canvas.width / 2 - 30, ry = canvas.height / 2 - 30;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       updateEffects();
-
+      drawGrassBackground(ctx, canvas.width, canvas.height);
+      drawBarriers(ctx, cx, cy, rx, ry);
+      drawRunoffArea(ctx, cx, cy, rx, ry);
+      drawTrackEdges(ctx, cx, cy, rx, ry);
       const trackGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       trackGradient.addColorStop(0, '#3a6650');
       trackGradient.addColorStop(1, '#22402f');
@@ -1097,21 +1134,23 @@
       ctx.strokeStyle = trackGradient;
       ctx.lineWidth = 22;
       ctx.stroke();
+      drawKerbs(ctx, cx, cy, rx, ry);
       ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 8]);
       strokeTrackShape(ctx, cx, cy, rx, ry);
       ctx.stroke();
       ctx.setLineDash([]);
-
       drawPitLane(ctx, cx, cy, rx, ry);
-
-      // linha de largada/chegada (padrão quadriculado) no topo do traçado
       const startPoint = pointOnTrack(0, cx, cy, rx, ry);
-      for (let i = -1; i <= 1; i++) {
-        ctx.fillStyle = (i % 2 === 0) ? 'rgba(255,255,255,0.85)' : 'rgba(20,20,20,0.85)';
-        ctx.fillRect(startPoint.x - 11 + (i + 1) * 8, startPoint.y - 11, 8, 22);
+      const sp2 = pointOnTrack(0.003, cx, cy, rx, ry);
+      const startAngle = Math.atan2(sp2.y - startPoint.y, sp2.x - startPoint.x);
+      ctx.save(); ctx.translate(startPoint.x, startPoint.y); ctx.rotate(startAngle + Math.PI/2);
+      for (let r = 0; r < 6; r++) for (let c = 0; c < 2; c++) {
+        ctx.fillStyle = ((r+c)%2===0)?'rgba(255,255,255,0.9)':'rgba(15,15,15,0.9)';
+        ctx.fillRect(-10.5+r*3.5, -3.5+c*3.5, 3.5, 3.5);
       }
+      ctx.restore();
 
       drawParticles(ctx);
       playerTrail.forEach((p) => {
@@ -1185,7 +1224,11 @@
       const mrx = canvas.width / 2 - 9, mry = canvas.height / 2 - 9;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      ctx.strokeStyle = 'rgba(159,216,184,0.5)';
+      strokeTrackShape(ctx, mcx, mcy, mrx, mry);
+      ctx.strokeStyle = 'rgba(100,100,90,0.3)';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(159,216,184,0.55)';
       ctx.lineWidth = 2;
       strokeTrackShape(ctx, mcx, mcy, mrx, mry);
       ctx.stroke();
