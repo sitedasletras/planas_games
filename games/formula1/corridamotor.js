@@ -25,6 +25,39 @@
   // por uma referência fixa de pico de F1
   const SPEED_DISPLAY_BASE_KMH = 300;
 
+  // ---------- Safety Car ----------
+  const SC_CHANCE_PER_LAP = 0.04;  // 4% chance por volta
+  const SC_MIN_LAP = 3;            // não aparece antes da volta 3
+  const SC_LAPS_DURATION_MIN = 2;
+  const SC_LAPS_DURATION_MAX = 4;
+  const SC_MAX_PER_RACE = 2;
+  const SC_SPEED_FACTOR = 0.45;    // carros andam a 45% da velocidade
+  const SC_WEAR_MULT = 0.15;       // desgaste cai pra 15% do normal
+  const SC_FUEL_MULT = 0.40;       // consumo cai pra 40% do normal
+
+  function maybeDeploySafetyCar(state) {
+    if (state.isSprint) return; // sem SC em sprint
+    if (!state.safetyCar) state.safetyCar = { active: false, lapsRemaining: 0, count: 0 };
+    if (state.safetyCar.active) {
+      state.safetyCar.lapsRemaining--;
+      if (state.safetyCar.lapsRemaining <= 0) {
+        state.safetyCar.active = false;
+        pushLog(state, '\u{1F7E2} Safety Car recolhido! Corrida relargada.');
+      }
+      return;
+    }
+    if (state.safetyCar.count >= SC_MAX_PER_RACE) return;
+    var leaderLap = Math.max(0, ...state.cars.filter(function(c){return !c.retired;}).map(function(c){return c.lapsCompleted;}));
+    if (leaderLap < SC_MIN_LAP || leaderLap >= state.totalLaps - 2) return;
+    if (Math.random() < SC_CHANCE_PER_LAP) {
+      state.safetyCar.active = true;
+      state.safetyCar.lapsRemaining = SC_LAPS_DURATION_MIN + Math.floor(Math.random() * (SC_LAPS_DURATION_MAX - SC_LAPS_DURATION_MIN + 1));
+      state.safetyCar.count++;
+      pushLog(state, '\u{1F7E1} SAFETY CAR na pista! Incidente na volta ' + leaderLap + '.');
+    }
+  }
+
+
   function nextStrategyCompound(current) {
     if (current === 'macio') return 'duro';
     if (current === 'duro') return 'medio';
@@ -142,6 +175,7 @@
         // entrant, carro sem nenhum dos dois não ganha nem perde ritmo
         weatherSpecialty: e.weatherSpecialty || null,
         weatherPotencia: e.weatherPotencia != null ? e.weatherPotencia : 0,
+        _moralValue: e.moral != null ? e.moral : 50,
       };
     });
 
@@ -181,6 +215,7 @@
       isSprint: !!opts.isSprint,
       circuit: opts.circuit || '',
       finished: false,
+      safetyCar: { active: false, lapsRemaining: 0, count: 0 },
       log: [],
       pitStopMsByTeam: opts.pitStopMsByTeam || null,
     };
@@ -280,6 +315,7 @@
     opts = opts || {};
     state.elapsedMs += dtMs;
     applyWeatherTick(state);
+    maybeDeploySafetyCar(state);
 
     state.cars.forEach((car) => {
       if (car.retired) { car.displaySpeedKmh = 0; return; }
@@ -313,24 +349,38 @@
       // perde no oposto — vale pra jogador E rival, todo mundo tem a chance
       // de ter (ou não) uma especialidade
       const weatherSpecialtyFactor = C() ? C().weatherSpecialtyPaceFactor(car.weatherSpecialty, state.weather, car.weatherPotencia) : 1;
+      // moral do piloto: afeta ritmo entre 0.90x (moral 0) e 1.10x (moral 100)
+      var moralMult = (window.WSPF1Pilotos && car._moralValue != null) ? window.WSPF1Pilotos.moralPaceMult(car._moralValue) : 1;
+      // Safety Car: todos andam devagar
+      var scFactor = (state.safetyCar && state.safetyCar.active) ? SC_SPEED_FACTOR : 1;
       const variance = 1 + (Math.random() - 0.5) * 0.06;
-      const speedFactor = (car.pace / 75) * stylePaceFactor * weatherSpecialtyFactor * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance;
+      const speedFactor = (car.pace / 75) * stylePaceFactor * weatherSpecialtyFactor * moralMult * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance * scFactor;
       const speed = state.baseSpeedPerMs * speedFactor;
       car.displaySpeedKmh = Math.max(0, SPEED_DISPLAY_BASE_KMH * speedFactor);
 
       car.distance += speed * dtMs;
       // clima mais severo (mais mm de chuva) acelera o desgaste do pneu e o
       // consumo de combustível — além do grip que já mudava com pneu errado
+      var scWearMult = (state.safetyCar && state.safetyCar.active) ? SC_WEAR_MULT : 1;
+      var scFuelMult = (state.safetyCar && state.safetyCar.active) ? SC_FUEL_MULT : 1;
       const weatherWearMult = C() ? C().weatherWearMult(state.weather) : 1;
       const weatherFuelMult = C() ? C().weatherFuelMult(state.weather) : 1;
       const wearAdd = C() ? C().calcTireWear(car.tireCompound, dtMs / (state.raceRealMs / state.totalLaps), 1) : 0;
-      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult * weatherWearMult);
+      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult * weatherWearMult * scWearMult);
       // combustível: motor mais potente (nível) bebe mais, E cada fabricante
       // de motor tem uma característica fixa de consumo própria — vale pra
       // todo mundo no grid, não só o jogador
       const motorFuelMult = C() ? C().motorFuelMult(car.motorLevel) : 1;
       const motorSupplierFuel = C() ? C().motorSupplierFuelFactor(car.motorSupplier) : 1;
-      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult * motorFuelMult * motorSupplierFuel * weatherFuelMult);
+      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult * motorFuelMult * motorSupplierFuel * weatherFuelMult * scFuelMult);
+
+      // sem combustível = carro para (bug fix: antes rodava com 0kg)
+      if (car.fuelKg <= 0 && !car.retired) {
+        car.retired = true;
+        car.retiredReason = { label: 'Sem combustível', icon: '⛽' };
+        pushLog(state, '⛽ ' + car.driverName + ' para na pista: sem combustível!');
+        return;
+      }
 
       while (car.distance >= 100 && car.finishedAt == null) {
         car.distance -= 100;
@@ -378,5 +428,6 @@
 
   window.WSPF1Motor = {
     createRaceState, stepRace, isFinished, standings, requestPit, setDrivingStyle,
+    isSafetyCarActive: function(state) { return state.safetyCar && state.safetyCar.active; },
   };
 })();
