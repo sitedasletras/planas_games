@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WSP Fórmula 1 — Corrida</title>
+<script>
+  // se o navegador restaurar essa página do cache de voltar/avançar
+  // (bfcache), os dados podem estar velhos (ex: orçamento/temporada
+  // mudou em outra aba) — recarrega pra pegar o localStorage atual
+  window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: radial-gradient(circle at top, #1b3a2f 0%, #0a1a14 100%);
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    color: white;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  .topbar {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    background: rgba(22, 40, 31, 0.85); backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 213, 74, 0.15);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .back-btn { color: #ffd54a; text-decoration: none; font-size: 1.3rem; font-weight: bold; }
+  .topbar h1 { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1.05rem; color: #ffd54a; flex: 1; letter-spacing: 0.4px; }
+  .topbar .session-tag { font-size: 0.7rem; background: #16281f; border: 1px solid #ffd54a; color: #ffd54a; padding: 4px 8px; border-radius: 8px; }
+
+  .panel { margin: 10px 14px; padding: 14px; background: linear-gradient(160deg, rgba(255,255,255,0.03), rgba(0,0,0,0.15)), #16281f; border: 1px solid #345c48; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .panel h2 { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 0.92rem; color: #ffd54a; margin-bottom: 10px; }
+  .panel p { font-size: 0.8rem; color: #9fd8b8; margin-bottom: 6px; }
+
+  .compound-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .compound-btn {
+    flex: 1 1 30%; min-width: 84px; padding: 10px 6px; border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.15); background: #0f231a; color: white;
+    font-size: 0.78rem; font-weight: bold; text-align: center; cursor: pointer;
+  }
+  .compound-btn.selected { border-color: #ffd54a; background: #1e3b2a; }
+  .compound-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+
+  .refuel-row { display: flex; gap: 8px; margin: 10px 0; }
+  .refuel-btn { flex: 1; padding: 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.15); background: #0f231a; color: white; font-size: 0.76rem; cursor: pointer; }
+  .refuel-btn.selected { border-color: #ffd54a; background: #1e3b2a; }
+
+  .primary-btn {
+    display: block; width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 12px;
+    background: linear-gradient(160deg, #2f8f4e, #14401f); border: 2px solid #ffd54a; color: white;
+    font-weight: bold; font-size: 1rem; cursor: pointer;
+  }
+  .primary-btn:active { transform: scale(0.98); }
+
+  .hud { display: flex; justify-content: space-between; gap: 8px; margin: 10px 14px; }
+  .hud-box { flex: 1; background: #16281f; border: 1px solid #345c48; border-radius: 10px; padding: 8px; text-align: center; box-shadow: 0 1px 6px rgba(0,0,0,0.2); }
+  .hud-label { font-size: 0.6rem; color: #9fd8b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .hud-value { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1rem; font-weight: bold; color: #ffd54a; }
+  .hud-value.p1 { animation: hudPulse 1.2s ease infinite; color: #3fd67a; }
+
+  .circuit-data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .circuit-data-item { background: #0f231a; border-radius: 8px; padding: 8px 10px; }
+  .circuit-data-label { font-size: 0.6rem; color: #9fd8b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .circuit-data-value { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 0.88rem; font-weight: bold; color: #ffd54a; }
+
+  .circuit-shape-wrap { display: flex; justify-content: center; margin-bottom: 10px; background: #0f231a; border-radius: 10px; padding: 8px; }
+  #circuit-shape-preview { max-width: 100%; height: auto; }
+
+  .circuit-curiosidade {
+    margin-top: 10px; padding: 10px 12px; background: #0f231a; border-left: 3px solid #ffd54a;
+    border-radius: 0 8px 8px 0; font-size: 0.76rem; color: #cfeede; line-height: 1.4;
+  }
+  .circuit-curiosidade::before { content: '💡 '; }
+
+  .weather-forecast { margin-top: 10px; border-top: 1px solid #345c48; padding-top: 10px; }
+  .weather-forecast-title { font-size: 0.8rem; font-weight: bold; color: #ffd54a; margin-bottom: 8px; }
+  .wf-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: #0f231a; margin-bottom: 4px; font-size: 0.74rem; }
+  .wf-stage { flex: 1; color: #9fd8b8; }
+  .wf-cond { flex: 1.4; color: white; font-weight: bold; }
+  .wf-temp { min-width: 42px; text-align: right; color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
+  .weather-forecast-note { font-size: 0.66rem; color: #9fd8b8; margin-top: 6px; line-height: 1.35; }
+
+  .fuel-table { margin-top: 10px; border-top: 1px solid #345c48; padding-top: 10px; }
+  .fuel-row { display: flex; justify-content: space-between; font-size: 0.76rem; padding: 4px 0; color: #cfeede; }
+  .fuel-row b { color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
+
+  .setup-dial { margin-bottom: 12px; }
+  .setup-dial-label { font-size: 0.8rem; font-weight: bold; color: #ffd54a; margin-bottom: 6px; }
+  .setup-dial-options { display: flex; gap: 6px; }
+  .setup-opt-btn { flex: 1; padding: 8px 4px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15); background: #0f231a; color: white; font-size: 0.7rem; cursor: pointer; text-align: center; }
+  .setup-opt-btn.selected { border-color: #ffd54a; background: #1e3b2a; }
+  .setup-opt-desc { font-size: 0.66rem; color: #9fd8b8; margin-top: 4px; min-height: 2.4em; }
+
+  @keyframes hudPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  .track-wrap { position: relative; width: 400px; max-width: 100%; margin: 6px auto; }
+  canvas#track { display: block; margin: 0 auto; background: radial-gradient(circle at 50% 40%, #123425, #0a1811 80%); border-radius: 14px; border: 1px solid #345c48; box-shadow: inset 0 0 30px rgba(0,0,0,0.5); }
+  canvas#minimap { position: absolute; left: 8px; bottom: 8px; width: 84px; height: 64px; background: rgba(8,18,13,0.85); border: 1px solid rgba(255,213,74,0.4); border-radius: 10px; }
+  .speedo-box { position: absolute; right: 8px; bottom: 8px; min-width: 64px; padding: 6px 8px; background: rgba(8,18,13,0.85); border: 1px solid rgba(255,213,74,0.4); border-radius: 10px; text-align: center; }
+  .speedo-value { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; font-size: 1.25rem; font-weight: 900; color: #ffd54a; line-height: 1; }
+  .speedo-label { font-size: 0.52rem; color: #9fd8b8; letter-spacing: 1.2px; margin-top: 2px; }
+
+  .ticker {
+    margin: 6px 14px; padding: 8px 12px; background: #0f231a; border-radius: 8px;
+    font-size: 0.74rem; color: #cfeede; min-height: 1.4em;
+  }
+
+  .live-style-row { display: flex; gap: 6px; margin: 6px 0 0; }
+  .live-style-btn {
+    flex: 1; padding: 8px 4px; border-radius: 9px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: #cfeede; font-size: 0.68rem; font-weight: bold; cursor: pointer; text-align: center;
+  }
+  .live-style-btn.selected { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
+
+  .driver-tab-row { display: flex; gap: 6px; margin: 4px 0 10px; }
+  .driver-tab-btn {
+    flex: 1; padding: 8px 6px; border-radius: 9px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: #cfeede; font-size: 0.72rem; font-weight: bold; cursor: pointer; text-align: center;
+  }
+  .driver-tab-btn.selected { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
+
+  #driver-controls { display: flex; flex-direction: column; gap: 8px; margin: 6px 14px; }
+  .driver-card {
+    background: #16281f; border: 1px solid #345c48; border-radius: 12px; padding: 8px 10px;
+  }
+  .driver-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .driver-card-name { font-size: 0.78rem; font-weight: bold; color: #ffd54a; }
+  .driver-card-tire { font-size: 0.72rem; color: #cfeede; }
+  .pit-compound-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pit-compound-btn {
+    flex: 1 1 18%; min-width: 44px; padding: 6px 3px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: white; font-size: 0.9rem; text-align: center; cursor: pointer;
+  }
+  .pit-compound-btn.current { border-color: #345c48; opacity: 0.55; }
+  .pit-compound-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .leaderboard { margin: 8px 14px 14px; }
+  .lb-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; font-size: 0.78rem; }
+  .lb-row.player { background: #1e3b2a; border: 1px solid #ffd54a; }
+  .lb-pos { width: 22px; font-weight: bold; color: #ffd54a; }
+  .lb-name { flex: 1; }
+  .lb-name small { display: block; color: #9fd8b8; font-size: 0.65rem; }
+  .lb-gap { text-align: right; min-width: 56px; font-size: 0.7rem; color: #cfeede; }
+  .lb-gap small { display: block; color: #9fd8b8; font-size: 0.6rem; }
+  .lb-tire { font-size: 0.9rem; }
+  .lb-retired { opacity: 0.45; text-decoration: line-through; }
+
+  .controls-row { display: flex; gap: 8px; margin: 4px 14px 14px; }
+  .controls-row button {
+    flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #ffd54a;
+    background: #16281f; color: #ffd54a; font-weight: bold; font-size: 0.85rem; cursor: pointer;
+  }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 18px; }
+  .overlay.hidden { display: none; }
+  .overlay-card { background: #16281f; border: 2px solid #ffd54a; border-radius: 16px; padding: 22px; max-width: 380px; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .overlay-title { font-size: 1.15rem; font-weight: bold; color: #ffd54a; margin-bottom: 10px; text-align: center; }
+  .result-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 6px 4px; border-bottom: 1px solid #234433; }
+  .result-row.player { color: #ffd54a; font-weight: bold; }
+  .points-line { text-align: center; margin: 12px 0; font-size: 0.95rem; color: #3fd67a; font-weight: bold; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="back-btn" href="temporada.html">←</a>
+      <h1 id="circuit-name">Circuito</h1>
+      <span class="session-tag" id="session-tag">Corrida</span>
+      <span class="session-tag" id="weather-tag"></span>
+    </div>
+
+    <div id="circuit-info-panel" class="panel hidden">
+      <h2>Dados do circuito</h2>
+      <div class="circuit-shape-wrap">
+        <canvas id="circuit-shape-preview" width="260" height="160"></canvas>
+      </div>
+      <div class="circuit-data-grid" id="circuit-data-grid"></div>
+      <div class="weather-forecast" id="weather-forecast"></div>
+      <p id="circuit-curiosidade" class="circuit-curiosidade hidden"></p>
+    </div>
+
+    <div id="setup-panel" class="panel hidden">
+      <h2>Acerto do carro</h2>
+      <p>Escolha o acerto pra sessão — ele vale pro resto do fim de semana (classificatória, sprint e corrida usam o mesmo acerto).</p>
+      <p id="setup-asphalt-hint" style="color:#ffd54a; font-weight:bold;"></p>
+      <div id="setup-dials"></div>
+    </div>
+
+    <div id="strategy-panel" class="panel">
+      <h2 id="strategy-title">Estratégia de largada</h2>
+      <p id="strategy-drivers" style="color:#ffd54a; font-weight:bold;"></p>
+      <div class="driver-tab-row" id="driver-tab-row"></div>
+      <p id="strategy-hint">Escolha o composto de pneu pra largada. Fique de olho no céu — o tempo pode mudar.</p>
+      <div class="compound-row" id="compound-row"></div>
+      <div id="refuel-block" class="hidden">
+        <p>Estratégia de combustível: até que volta você quer rodar com esse tanque? O carro sai mais leve/rápido, mas é <b>obrigado</b> a parar pra reabastecer + trocar pneu nessa volta.</p>
+        <div class="refuel-row" id="refuel-row"></div>
+        <div class="setup-opt-desc" id="refuel-desc"></div>
+      </div>
+
+      <p style="margin-top:10px;">Estilo de pilotagem:</p>
+      <div class="refuel-row" id="driving-style-row"></div>
+      <div class="setup-opt-desc" id="driving-style-desc"></div>
+
+      <div class="fuel-table" id="fuel-table"></div>
+      <p class="campus-tier-note" id="fuel-table-note" style="margin-top:6px;">Essa planilha projeta só a <b>1ª parada</b>. Depois disso a estratégia é sua: durante a corrida você escolhe o pneu de cada parada seguinte, e pode parar quantas vezes quiser (ou nenhuma a mais, se achar que o pneu aguenta).</p>
+
+      <button class="primary-btn" id="start-btn">🏁 Largar</button>
+    </div>
+
+    <div id="race-view" class="hidden">
+      <div class="hud">
+        <div class="hud-box"><div class="hud-label">Posição</div><div class="hud-value" id="hud-pos">-</div></div>
+        <div class="hud-box"><div class="hud-label">Volta</div><div class="hud-value" id="hud-lap">0/0</div></div>
+        <div class="hud-box"><div class="hud-label">Pneu</div><div class="hud-value" id="hud-tire">-</div></div>
+        <div class="hud-box"><div class="hud-label">Combustível</div><div class="hud-value" id="hud-fuel">-</div></div>
+      </div>
+
+      <div class="track-wrap">
+        <canvas id="track" width="400" height="280"></canvas>
+        <canvas id="minimap" width="84" height="64"></canvas>
+        <div class="speedo-box">
+          <div class="speedo-value" id="speedo-value">0</div>
+          <div class="speedo-label">KM/H</div>
+        </div>
+      </div>
+      <div class="ticker" id="ticker">Aguardando a largada...</div>
+
+      <div id="driver-controls"></div>
+
+      <div class="leaderboard" id="leaderboard"></div>
+
+      <div class="controls-row">
+        <button id="speed-btn">⏩ 2x</button>
+        <button id="pause-btn">⏸</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="result-overlay">
+    <div class="overlay-card">
+      <div class="overlay-title" id="result-title">Resultado</div>
+      <div id="result-list"></div>
+      <div class="points-line" id="points-line"></div>
+      <button class="primary-btn" id="result-continue-btn">Continuar</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="empty-overlay">
+    <div class="overlay-card">
+      <div class="overlay-title" id="empty-overlay-title">Nada pra correr agora</div>
+      <p id="empty-overlay-text" style="font-size:0.85rem; color:#9fd8b8; text-align:center; margin-bottom:14px;">Nenhuma sessão pendente aqui agora — volte pra tela de Temporada.</p>
+      <a class="primary-btn" style="display:block; text-align:center; text-decoration:none;" href="temporada.html">Ir pra Temporada</a>
+    </div>
+  </div>
+
+  <script src="pilotos.js"></script>
+  <script src="equipe.js"></script>
+  <script src="corrida.js"></script>
+  <script src="grid.js"></script>
+  <script src="calendario.js"></script>
+  <script src="corridamotor.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const NORMAL_RACE_REAL_MS = 320000;
+
+    const temporadaState = window.WSPF1Calendario.loadState();
+    const weekend = window.WSPF1Calendario.currentWeekend(temporadaState);
+    const sessionType = window.WSPF1Calendario.currentSessionType(temporadaState);
+
+    const strategyPanelEl = document.getElementById('strategy-panel');
+    const setupPanelEl = document.getElementById('setup-panel');
+    const raceViewEl = document.getElementById('race-view');
+    const emptyOverlayEl = document.getElementById('empty-overlay');
+
+    const isPractice = sessionType === 'treino_livre';
+    // classificatória agora é sessão AO VIVO (pedido explícito do usuário:
+    // "eu tenho que entrar na pista... cada um faz seu tempo", não mais um
+    // resultado sorteado instantâneo). Mesma duração curta do treino livre
+    // (sessão de tempo de volta, sem estratégia de combustível/pit), mas
+    // com título e relatório final próprios (classificação de largada).
+    const isQualy = sessionType === 'classificatoria';
+    const isShortSession = isPractice || isQualy;
+    const PRACTICE_LAPS = 12;
+    const PRACTICE_REAL_MS = 70000;
+
+    let selectedSetup = window.WSPF1Corrida.defaultCarSetup();
+
+    // motor mais potente bebe mais combustível — pro jogador ver isso já
+    // refletido na planilha antes de largar (não só sentir na corrida)
+    let playerMotorLevel = 0;
+    if (window.WSPF1Equipe) {
+      const clubForFuel = window.WSPF1Equipe.loadClub();
+      playerMotorLevel = (clubForFuel.departments && clubForFuel.departments.motor) || 0;
+    }
+
+    // cada piloto titular do jogador tem seu PRÓPRIO plano (composto,
+    // volta-alvo de combustível, estilo de pilotagem) — pedido explícito
+    // do usuário: os dois carros não são obrigados a rodar a mesma
+    // estratégia. strategyByDriver é indexado pelo id do piloto (d.id);
+    // activeStrategyDriverId decide qual piloto a tela de estratégia está
+    // editando agora (trocado pelas abas em #driver-tab-row).
+    let playerDrivers = [];
+    const strategyByDriver = {};
+    if (window.WSPF1Pilotos) {
+      const equipe = window.WSPF1Pilotos.loadSquad();
+      playerDrivers = equipe.drivers.filter((d) => d.role !== 'reserva');
+      playerDrivers.forEach((d) => {
+        strategyByDriver[d.id] = {
+          compound: 'medio',
+          fuelTargetLap: null, // null = tanque cheio, sem parada de combustível planejada
+          drivingStyle: window.WSPF1Corrida.defaultDrivingStyle(),
+        };
+      });
+    }
+    let activeStrategyDriverId = playerDrivers.length ? playerDrivers[0].id : null;
+    function activeStrategy() { return strategyByDriver[activeStrategyDriverId]; }
+
+    const validSession = isPractice || isQualy || sessionType === 'sprint' || sessionType === 'corrida';
+    const weekendGated = weekend && weekend.sessionIdx === 0 && !window.WSPF1Calendario.isWeekendAvailable(temporadaState);
+    if (!weekend || !validSession || weekendGated) {
+      if (weekendGated) {
+        document.getElementById('empty-overlay-title').textContent = 'GP ainda não liberou';
+        document.getElementById('empty-overlay-text').textContent = '⏳ Próximo GP libera em ' + window.WSPF1Calendario.formatCountdown(window.WSPF1Calendario.msUntilNextWeekend(temporadaState)) + '.';
+      }
+      emptyOverlayEl.classList.remove('hidden');
+      strategyPanelEl.classList.add('hidden');
+    } else {
+      if (isPractice) initSetupPanel();
+      initStrategy();
+    }
+
+    document.getElementById('circuit-name').textContent = weekend ? weekend.circuit : 'Circuito';
+    document.getElementById('session-tag').textContent = isPractice ? 'Treino Livre' : (isQualy ? 'Classificatória' : (sessionType === 'sprint' ? 'Corrida Sprint' : 'Corrida'));
+    if (isPractice) {
+      document.getElementById('strategy-title').textContent = 'Pneu do treino';
+    } else if (isQualy) {
+      document.getElementById('strategy-title').textContent = 'Pneu da classificatória';
+    }
+
+    // aba por piloto — cada um edita seu próprio plano; trocar de aba só
+    // troca QUAL estratégia está sendo mostrada/editada nos controles
+    // abaixo, não larga nem confirma nada
+    function renderDriverTabs() {
+      const row = document.getElementById('driver-tab-row');
+      const el = document.getElementById('strategy-drivers');
+      if (!row) return;
+      row.innerHTML = '';
+      if (playerDrivers.length < 2) {
+        if (el) el.textContent = playerDrivers.length ? '🏎️ Piloto: ' + playerDrivers[0].name : '';
+        return;
+      }
+      if (el) el.textContent = '🏎️ Plano de estratégia — escolha o piloto:';
+      playerDrivers.forEach((d) => {
+        const btn = document.createElement('button');
+        btn.className = 'driver-tab-btn' + (d.id === activeStrategyDriverId ? ' selected' : '');
+        btn.textContent = d.name;
+        btn.addEventListener('click', () => {
+          activeStrategyDriverId = d.id;
+          initStrategy();
+        });
+        row.appendChild(btn);
+      });
+    }
+
+    // clima da sessão INTEIRA, volta a volta, decidido de uma vez só e
+    // determinístico (mesma semente = mesma sequência sempre) — é o que
+    // permite a tabela de previsão (início/meio/fim) mostrar exatamente o
+    // que a sessão ao vivo vai seguir, nunca um palpite solto (pedido
+    // explícito do usuário: "a gente fica perdido" quando o tempo muda sem
+    // aviso). A MESMA semente é passada pro createRaceState mais abaixo.
+    let weatherSeed = null;
+    let weatherTimeline = null;
+    if (weekend) {
+      weatherSeed = weekend.circuit + '|' + sessionType + '|s' + temporadaState.seasonNumber + '|w' + weekend.index;
+      weatherTimeline = window.WSPF1Corrida.buildWeatherTimeline(weatherSeed, sessionTotalLaps(), weekend.clima);
+      const cond0 = window.WSPF1Corrida.WEATHER_CONDITIONS[weatherTimeline.tiers[0]];
+      const el = document.getElementById('weather-tag');
+      if (el) el.textContent = (cond0 ? cond0.icon : '🌤️') + ' ' + weatherTimeline.temps[0] + '°C';
+    }
+
+    // ao vivo, na corrida, o HUD acompanha o clima real da simulação (que
+    // segue exatamente a mesma timeline mostrada na previsão pré-sessão)
+    function updateWeatherTag() {
+      const el = document.getElementById('weather-tag');
+      if (!el || !raceState || !raceState.weatherTimeline) return;
+      const leaderLap = Math.max(0, ...raceState.cars.filter((c) => !c.retired).map((c) => c.lapsCompleted));
+      const idx = Math.min(raceState.weatherTimeline.tiers.length - 1, leaderLap);
+      const cond = window.WSPF1Corrida.WEATHER_CONDITIONS[raceState.weather];
+      const tempNow = raceState.weatherTimeline.temps[idx];
+      el.textContent = (cond ? cond.icon : '☀️') + ' ' + tempNow + '°C';
+    }
+
+    // traçado determinístico por circuito: mesma forma sempre pro mesmo
+    // circuito (semente = nome), variando com os dados reais (curvas, tipo,
+    // sentido) em vez da elipse genérica de antes — ruas ficam mais
+    // angulosas e cheias de "esses" apertados, permanentes ficam mais lisas
+    let currentTrackShape = null, currentTrackSampled = null;
+    if (weekend) {
+      currentTrackShape = buildTrackShape(weekend.circuit, weekend.type, weekend.curves, weekend.sentido);
+      currentTrackSampled = sampleTrackShape(currentTrackShape);
+      // só chama depois que currentTrackShape/currentTrackSampled (let,
+      // declarados acima) já foram atribuídos — renderCircuitInfo desenha
+      // o traçado real e precisa dessas variáveis prontas, senão dá
+      // ReferenceError de temporal dead zone (bug já visto antes aqui)
+      renderCircuitInfo(weekend);
+    }
+
+    // desenho do traçado na tela de estratégia — o jogador pede pra "ver a
+    // forma do circuito" antes de decidir setup (reta longa x curva
+    // fechada), não só ler o número de curvas. Reusa a mesma função de
+    // traçado real do canvas ao vivo/minimapa (buildTrackShape já rodou
+    // antes desta função ser chamada, currentTrackShape já existe).
+    function drawCircuitShapePreview() {
+      const canvas = document.getElementById('circuit-shape-preview');
+      if (!canvas || !currentTrackShape) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2, cy = h / 2, rx = w / 2 - 18, ry = h / 2 - 18;
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = '#2a4a38';
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.stroke();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffd54a';
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.stroke();
+      // linha de largada/chegada em t=0
+      const startPt = pointOnTrack(0, cx, cy, rx, ry);
+      ctx.fillStyle = '#3fd67a';
+      ctx.beginPath();
+      ctx.arc(startPt.x, startPt.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0e1c15';
+      ctx.font = 'bold 9px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('LARGADA', startPt.x, startPt.y - 9);
+    }
+
+    function renderCircuitInfo(w) {
+      const panel = document.getElementById('circuit-info-panel');
+      const grid = document.getElementById('circuit-data-grid');
+      drawCircuitShapePreview();
+      const typeLabel = { permanente: 'Permanente', rua: 'Rua', misto: 'Misto' }[w.type] || w.type;
+      const items = [
+        ['País / Cidade', w.pais + ' — ' + w.cidade],
+        ['Traçado', typeLabel],
+        ['Voltas na corrida', w.laps],
+        ['Curvas', w.curves],
+        ['Sentido', w.sentido],
+        ['Clima predominante', w.clima],
+        ['Ultrapassagem', w.ultrapassagem],
+        ['Asfalto', w.asfalto ? window.WSPF1Calendario.ASPHALT_LABELS[w.asfalto.tipo] : '-'],
+      ];
+      grid.innerHTML = items.map(([label, value]) => (
+        '<div class="circuit-data-item"><div class="circuit-data-label">' + label + '</div><div class="circuit-data-value">' + value + '</div></div>'
+      )).join('');
+      renderWeatherForecast();
+      const curiosidadeEl = document.getElementById('circuit-curiosidade');
+      if (curiosidadeEl) {
+        curiosidadeEl.textContent = w.curiosidade || '';
+        curiosidadeEl.classList.toggle('hidden', !w.curiosidade);
+      }
+      panel.classList.remove('hidden');
+      const hint = document.getElementById('strategy-hint');
+      if (hint) hint.textContent = 'Escolha o composto de pneu pra largada. A previsão do tempo da sessão está aqui em cima — o clima segue exatamente essa sequência, e nunca pula de nível de uma vez.';
+    }
+
+    // tabela de previsão (início/meio/fim) — mostra a MESMA sequência que a
+    // sessão ao vivo vai seguir (weatherTimeline compartilhada com
+    // createRaceState mais abaixo, mesma semente), não um palpite solto
+    function renderWeatherForecast() {
+      const el = document.getElementById('weather-forecast');
+      if (!el || !weatherTimeline) return;
+      const cps = window.WSPF1Corrida.weatherForecastCheckpoints(weatherTimeline, sessionTotalLaps());
+      const stageLabel = (i) => (i === 0 ? 'Início' : (i === cps.length - 1 ? 'Fim' : 'Meio'));
+      el.innerHTML = '<div class="weather-forecast-title">🌤️ Previsão do tempo da sessão</div>'
+        + cps.map((cp, i) => {
+          const cond = window.WSPF1Corrida.WEATHER_CONDITIONS[cp.tier];
+          return '<div class="wf-row"><span class="wf-stage">' + stageLabel(i) + ' (volta ' + cp.lap + ')</span>'
+            + '<span class="wf-cond">' + (cond ? cond.icon + ' ' + cond.label : cp.tier) + '</span>'
+            + '<span class="wf-temp">' + cp.tempC + '°C</span></div>';
+        }).join('')
+        + '<p class="weather-forecast-note">O clima muda no máximo 1 nível por vez (nunca pula de Chuva Intensa direto pra Clima Seco) — e pode ficar parado no mesmo nível a sessão inteira.</p>';
+    }
+
+    function initSetupPanel() {
+      setupPanelEl.classList.remove('hidden');
+      if (weekend.asfalto) {
+        document.getElementById('setup-asphalt-hint').textContent =
+          '🛣️ Asfalto deste circuito: ' + window.WSPF1Calendario.ASPHALT_LABELS[weekend.asfalto.tipo];
+      }
+      const options = window.WSPF1Corrida.CAR_SETUP_OPTIONS;
+      const dialsEl = document.getElementById('setup-dials');
+      const dialLabels = { aero: 'Aerodinâmica', altura: 'Altura do carro', pressao: 'Pressão dos pneus' };
+      Object.keys(options).forEach((dialKey) => {
+        const dial = document.createElement('div');
+        dial.className = 'setup-dial';
+        const label = document.createElement('div');
+        label.className = 'setup-dial-label';
+        label.textContent = dialLabels[dialKey];
+        dial.appendChild(label);
+
+        const optsRow = document.createElement('div');
+        optsRow.className = 'setup-dial-options';
+        const descEl = document.createElement('div');
+        descEl.className = 'setup-opt-desc';
+        descEl.textContent = options[dialKey][selectedSetup[dialKey]].desc;
+
+        Object.keys(options[dialKey]).forEach((optKey) => {
+          const opt = options[dialKey][optKey];
+          const btn = document.createElement('button');
+          btn.className = 'setup-opt-btn' + (optKey === selectedSetup[dialKey] ? ' selected' : '');
+          btn.textContent = opt.label;
+          btn.addEventListener('click', () => {
+            selectedSetup[dialKey] = optKey;
+            [...optsRow.children].forEach((b) => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            descEl.textContent = opt.desc;
+          });
+          optsRow.appendChild(btn);
+        });
+        dial.appendChild(optsRow);
+        dial.appendChild(descEl);
+        dialsEl.appendChild(dial);
+      });
+    }
+
+    // total de voltas da sessão atual (treino/sprint/corrida têm regras
+    // diferentes de duração) — usado tanto pra montar os presets de volta-
+    // alvo quanto pra planilha de combustível
+    function sessionTotalLaps() {
+      if (isShortSession) return PRACTICE_LAPS;
+      if (sessionType === 'sprint') return Math.max(6, Math.round(weekend.laps / 3));
+      return weekend.laps;
+    }
+
+    function initStrategy() {
+      renderDriverTabs();
+      const strategy = activeStrategy();
+      if (!strategy) return;
+
+      const compoundRow = document.getElementById('compound-row');
+      compoundRow.innerHTML = '';
+      const compounds = window.WSPF1Corrida.TIRE_COMPOUNDS;
+      // CORREÇÃO (bug real reportado pelo usuário): só mostrava os 3
+      // compostos de piso seco pra largada, mesmo quando o clima previsto
+      // era chuvoso — agora mostra os 5 (inclui intermediário/chuva), o
+      // jogador decide com base na % de chance de chuva já exibida acima
+      Object.keys(compounds).forEach((key) => {
+        const c = compounds[key];
+        const btn = document.createElement('button');
+        btn.className = 'compound-btn' + (key === strategy.compound ? ' selected' : '');
+        btn.innerHTML = '<span class="compound-dot" style="background:' + c.color + '"></span>' + c.label;
+        btn.addEventListener('click', () => {
+          strategy.compound = key;
+          [...compoundRow.children].forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          renderFuelTable();
+        });
+        compoundRow.appendChild(btn);
+      });
+
+      if (!isShortSession) {
+        document.getElementById('refuel-block').classList.remove('hidden');
+        const refuelRow = document.getElementById('refuel-row');
+        refuelRow.innerHTML = '';
+        const refuelDescEl = document.getElementById('refuel-desc');
+        const totalLaps = sessionTotalLaps();
+        const presets = [null, Math.round(totalLaps * 0.35), Math.round(totalLaps * 0.6)]
+          .filter((lap, i) => i === 0 || (lap > 1 && lap < totalLaps));
+        const descFor = (lap) => lap == null
+          ? 'Tanque cheio — mais pesado a corrida toda, sem parada de combustível planejada (só se o pneu obrigar).'
+          : 'Sai leve, só com combustível pra volta ' + lap + '. Vai parar na volta ' + lap + ' pra reabastecer e trocar pneu — obrigatório.';
+        refuelDescEl.textContent = descFor(strategy.fuelTargetLap);
+        presets.forEach((lap) => {
+          const btn = document.createElement('button');
+          btn.className = 'refuel-btn' + (lap === strategy.fuelTargetLap ? ' selected' : '');
+          btn.textContent = lap == null ? 'Tanque cheio' : 'Parar na volta ' + lap;
+          btn.addEventListener('click', () => {
+            strategy.fuelTargetLap = lap;
+            [...refuelRow.children].forEach((b) => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            refuelDescEl.textContent = descFor(lap);
+            renderFuelTable();
+          });
+          refuelRow.appendChild(btn);
+        });
+      }
+
+      const styles = window.WSPF1Corrida.DRIVING_STYLES;
+      const styleRow = document.getElementById('driving-style-row');
+      styleRow.innerHTML = '';
+      const styleDescEl = document.getElementById('driving-style-desc');
+      styleDescEl.textContent = styles[strategy.drivingStyle].desc;
+      Object.keys(styles).forEach((key) => {
+        const style = styles[key];
+        const btn = document.createElement('button');
+        btn.className = 'refuel-btn' + (key === strategy.drivingStyle ? ' selected' : '');
+        btn.textContent = style.label;
+        btn.addEventListener('click', () => {
+          strategy.drivingStyle = key;
+          [...styleRow.children].forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          styleDescEl.textContent = style.desc;
+          renderFuelTable();
+        });
+        styleRow.appendChild(btn);
+      });
+
+      document.getElementById('start-btn').onclick = startRace;
+      renderFuelTable();
+    }
+
+    // "planilha" de combustível/pneu: os números de verdade que o corrida.js
+    // já calculava por baixo dos panos, agora visíveis antes de largar —
+    // sempre referente ao piloto ativo na aba (activeStrategyDriverId)
+    function renderFuelTable() {
+      const C = window.WSPF1Corrida;
+      const strategy = activeStrategy();
+      if (!strategy) return;
+      const totalLaps = sessionTotalLaps();
+      const motorMult = C.motorFuelMult(playerMotorLevel);
+      const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP * motorMult;
+      const fuelNeeded = C.calcFuelNeeded(totalLaps, fuelPerLap);
+      const styleWearMult = C.drivingStyleWearMult(strategy.drivingStyle);
+      const stintLaps = C.calcStintLaps(strategy.compound, 90, styleWearMult);
+      const tireStopsNeeded = Math.max(0, Math.ceil(totalLaps / stintLaps) - 1);
+      const stylePaceFactor = C.drivingStylePaceFactor(strategy.drivingStyle);
+      const stylePacePct = Math.round((stylePaceFactor - 1) * 100);
+      const fuelForTarget = strategy.fuelTargetLap ? C.calcFuelForStint(strategy.fuelTargetLap, fuelPerLap) : fuelNeeded;
+      // pelo menos 1 parada é garantida pelo motor (pneu nunca aguenta a
+      // corrida toda) — a planilha já mostra isso pra não prometer "sem
+      // parar" com nenhum composto. Isso é só a PROJEÇÃO da 1ª parada —
+      // da segunda em diante a decisão é do jogador, ao vivo, na corrida.
+      const stopsNeeded = Math.max(1, tireStopsNeeded, strategy.fuelTargetLap ? 1 : 0);
+
+      const motorPct = Math.round((motorMult - 1) * 100);
+      const rows = [
+        ['Voltas da sessão', totalLaps],
+        ['Combustível/volta', fuelPerLap.toFixed(1) + ' kg' + (motorPct > 0 ? ' (motor nível ' + playerMotorLevel + ': +' + motorPct + '%)' : '')],
+        [strategy.fuelTargetLap ? 'Combustível de largada (até a volta ' + strategy.fuelTargetLap + ')' : 'Combustível total (tanque cheio)', fuelForTarget + ' kg'],
+        ['Estilo de pilotagem', C.DRIVING_STYLES[strategy.drivingStyle].label + ' (' + (stylePacePct >= 0 ? '+' : '') + stylePacePct + '% ritmo)'],
+        ['Composto escolhido aguenta', stintLaps + ' voltas'],
+        ['1ª parada (projeção)', stopsNeeded >= 1 ? 'por volta ' + Math.min(stintLaps, totalLaps - 1) : '-'],
+      ];
+      document.getElementById('fuel-table').innerHTML = rows.map(([label, value]) => (
+        '<div class="fuel-row"><span>' + label + '</span><b>' + value + '</b></div>'
+      )).join('');
+    }
+
+    // ---------- Corrida ao vivo ----------
+    let raceState = null;
+    let speedMultiplier = 1;
+    let paused = false;
+    let rafId = null;
+    let lastTs = null;
+    let entrantsMeta = {};
+
+    function buildEntrants() {
+      const all = window.WSPF1Grid.fullGrid();
+      entrantsMeta = {};
+      all.forEach((e) => { entrantsMeta[e.id] = e; });
+      const order = weekend.gridOrder;
+      if (order && order.length) {
+        const byId = {};
+        all.forEach((e) => { byId[e.id] = e; });
+        return order.map((id) => byId[id]).filter(Boolean);
+      }
+      return all.slice().sort((a, b) => b.pace - a.pace);
+    }
+
+    function startRace() {
+      if (isPractice) {
+        window.WSPF1Calendario.applyCarSetup(temporadaState, selectedSetup);
+      }
+      const entrants = buildEntrants();
+      let pitStopMsByTeam = null;
+      if (window.WSPF1Equipe) {
+        const club = window.WSPF1Equipe.loadClub();
+        // mesma proporção usada dentro do motor de corrida (raceRealMs/
+        // totalLaps) — sprint divide os dois pelo mesmo fator (~3), então
+        // a fração fica igual não importa a sessão
+        const avgLapMs = (isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS) / (isShortSession ? PRACTICE_LAPS : weekend.laps);
+        pitStopMsByTeam = { player: window.WSPF1Corrida.pitStopMsForClub(club, avgLapMs) };
+      }
+      // um plano por piloto (chave = id do entrant, 'player_' + id do
+      // piloto) — cada carro do jogador larga com SEU PRÓPRIO composto/
+      // volta-alvo/estilo, não mais um plano único forçado nos dois
+      const playerStrategies = {};
+      playerDrivers.forEach((d) => {
+        const s = strategyByDriver[d.id];
+        if (s) playerStrategies['player_' + d.id] = { startCompound: s.compound, fuelTargetLap: s.fuelTargetLap, drivingStyle: s.drivingStyle };
+      });
+      raceState = window.WSPF1Motor.createRaceState(entrants, {
+        isSprint: sessionType === 'sprint',
+        baseLaps: isShortSession ? PRACTICE_LAPS : weekend.laps,
+        raceRealMs: isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS,
+        hasFailureEvent: isShortSession ? false : weekend.hasFailureEvent,
+        circuit: weekend.circuit,
+        playerStrategies,
+        pitStopMsByTeam,
+        clima: weekend.clima,
+        weatherSeed,
+        carSetup: weekend.carSetup || selectedSetup,
+      });
+      strategyPanelEl.classList.add('hidden');
+      setupPanelEl.classList.add('hidden');
+      document.getElementById('circuit-info-panel').classList.add('hidden');
+      raceViewEl.classList.remove('hidden');
+      buildDriverControls();
+      lastTs = null;
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function loop(ts) {
+      if (lastTs == null) lastTs = ts;
+      const dt = Math.min(200, ts - lastTs) * speedMultiplier;
+      lastTs = ts;
+      if (!paused) {
+        window.WSPF1Motor.stepRace(raceState, dt);
+        render();
+      }
+      if (window.WSPF1Motor.isFinished(raceState)) {
+        finishRace();
+        return;
+      }
+      rafId = requestAnimationFrame(loop);
+    }
+
+    // PRNG determinístico a partir de uma string (mesmo circuito -> mesma
+    // sequência sempre, sem precisar guardar coordenada nenhuma no save)
+    function seededRng(seedStr) {
+      let h = 1779033703 ^ (seedStr || '').length;
+      for (let i = 0; i < (seedStr || '').length; i++) {
+        h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+      }
+      return function () {
+        h = Math.imul(h ^ (h >>> 16), 2246822507);
+        h = Math.imul(h ^ (h >>> 13), 3266489909);
+        h ^= h >>> 16;
+        return (h >>> 0) / 4294967296;
+      };
+    }
+
+    // gera o contorno do circuito como pontos normalizados num quadrado
+    // -1..1, a partir dos dados reais do circuito (número de curvas, tipo
+    // rua/misto/permanente). Rua = mais pontos, mais "dentes" pra dentro
+    // (chicanes), body angular (linha reta entre pontos). Permanente = menos
+    // perturbação, curvas suaves (Catmull-Rom).
+    // CORREÇÃO (bug real reportado pelo usuário): a perturbação de raio era
+    // pequena demais (0.15-0.36) — depois de suavizado pelo Catmull-Rom, o
+    // traçado sempre saía parecendo uma elipse levemente ondulada, mesmo
+    // pra circuitos anunciados com 19 curvas. Agora a perturbação é bem
+    // maior e todo tipo de circuito (não só rua) ganha chance de "dente"
+    // (curva fechada de verdade puxando bem pra dentro, tipo Eau Rouge/
+    // La Source em Spa), pra o desenho refletir a quantidade de curvas.
+    function buildTrackShape(circuitName, circuitType, curveCount, sentido) {
+      const rng = seededRng((circuitName || 'circuito') + '|' + (circuitType || ''));
+      const n = Math.max(10, Math.min(18, Math.round((curveCount || 14) * 0.75)));
+      const isStreet = circuitType === 'rua';
+      const wobble = isStreet ? 0.55 : (circuitType === 'misto' ? 0.5 : 0.42);
+      const spikeChance = isStreet ? 0.35 : 0.22;
+      const points = [];
+      for (let i = 0; i < n; i++) {
+        const angle = (i / n) * Math.PI * 2;
+        let radius = 1 - wobble / 2 + rng() * wobble;
+        if (rng() < spikeChance) radius *= 0.45 + rng() * 0.15; // curva fechada de verdade
+        points.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius * 0.72 });
+      }
+      // sentido anti-horário: espelha o contorno no eixo x
+      if (sentido === 'anti-horário') points.forEach((p) => { p.x = -p.x; });
+      return { points, angular: isStreet };
+    }
+
+    function lerp2(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
+
+    function catmullRom(p0, p1, p2, p3, t) {
+      const t2 = t * t, t3 = t2 * t;
+      return {
+        x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+        y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
+      };
+    }
+
+    // amostra densa do contorno, com comprimento de arco acumulado — é o
+    // que permite andar no traçado por "t" (0..1 = 1 volta) em velocidade
+    // visualmente constante, igual a elipse fazia por matemática direta
+    function sampleTrackShape(shape) {
+      const pts = shape.points;
+      const n = pts.length;
+      const SAMPLES_PER_SEGMENT = 14;
+      const dense = [];
+      for (let i = 0; i < n; i++) {
+        const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+        for (let s = 0; s < SAMPLES_PER_SEGMENT; s++) {
+          const t = s / SAMPLES_PER_SEGMENT;
+          dense.push(shape.angular ? lerp2(p1, p2, t) : catmullRom(p0, p1, p2, p3, t));
+        }
+      }
+      let total = 0;
+      const withLen = dense.map((p, i) => {
+        const prev = dense[(i - 1 + dense.length) % dense.length];
+        const d = i === 0 ? 0 : Math.hypot(p.x - prev.x, p.y - prev.y);
+        total += d;
+        return { x: p.x, y: p.y, cum: total };
+      });
+      return { samples: withLen, total };
+    }
+
+    function pointAtT(sampled, t) {
+      const targetLen = (((t % 1) + 1) % 1) * sampled.total;
+      const arr = sampled.samples;
+      let lo = 0;
+      while (lo < arr.length - 1 && arr[lo + 1].cum < targetLen) lo++;
+      const a = arr[lo], b = arr[(lo + 1) % arr.length];
+      const segLen = ((b.cum - a.cum) + sampled.total) % sampled.total || 1;
+      const localT = segLen > 0 ? (targetLen - a.cum) / segLen : 0;
+      return lerp2(a, b, Math.max(0, Math.min(1, localT)));
+    }
+
+    function mapToCanvas(p, cx, cy, rx, ry) {
+      return { x: cx + p.x * rx, y: cy + p.y * ry };
+    }
+
+    function pointOnTrack(t, cx, cy, rx, ry) {
+      return mapToCanvas(pointAtT(currentTrackSampled, t), cx, cy, rx, ry);
+    }
+
+    // direção de deslocamento no ponto t (tangente do traçado real) — é o
+    // ângulo que o carrinho usa pra apontar pro sentido da pista
+    function headingOnTrack(t, rx, ry) {
+      const eps = 0.004;
+      const p1 = pointAtT(currentTrackSampled, t - eps);
+      const p2 = pointAtT(currentTrackSampled, t + eps);
+      return Math.atan2((p2.y - p1.y) * ry, (p2.x - p1.x) * rx);
+    }
+
+    // desenha o contorno do traçado real (não mais uma elipse) — reusado
+    // pela pista principal e pelo minimapa, cada um com seu próprio cx/cy/rx/ry
+    function strokeTrackShape(ctx, cx, cy, rx, ry) {
+      const pts = currentTrackShape.points.map((p) => mapToCanvas(p, cx, cy, rx, ry));
+      const n = pts.length;
+      ctx.beginPath();
+      if (currentTrackShape.angular) {
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i <= n; i++) ctx.lineTo(pts[i % n].x, pts[i % n].y);
+      } else {
+        const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        const m0 = mid(pts[n - 1], pts[0]);
+        ctx.moveTo(m0.x, m0.y);
+        for (let i = 0; i < n; i++) {
+          const cur = pts[i], next = pts[(i + 1) % n];
+          const m = mid(cur, next);
+          ctx.quadraticCurveTo(cur.x, cur.y, m.x, m.y);
+        }
+        ctx.closePath();
+      }
+    }
+
+    // pit lane visual: uma faixa curta que se desprende da pista logo após
+    // a largada (t entre PIT_T_START e PIT_T_END), afastada pra dentro do
+    // traçado (PIT_INSET) — os carros em pit andam por ela em vez de sumir
+    const PIT_T_START = 0.012, PIT_T_END = 0.09;
+    const PIT_INSET = 18;
+
+    function pitLanePoint(t, cx, cy, rx, ry) {
+      return mapToCanvas(pointAtT(currentTrackSampled, t), cx, cy, rx - PIT_INSET, ry - PIT_INSET);
+    }
+
+    function drawPitLane(ctx, cx, cy, rx, ry) {
+      const steps = 10;
+      const pts = [];
+      for (let i = 0; i <= steps; i++) {
+        const t = PIT_T_START + (PIT_T_END - PIT_T_START) * (i / steps);
+        pts.push(pitLanePoint(t, cx, cy, rx, ry));
+      }
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,213,74,0.5)';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      pts.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+
+      const enter = pointOnTrack(PIT_T_START, cx, cy, rx, ry);
+      const exit = pointOnTrack(PIT_T_END, cx, cy, rx, ry);
+      ctx.strokeStyle = 'rgba(255,213,74,0.32)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(enter.x, enter.y); ctx.lineTo(pts[0].x, pts[0].y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(exit.x, exit.y); ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y); ctx.stroke();
+      ctx.setLineDash([]);
+
+      const mid = pts[Math.floor(pts.length / 2)];
+      ctx.fillStyle = '#ffd54a';
+      ctx.font = 'bold 9px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('PIT', mid.x, mid.y - 6);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    let playerLiveryColors = { primary: '#ffd54a', secondary: '#16281f', detail: '#ffffff', accent: '#ffd54a' };
+    if (window.WSPF1Equipe) {
+      const club = window.WSPF1Equipe.loadClub();
+      if (club.colors) playerLiveryColors = Object.assign({}, playerLiveryColors, club.colors);
+    }
+
+    // matiz igualmente espaçado por time — os teamId dos rivais são tipo
+    // "rival_0".."rival_8" (só o dígito final muda), e um hash polinomial
+    // simples dá matizes quase idênticos pra essas strings (todo mundo saía
+    // azul). Espaçando por ordem garante cores bem distintas entre si.
+    const teamHueMap = {};
+    if (window.WSPF1Grid) {
+      const rivalIds = [...new Set(window.WSPF1Grid.fullGrid().filter((e) => !e.isPlayer).map((e) => e.teamId))];
+      rivalIds.forEach((id, i) => { teamHueMap[id] = Math.round((i * 360) / rivalIds.length); });
+    }
+
+    function teamColor(car) {
+      if (car.isPlayer) return playerLiveryColors.primary;
+      const hue = teamHueMap[car.teamId] != null ? teamHueMap[car.teamId] : 0;
+      return 'hsl(' + hue + ', 68%, 56%)';
+    }
+
+    function shadeColor(hex, percent) {
+      // só funciona pra cores hex (times hsl usam a própria luminosidade do hsl)
+      if (!hex.startsWith('#')) return hex;
+      const num = parseInt(hex.slice(1), 16);
+      let r = (num >> 16) + percent, g = ((num >> 8) & 0xff) + percent, b = (num & 0xff) + percent;
+      r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
+      return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+    }
+
+    // ajusta a luminosidade de uma cor hsl(H, S%, L%) — usado pra derivar
+    // asa/detalhe dos times rivais (que só têm 1 hue base) a partir da
+    // mesma cor principal, sem precisar guardar uma pintura de 4 cores pra
+    // cada rival
+    function hslShade(hslStr, deltaL) {
+      const m = /hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/.exec(hslStr);
+      if (!m) return hslStr;
+      const l = Math.max(6, Math.min(94, parseInt(m[3], 10) + deltaL));
+      return 'hsl(' + m[1] + ', ' + m[2] + '%, ' + l + '%)';
+    }
+
+    // pintura de 4 cores (corpo/asas/detalhe) por carro: o jogador usa a
+    // pintura de verdade escolhida na personalização, os rivais derivam
+    // asa/detalhe a partir do hue do time
+    function carLiveryColors(car) {
+      if (car.isPlayer) {
+        return {
+          body: playerLiveryColors.primary,
+          wing: playerLiveryColors.secondary || shadeColor(playerLiveryColors.primary, -50),
+          nose: playerLiveryColors.accent || playerLiveryColors.detail || '#ffffff',
+        };
+      }
+      const base = teamColor(car);
+      return { body: base, wing: hslShade(base, -18), nose: hslShade(base, 24) };
+    }
+
+    // sprite de carro em pixel art: grade 16x8 desenhada em blocos (sem
+    // curvas suaves), pra ler como um carrinho de F1 de cima mesmo minúsculo
+    // na tela — asa dianteira/traseira ('g'), rodas expostas nos quatro
+    // cantos ('w'), carroceria ('b'), cockpit/halo escuro ('c'), realce do
+    // bico ('n'). Nariz do carro fica na coluna mais à direita (+x local).
+    const CAR_PIXELS = [
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', 'n'],
+      ['g', 'w', 'w', 'd', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 't', 'c', 'c', 'h', 'b', 'b', 'b', 'b', 'n', '.'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 't', 'c', 'c', 'h', 'b', 'b', 'b', 'b', 'n', '.'],
+      ['g', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'n', 'g'],
+      ['g', 'w', 'w', 'd', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'w', 'w', 'n', 'g'],
+      ['.', 'w', 'w', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'w', 'w', '.', 'n'],
+    ];
+    const CAR_ROWS = CAR_PIXELS.length, CAR_COLS = CAR_PIXELS[0].length;
+
+    function drawCar(ctx, x, y, angle, car) {
+      const isPlayer = car.isPlayer;
+      const cell = isPlayer ? 1.1 : 0.82;
+      const colors = carLiveryColors(car);
+      const totalW = CAR_COLS * cell, totalH = CAR_ROWS * cell;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+
+      if (isPlayer) { ctx.shadowColor = '#ffd54a'; ctx.shadowBlur = 6; }
+
+      for (let row = 0; row < CAR_ROWS; row++) {
+        for (let col = 0; col < CAR_COLS; col++) {
+          const px = CAR_PIXELS[row][col];
+          if (px === '.') continue;
+          ctx.fillStyle = px === 'w' ? '#141414'
+            : px === 'c' ? 'rgba(8,8,8,0.9)'
+            : px === 'g' ? colors.wing
+            : px === 'n' ? colors.nose
+            : px === 'h' ? 'rgba(40,40,40,0.85)'
+            : px === 't' ? 'rgba(200,60,0,0.75)'
+            : px === 'd' ? 'rgba(30,30,30,0.7)'
+            : colors.body;
+          ctx.fillRect((col - CAR_COLS / 2) * cell, (row - CAR_ROWS / 2) * cell, cell + 0.4, cell + 0.4);
+        }
+      }
+      ctx.shadowBlur = 0;
+
+      if (isPlayer) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = 0.6;
+        ctx.strokeRect(-totalW / 2 - 0.5, -totalH / 2 - 0.5, totalW + 1, totalH + 1);
+      }
+
+      ctx.restore();
+    }
+
+    // marcador de posição acima do carro (pódio + jogador) — bolinha com o
+    // número da posição atual e uma linha fina ligando ao carro, inspirado
+    // nos marcadores de gap dos jogos de F1 de verdade
+    function drawPositionMarker(ctx, x, y, pos, isPlayer) {
+      const markerY = y - 13;
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 5);
+      ctx.lineTo(x, markerY + 4);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, markerY, 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = isPlayer ? '#ffd54a' : 'rgba(10,20,15,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = isPlayer ? '#16281f' : 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = isPlayer ? '#16281f' : '#ffd54a';
+      ctx.font = 'bold 7px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(pos), x, markerY + 0.5);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    // rastro leve atrás do carro do jogador + faíscas na chegada dos 3
+    // primeiros — mesmo espírito das partículas do futebol, versão corrida
+    let particles = [];
+    let playerTrail = [];
+    const seenFinishers = new Set();
+
+    function spawnBurst(x, y, color) {
+      for (let i = 0; i < 12; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.6 + Math.random() * 1.8;
+        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, color });
+      }
+    }
+
+    function updateEffects() {
+      particles.forEach((p) => { p.x += p.vx; p.y += p.vy; p.life -= 0.045; });
+      particles = particles.filter((p) => p.life > 0);
+      playerTrail = playerTrail.filter((p) => (p.life -= 0.08) > 0);
+    }
+
+    function drawParticles(ctx) {
+      particles.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+
+
+    function drawKerbs(ctx, cx, cy, rx, ry) {
+      var samples = currentTrackSampled.samples, n = samples.length, tw = 12;
+      for (var i = 0; i < n; i += 2) {
+        var prev = samples[(i-3+n)%n], curr = samples[i], next = samples[(i+3)%n];
+        var dx1=(curr.x-prev.x)*rx, dy1=(curr.y-prev.y)*ry;
+        var dx2=(next.x-curr.x)*rx, dy2=(next.y-curr.y)*ry;
+        var a1=Math.atan2(dy1,dx1), a2=Math.atan2(dy2,dx2), da=a2-a1;
+        while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2;
+        if(Math.abs(da)<0.06) continue;
+        var p=mapToCanvas(curr,cx,cy,rx,ry), tang=Math.atan2(dy2,dx2);
+        var norm=tang+Math.PI/2, sign=da>0?1:-1;
+        var ox=p.x+Math.cos(norm)*sign*(tw+1.5), oy=p.y+Math.sin(norm)*sign*(tw+1.5);
+        ctx.save(); ctx.translate(ox,oy); ctx.rotate(tang);
+        ctx.fillStyle=(Math.floor(i/2)%2===0)?'#cc2222':'#eeeeee';
+        ctx.fillRect(-1.8,-2.5,3.6,5); ctx.restore();
+      }
+    }
+    function drawGrassBackground(ctx,w,h) {
+      for(var i=0;i<8;i++){ctx.fillStyle=i%2===0?'rgba(18,52,37,0.4)':'rgba(25,65,45,0.4)';ctx.fillRect(0,(h/8)*i,w,h/8+1);}
+    }
+    function drawRunoffArea(ctx,cx,cy,rx,ry) {
+      strokeTrackShape(ctx,cx,cy,rx,ry); ctx.strokeStyle='rgba(160,150,130,0.15)'; ctx.lineWidth=30; ctx.stroke();
+    }
+    function drawTrackEdges(ctx,cx,cy,rx,ry) {
+      strokeTrackShape(ctx,cx,cy,rx,ry); ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=23; ctx.stroke();
+    }
+    function drawBarriers(ctx,cx,cy,rx,ry) {
+      strokeTrackShape(ctx,cx,cy,rx,ry); ctx.strokeStyle='rgba(180,40,40,0.3)'; ctx.lineWidth=26; ctx.stroke();
+    }
+
+    function render() {
+      const canvas = document.getElementById('track');
+      const ctx = canvas.getContext('2d');
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+      const rx = canvas.width / 2 - 30, ry = canvas.height / 2 - 30;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updateEffects();
+      drawGrassBackground(ctx, canvas.width, canvas.height);
+      drawBarriers(ctx, cx, cy, rx, ry);
+      drawRunoffArea(ctx, cx, cy, rx, ry);
+      drawTrackEdges(ctx, cx, cy, rx, ry);
+      const trackGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      trackGradient.addColorStop(0, '#3a6650');
+      trackGradient.addColorStop(1, '#22402f');
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.strokeStyle = trackGradient;
+      ctx.lineWidth = 22;
+      ctx.stroke();
+      drawKerbs(ctx, cx, cy, rx, ry);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 8]);
+      strokeTrackShape(ctx, cx, cy, rx, ry);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawPitLane(ctx, cx, cy, rx, ry);
+      const startPoint = pointOnTrack(0, cx, cy, rx, ry);
+      const sp2 = pointOnTrack(0.003, cx, cy, rx, ry);
+      const startAngle = Math.atan2(sp2.y - startPoint.y, sp2.x - startPoint.x);
+      ctx.save(); ctx.translate(startPoint.x, startPoint.y); ctx.rotate(startAngle + Math.PI/2);
+      for (let r = 0; r < 6; r++) for (let c = 0; c < 2; c++) {
+        ctx.fillStyle = ((r+c)%2===0)?'rgba(255,255,255,0.9)':'rgba(15,15,15,0.9)';
+        ctx.fillRect(-10.5+r*3.5, -3.5+c*3.5, 3.5, 3.5);
+      }
+      ctx.restore();
+
+      drawParticles(ctx);
+      playerTrail.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life) * 0.5;
+        ctx.fillStyle = '#ffd54a';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      // posição de cada carro na classificação atual — usado só pro
+      // marcador acima do carro (pódio + jogador, senão lota a tela de
+      // numerinho com o pelotão inteiro agrupado na largada)
+      const posByCarId = {};
+      window.WSPF1Motor.standings(raceState).forEach((c, i) => { posByCarId[c.id] = i + 1; });
+
+      raceState.cars.forEach((car) => {
+        if (car.retired) return;
+        const t = car.distance / 100;
+        let p, heading;
+        if (car.pitting && car.pitTotalMs) {
+          const progress = Math.max(0, Math.min(1, 1 - Math.max(0, car.pitMsRemaining) / car.pitTotalMs));
+          const pitT = PIT_T_START + (PIT_T_END - PIT_T_START) * progress;
+          p = pitLanePoint(pitT, cx, cy, rx, ry);
+          heading = headingOnTrack(pitT, rx - PIT_INSET, ry - PIT_INSET);
+        } else {
+          p = pointOnTrack(t, cx, cy, rx, ry);
+          heading = headingOnTrack(t, rx, ry);
+        }
+
+        if (car.finishedAt != null && !seenFinishers.has(car.id)) {
+          seenFinishers.add(car.id);
+          if (raceState.cars.filter((c) => c.finishedAt != null).length <= 3) spawnBurst(p.x, p.y, teamColor(car));
+        }
+
+        if (car.isPlayer && car.finishedAt == null) {
+          playerTrail.push({ x: p.x, y: p.y, life: 1 });
+        }
+
+        drawCar(ctx, p.x, p.y, heading, car);
+
+        if (car.pitting) {
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.font = '10px Arial';
+          ctx.fillText('🔧', p.x + 7, p.y - 7);
+        }
+
+        const pos = posByCarId[car.id];
+        if (pos != null && (pos <= 3 || car.isPlayer) && !car.pitting) {
+          drawPositionMarker(ctx, p.x, p.y, pos, car.isPlayer);
+        }
+      });
+
+      renderHud();
+      renderLeaderboard();
+      renderTicker();
+      updateDriverControls();
+      drawMinimap();
+      updateSpeedo();
+      updateWeatherTag();
+    }
+
+    // versão em miniatura da mesma pista, sobreposta no canto da tela
+    // principal, com um pontinho colorido por carro — pra dar noção de
+    // pelotão sem precisar rolar a lista de posições
+    function drawMinimap() {
+      const canvas = document.getElementById('minimap');
+      const ctx = canvas.getContext('2d');
+      const mcx = canvas.width / 2, mcy = canvas.height / 2;
+      const mrx = canvas.width / 2 - 9, mry = canvas.height / 2 - 9;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      strokeTrackShape(ctx, mcx, mcy, mrx, mry);
+      ctx.strokeStyle = 'rgba(100,100,90,0.3)';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(159,216,184,0.55)';
+      ctx.lineWidth = 2;
+      strokeTrackShape(ctx, mcx, mcy, mrx, mry);
+      ctx.stroke();
+
+      raceState.cars.forEach((car) => {
+        if (car.retired) return;
+        const t = car.distance / 100;
+        const p = pointOnTrack(t, mcx, mcy, mrx, mry);
+        ctx.fillStyle = teamColor(car);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, car.isPlayer ? 2.6 : 1.7, 0, Math.PI * 2);
+        ctx.fill();
+        if (car.isPlayer) {
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
+      });
+    }
+
+    function updateSpeedo() {
+      const player = raceState.cars.find((c) => c.isPlayer);
+      const el = document.getElementById('speedo-value');
+      el.textContent = player ? Math.round(player.displaySpeedKmh || 0) : '0';
+    }
+
+    // um card de controle POR CARRO do jogador — cada piloto tem seu
+    // próprio estilo de pilotagem ao vivo (setDrivingStyle por carId) e
+    // seu próprio pit: o jogador ESCOLHE o composto de cada parada (não
+    // é mais uma lógica automática de 2 ramos) e decide quantas paradas
+    // fazer além da 1ª — nenhum limite mínimo além do que o pneu obriga.
+    // Os botões são criados UMA VEZ (buildDriverControls, chamado na
+    // largada) — refazer o DOM inteiro a cada tick (60x/s) arriscava
+    // perder cliques do jogador se o botão fosse trocado no meio do
+    // clique. updateDriverControls (chamado a cada tick por render())
+    // só atualiza texto/classes dos elementos já existentes.
+    const shortStyleLabels = { conservador: '🐢 Poupar', equilibrado: '⚖️ Padrão', agressivo: '🔥 Atacar' };
+    const pitCompoundOrder = ['macio', 'medio', 'duro', 'intermediario', 'chuva'];
+    let driverControlRefs = [];
+
+    function buildDriverControls() {
+      const wrap = document.getElementById('driver-controls');
+      if (!wrap || !raceState) return;
+      wrap.innerHTML = '';
+      driverControlRefs = [];
+      const styles = window.WSPF1Corrida.DRIVING_STYLES;
+      const compounds = window.WSPF1Corrida.TIRE_COMPOUNDS;
+
+      raceState.cars.filter((c) => c.isPlayer).forEach((car) => {
+        const card = document.createElement('div');
+        card.className = 'driver-card';
+
+        const head = document.createElement('div');
+        head.className = 'driver-card-head';
+        const nameEl = document.createElement('span');
+        nameEl.className = 'driver-card-name';
+        nameEl.textContent = car.driverName;
+        head.appendChild(nameEl);
+        const tireEl = document.createElement('span');
+        tireEl.className = 'driver-card-tire';
+        head.appendChild(tireEl);
+        card.appendChild(head);
+
+        const styleRow = document.createElement('div');
+        styleRow.className = 'live-style-row';
+        const styleBtns = {};
+        Object.keys(styles).forEach((key) => {
+          const btn = document.createElement('button');
+          btn.className = 'live-style-btn';
+          btn.textContent = shortStyleLabels[key] || styles[key].label;
+          btn.addEventListener('click', () => {
+            window.WSPF1Motor.setDrivingStyle(raceState, car.id, key);
+          });
+          styleRow.appendChild(btn);
+          styleBtns[key] = btn;
+        });
+        card.appendChild(styleRow);
+
+        const pitRow = document.createElement('div');
+        pitRow.className = 'pit-compound-row';
+        const pitBtns = {};
+        pitCompoundOrder.forEach((key) => {
+          const c = compounds[key];
+          const btn = document.createElement('button');
+          btn.className = 'pit-compound-btn';
+          btn.textContent = c.icon;
+          btn.title = 'Chamar pro pit — ' + c.label;
+          btn.addEventListener('click', () => {
+            window.WSPF1Motor.requestPit(raceState, car.id, key);
+          });
+          pitRow.appendChild(btn);
+          pitBtns[key] = btn;
+        });
+        card.appendChild(pitRow);
+
+        wrap.appendChild(card);
+        driverControlRefs.push({ carId: car.id, tireEl, styleBtns, pitBtns });
+      });
+    }
+
+    function updateDriverControls() {
+      if (!raceState) return;
+      const compounds = window.WSPF1Corrida.TIRE_COMPOUNDS;
+      driverControlRefs.forEach((ref) => {
+        const car = raceState.cars.find((c) => c.id === ref.carId);
+        if (!car) return;
+        const compound = compounds[car.tireCompound];
+        ref.tireEl.textContent = car.retired ? 'Abandonou'
+          : car.pitting ? '🔧 nos boxes'
+          : (compound ? compound.icon + ' ' + Math.round(car.tireWear) + '% desgaste' : '');
+
+        Object.keys(ref.styleBtns).forEach((key) => {
+          const btn = ref.styleBtns[key];
+          btn.classList.toggle('selected', key === car.drivingStyle);
+          btn.disabled = car.retired;
+        });
+
+        Object.keys(ref.pitBtns).forEach((key) => {
+          const btn = ref.pitBtns[key];
+          btn.classList.toggle('current', key === car.tireCompound);
+          btn.disabled = car.retired || car.pitting;
+        });
+      });
+    }
+
+    function renderHud() {
+      const table = window.WSPF1Motor.standings(raceState);
+      const playerIdx = table.findIndex((c) => c.isPlayer);
+      const player = playerIdx >= 0 ? table[playerIdx] : null;
+      const posEl = document.getElementById('hud-pos');
+      posEl.textContent = player ? (playerIdx + 1) + 'º' : '-';
+      posEl.classList.toggle('p1', !!player && playerIdx === 0);
+      document.getElementById('hud-lap').textContent = player ? player.lapsCompleted + '/' + raceState.totalLaps : '0/' + raceState.totalLaps;
+      document.getElementById('hud-tire').textContent = player ? (window.WSPF1Corrida.TIRE_COMPOUNDS[player.tireCompound].icon + ' ' + Math.round(player.tireWear) + '%') : '-';
+      document.getElementById('hud-fuel').textContent = player ? Math.round(player.fuelKg) + 'kg' : '-';
+    }
+
+    // duração média de volta "de telemetria" (flavor), só pra converter
+    // distância/tempo interno (comprimido) num intervalo em segundos que
+    // pareça uma corrida de F1 de verdade — mesmo espírito do velocímetro
+    const AVG_LAP_TIME_SECONDS = 92;
+
+    function formatGapToLeader(car, leader) {
+      if (car.id === leader.id) return 'Líder';
+      if (car.retired) return 'Abandonou';
+      if (car.finishedAt != null && leader.finishedAt != null) {
+        const flavorSecPerMs = (raceState.totalLaps * AVG_LAP_TIME_SECONDS) / raceState.raceRealMs;
+        const gapSec = Math.max(0, (car.finishedAt - leader.finishedAt) * flavorSecPerMs);
+        return '+' + gapSec.toFixed(1) + 's';
+      }
+      const leaderProgress = leader.lapsCompleted * 100 + leader.distance;
+      const carProgress = car.lapsCompleted * 100 + car.distance;
+      const gapLaps = Math.max(0, (leaderProgress - carProgress) / 100);
+      if (gapLaps >= 1) return '+' + Math.floor(gapLaps) + (Math.floor(gapLaps) === 1 ? ' volta' : ' voltas');
+      return '+' + (gapLaps * AVG_LAP_TIME_SECONDS).toFixed(1) + 's';
+    }
+
+    // grade completa (não só top 6 + jogador) — com intervalo pro líder e
+    // tempo do último pit stop, pra dar noção de corrida sem precisar de
+    // narração
+    function renderLeaderboard() {
+      const table = window.WSPF1Motor.standings(raceState);
+      const leader = table[0];
+      const box = document.getElementById('leaderboard');
+      box.innerHTML = '';
+      table.forEach((car) => {
+        const pos = table.indexOf(car) + 1;
+        const row = document.createElement('div');
+        row.className = 'lb-row' + (car.isPlayer ? ' player' : '') + (car.retired ? ' lb-retired' : '');
+        row.style.borderLeft = '4px solid ' + teamColor(car);
+        const compound = window.WSPF1Corrida.TIRE_COMPOUNDS[car.tireCompound];
+        const gapText = car.retired ? car.retiredReason ? car.retiredReason.label : 'Abandonou' : formatGapToLeader(car, leader);
+        const pitText = car.pitting ? '🔧 nos boxes' : (car.lastPitDurationSec != null ? '⏱ ' + car.lastPitDurationSec.toFixed(1) + 's' : '');
+        row.innerHTML = '<span class="lb-pos">' + pos + '</span>'
+          + '<span class="lb-name">' + car.driverName + '<small>' + car.teamName + '</small></span>'
+          + '<span class="lb-gap">' + gapText + '<small>' + pitText + '</small></span>'
+          + '<span class="lb-tire">' + (car.retired ? '❌' : (compound ? compound.icon : '')) + '</span>';
+        box.appendChild(row);
+      });
+    }
+
+    function renderTicker() {
+      const el = document.getElementById('ticker');
+      if (raceState.log.length) el.textContent = raceState.log[0].text;
+    }
+
+    document.getElementById('speed-btn').addEventListener('click', (e) => {
+      speedMultiplier = speedMultiplier === 1 ? 2 : (speedMultiplier === 2 ? 4 : 1);
+      e.target.textContent = '⏩ ' + speedMultiplier + 'x';
+    });
+
+    document.getElementById('pause-btn').addEventListener('click', (e) => {
+      paused = !paused;
+      e.target.textContent = paused ? '▶' : '⏸';
+    });
+
+    function finishRace() {
+      if (rafId) cancelAnimationFrame(rafId);
+      const table = window.WSPF1Motor.standings(raceState);
+      const order = table.map((c) => c.id);
+      window.WSPF1Calendario.recordSessionResult(temporadaState, order);
+
+      if (isPractice) {
+        finishPractice(table);
+        return;
+      }
+      if (isQualy) {
+        finishQualy(table);
+        return;
+      }
+
+      const pointsTable = sessionType === 'sprint' ? window.WSPF1Calendario.SPRINT_POINTS : window.WSPF1Calendario.RACE_POINTS;
+      let playerPoints = 0;
+      const listEl = document.getElementById('result-list');
+      listEl.innerHTML = '';
+      table.slice(0, 10).forEach((car, i) => {
+        const pts = i < pointsTable.length ? pointsTable[i] : 0;
+        if (car.isPlayer) playerPoints += pts;
+        const row = document.createElement('div');
+        row.className = 'result-row' + (car.isPlayer ? ' player' : '');
+        row.innerHTML = '<span>' + (i + 1) + '. ' + car.driverName + '</span><span>' + (pts ? '+' + pts + ' pts' : '') + '</span>';
+        listEl.appendChild(row);
+      });
+
+      document.getElementById('result-title').textContent = sessionType === 'sprint' ? 'Resultado da Sprint' : 'Resultado da Corrida';
+      document.getElementById('points-line').textContent = playerPoints > 0
+        ? 'Sua equipe somou ' + playerPoints + ' pontos!'
+        : 'Nenhum ponto dessa vez — vamos pra próxima.';
+      document.getElementById('result-overlay').classList.remove('hidden');
+
+      // reflexo no elenco: condição física cai um pouco, carreira do piloto some pontos/vitórias
+      if (window.WSPF1Pilotos && window.WSPF1Equipe) {
+        const equipe = window.WSPF1Pilotos.loadSquad();
+        const club = window.WSPF1Equipe.loadClub();
+        const fisicaLevel = (club.departments && club.departments.fisioterapia) || 0;
+        const playerIds = equipe.drivers.filter((d) => d.role !== 'reserva').map((d) => d.id);
+        window.WSPF1Pilotos.applyMatchConditionDrop(equipe, playerIds, fisicaLevel / 20);
+        table.forEach((car, i) => {
+          if (!car.isPlayer) return;
+          const driverId = car.id.replace('player_', '');
+          const driver = equipe.drivers.find((d) => d.id === driverId);
+          if (!driver) return;
+          const pts = i < pointsTable.length ? pointsTable[i] : 0;
+          driver.careerPoints = (driver.careerPoints || 0) + pts;
+          if (i === 0) driver.careerVitorias = (driver.careerVitorias || 0) + 1;
+        });
+        window.WSPF1Pilotos.saveSquad(equipe);
+      }
+    }
+
+    function finishPractice(table) {
+      const playerIdx = table.findIndex((c) => c.isPlayer);
+      const listEl = document.getElementById('result-list');
+      listEl.innerHTML = '';
+      table.slice(0, 10).forEach((car, i) => {
+        const row = document.createElement('div');
+        row.className = 'result-row' + (car.isPlayer ? ' player' : '');
+        row.innerHTML = '<span>' + (i + 1) + '. ' + car.driverName + '</span><span>' + car.lapsCompleted + ' voltas</span>';
+        listEl.appendChild(row);
+      });
+
+      document.getElementById('result-title').textContent = 'Relatório do Treino Livre';
+      const options = window.WSPF1Corrida.CAR_SETUP_OPTIONS;
+      const setupSummary = ['aero', 'altura', 'pressao'].map((k) => options[k][selectedSetup[k]].label).join(' · ');
+      document.getElementById('points-line').textContent = (playerIdx >= 0 ? (playerIdx + 1) + 'º no treino. ' : '')
+        + 'Acerto aplicado pro resto do fim de semana: ' + setupSummary;
+      document.getElementById('result-overlay').classList.remove('hidden');
+    }
+
+    // resultado da classificatória: a ordem de chegada dessa sessão curta
+    // vira a ordem de largada (gridOrder) da sprint/corrida do mesmo fim de
+    // semana — recordSessionResult (calendario.js) já trata isso sozinho
+    // quando o tipo da sessão é 'classificatoria', só precisamos mostrar
+    // pra que posição cada piloto do jogador vai largar.
+    function finishQualy(table) {
+      const listEl = document.getElementById('result-list');
+      listEl.innerHTML = '';
+      table.slice(0, 10).forEach((car, i) => {
+        const row = document.createElement('div');
+        row.className = 'result-row' + (car.isPlayer ? ' player' : '');
+        row.innerHTML = '<span>' + (i + 1) + '. ' + car.driverName + '</span><span>' + (car.isPlayer ? 'largada' : '') + '</span>';
+        listEl.appendChild(row);
+      });
+
+      const playerRows = table.map((c, i) => ({ c, pos: i + 1 })).filter((x) => x.c.isPlayer);
+      document.getElementById('result-title').textContent = 'Resultado da Classificatória';
+      document.getElementById('points-line').textContent = playerRows.length
+        ? playerRows.map((x) => x.c.driverName + ' larga em ' + x.pos + 'º').join(' · ')
+        : 'Classificatória concluída.';
+      document.getElementById('result-overlay').classList.remove('hidden');
+    }
+
+    document.getElementById('result-continue-btn').addEventListener('click', () => {
+      window.location.href = 'temporada.html';
+    });
+  })();
+  </script>
+</body>
+</html>
