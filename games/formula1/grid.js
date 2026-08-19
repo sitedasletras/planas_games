@@ -151,18 +151,19 @@
     return window.WSPF1Corrida.motorPerformanceFactor(pct);
   }
 
-  // acerto de carro escolhido no treino livre — só o jogador tem esse painel,
-  // então só o ritmo do jogador reflete a escolha
+  // acerto de carro escolhido no treino livre (7 sliders 0-99, ver
+  // idealSetupForCircuit em corrida.js) — só o jogador tem esse painel,
+  // então só o ritmo do jogador reflete a escolha. O alvo ideal depende do
+  // circuito+tipo de traçado, então precisa ser recalculado aqui igual foi
+  // no treino (mesma semente = mesmo alvo sempre).
   function setupFactorForPlayer() {
     if (!window.WSPF1Corrida || !window.WSPF1Calendario) return 1;
     const state = window.WSPF1Calendario.loadState();
     const weekend = window.WSPF1Calendario.currentWeekend(state);
     const setup = weekend && weekend.carSetup;
-    const paceFactor = window.WSPF1Corrida.setupPaceFactor(setup);
-    const asphaltFactor = (weekend && weekend.asfalto && setup)
-      ? window.WSPF1Corrida.setupAsphaltMatchFactor(setup.altura, weekend.asfalto.tipo)
-      : 1;
-    return paceFactor * asphaltFactor;
+    if (!setup || !weekend) return 1;
+    const ideal = window.WSPF1Corrida.idealSetupForCircuit(weekend.circuit, weekend.type);
+    return window.WSPF1Corrida.setupPaceFactor(setup, ideal);
   }
 
   // Monta o grid completo pra uma sessão: 2 pilotos titulares do jogador +

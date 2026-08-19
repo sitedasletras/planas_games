@@ -474,6 +474,63 @@ necessidade de retrabalhar nada disso.
       feedback ao vivo é risco de retrabalho alto demais. Fica esperando
       o usuário decidir prioridade/direção quando acordar.
 
+12. **[IMPLEMENTADO 19/08] F1 — Escalonamento de Voltas + Setup 0-99 (7
+    sliders) + Tabela de estratégia com 2 opções**: usuário trouxe 2
+    documentos com mockups visuais e a lógica completa de cálculo
+    ("caderno do Wagner"), pedindo que as 3 peças fossem implementadas de
+    verdade e que os números da tabela "batessem 100%" com o que acontece
+    na pista.
+    - **Escalonamento de Voltas** (`corrida.js`: `gameLapsForRealLaps`,
+      `SPRINT_LAPS_FIXED`, `lapCompressionRatio`): corrida real do
+      circuito (até 78 voltas) convertida pra 5-9 voltas de jogo (≤40→5,
+      41-50→6, 51-60→7, 61-70→8, 71+→9; Sprint fixo em 4), mesma duração
+      real de sessão. **Efeito colateral encontrado e corrigido**: os
+      compostos de pneu são calibrados em "% de desgaste por volta REAL"
+      (pensados pra corridas de 30-70 voltas) — sem correção, o pneu
+      quase não desgastaria numa corrida de 5-9 voltas de jogo (mesmo
+      tempo real, dividido em poucas voltas "grandes"). `corridamotor.js`
+      agora multiplica o desgaste por volta e o teto de duração do
+      composto (`tireStintCap`) pela razão de compressão, e a mesma razão
+      é usada nas tabelas de projeção pré-largada (`renderFuelTable`/
+      `renderStintTable` em `corrida.html`) — testado ponta a ponta com
+      Playwright (treino → classificatória → sprint → corrida principal
+      completa, sem erro de página, números da planilha batendo com o
+      que a corrida real usa).
+    - **Setup 0-99 com 7 sliders** (`corrida.js`: `SETUP_FIELDS`,
+      `idealSetupForCircuit`, `setupFieldBonus` etc.): substitui as 3
+      opções categóricas antigas (aero/altura/pressão) por 7 sliders
+      contínuos (altura, suspensão, pressão dianteira/traseira, ângulo de
+      asa dianteira/traseira, distribuição de freio). Cada circuito tem
+      um alvo ideal secreto, gerado deterministicamente por tipo de
+      traçado (rua pede mais downforce/suspensão macia, permanente pede o
+      oposto). Fórmula de bônus por campo copiada exata do documento do
+      usuário (Na Mosca +4%, Verde +2%~2,89%, Amarelo neutro, Vermelho até
+      -5%, +5% extra se os 7 forem Na Mosca). Relatório de fim de Treino
+      Livre mostra a tabela de cores por campo (só depois da sessão, sem
+      spoiler antes) — reaproveita o `#result-overlay` já existente.
+      Bônus de moral por "Setup Perfeito" trocou o antigo critério
+      (altura batendo com o asfalto) por essa nova checagem 7x Na Mosca.
+    - **Tabela de estratégia com 2 opções por piloto**: a tabela de 4
+      colunas (task anterior) virou uma comparação lado a lado — Opção A
+      é o composto já selecionado no seletor manual (badge "EM USO"),
+      Opção B é uma alternativa mais agressiva calculada automaticamente
+      (composto mais mole, ou o composto de chuva/intermediário certo se
+      a previsão do tempo pedir chuva na largada) com botão "Usar essa
+      opção" que troca o composto de largada de verdade — mesmo mecanismo
+      que o seletor manual já usava, só um atalho.
+    - **Bug real encontrado e corrigido durante o próprio teste**: mover
+      a tabela de estratégia pra ler `weatherTimeline` quebrou a ordem de
+      inicialização do arquivo (`weatherTimeline` só era declarado bem
+      mais abaixo no código, depois de `initStrategy()` já ter rodado) —
+      erro de temporal dead zone, mesmo tipo de bug já visto antes nesse
+      arquivo. Resolvido movendo o bloco de clima pra antes das chamadas
+      de `initSetupPanel`/`initStrategy`.
+    - Testado com Playwright em 3 rodadas: sessão de treino isolada
+      (sliders, relatório colorido), corrida principal isolada (2 opções,
+      clique trocando composto, planilha batendo com a corrida real), e
+      fim de semana inteiro (treino → classificatória → sprint → corrida)
+      — zero erros de página em todas.
+
 ## Outras notas importantes
 
 - **Google AdSense**: conta criada, site verificado (via `sitedasletras/sitedasletras.github.io`, repositório novo criado especificamente pra isso, com página de redirecionamento pro jogo), revisão pedida ao Google — só falta aguardar aprovação (pode levar horas/dias, chega por e-mail). Nada mais a fazer até a aprovação chegar.

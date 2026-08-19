@@ -72,7 +72,10 @@
 
   // entrants já devem vir ordenados pela posição de largada (grid da classificatória)
   function createRaceState(entrants, opts) {
-    const totalLaps = opts.isSprint ? Math.max(6, Math.round(opts.baseLaps / 3)) : opts.baseLaps;
+    // Escalonamento de Voltas: sprint sempre fixo (caller já manda o
+    // número certo de voltas pras demais sessões via opts.baseLaps —
+    // ver gameLapsForRealLaps em corrida.js)
+    const totalLaps = opts.isSprint ? (C() ? C().SPRINT_LAPS_FIXED : 4) : opts.baseLaps;
     const raceRealMs = opts.isSprint ? Math.round((opts.raceRealMs || 300000) / 3) : (opts.raceRealMs || 300000);
     const fullFuelKg = C() ? C().calcFuelNeeded(totalLaps) : totalLaps * 2;
     // reabastecimento planejado, sprint (binário, corridas curtas não
@@ -120,9 +123,19 @@
       };
     }
 
+    // Escalonamento de Voltas: calcStintLaps devolve quantas VOLTAS REAIS
+    // o composto aguenta (calibrado pra corridas de 30-70 voltas) — numa
+    // corrida comprimida pra 5-9 voltas de jogo, isso precisa ser
+    // convertido de volta pra "voltas de jogo" (dividindo pela razão de
+    // compressão), senão o teto do pneu nunca bate antes do hardStopCap e
+    // o composto escolhido deixa de fazer diferença nenhuma pra decisão
+    // de quando parar.
+    const lapCompressionRatio = opts.lapCompressionRatio || 1;
     const cars = entrants.map((e, i) => {
       const strategy = strategyForEntrant(e);
-      const tireStintCap = C() ? C().calcStintLaps(strategy.startCompound, 90) : Math.floor(totalLaps * 0.6);
+      const tireStintCap = C()
+        ? Math.max(1, Math.round(C().calcStintLaps(strategy.startCompound, 90) / lapCompressionRatio))
+        : Math.floor(totalLaps * 0.6);
       const defaultPlannedPitLap = opts.isSprint ? null : Math.min(hardStopCap, tireStintCap);
 
       let startFuel = fullFuelKg;
@@ -147,7 +160,7 @@
         motorSupplier: e.motorSupplier || null,
         tireSupplier: e.tireSupplier || null,
         cambioReliability: e.cambioSupplier && C() ? C().cambioReliabilityPct(e.cambioSupplier) : null,
-        wearFactor: e.isPlayer && C() ? C().setupWearFactor(opts.carSetup) : 1,
+        wearFactor: e.isPlayer && C() ? C().setupWearFactor(opts.carSetup, opts.carSetupIdeal) : 1,
         grid: i,
         lapsCompleted: 0,
         distance: 0,
@@ -209,6 +222,7 @@
     return {
       cars,
       totalLaps,
+      lapCompressionRatio,
       raceRealMs,
       elapsedMs: 0,
       weather: weatherTimeline.tiers[0],
@@ -443,7 +457,12 @@
       const weatherWearMult = C() ? C().weatherWearMult(state.weather) : 1;
       const weatherFuelMult = C() ? C().weatherFuelMult(state.weather) : 1;
       const motorPowerWear = C() ? C().motorPowerWearMult(car.motorPower) : 1;
-      const wearAdd = C() ? C().calcTireWear(car.tireCompound, dtMs / (state.raceRealMs / state.totalLaps), 1) : 0;
+      // Escalonamento de Voltas: wearRate dos compostos é calibrado em
+      // "% por volta REAL" (corridas de 30-70 voltas) — sem multiplicar
+      // pela razão de compressão aqui, uma corrida de 5-9 voltas de jogo
+      // mal desgastaria o pneu (mesmo tempo real, dividido em poucas
+      // voltas "grandes"). Isso devolve o desgaste pra escala real.
+      const wearAdd = C() ? C().calcTireWear(car.tireCompound, (dtMs / (state.raceRealMs / state.totalLaps)) * (state.lapCompressionRatio || 1), 1) : 0;
       car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult * weatherWearMult * scWearMult * motorPowerWear);
       // combustível: motor mais potente (nível) bebe mais, E cada fabricante
       // de motor tem uma característica fixa de consumo própria — vale pra

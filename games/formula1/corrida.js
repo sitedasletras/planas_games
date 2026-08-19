@@ -461,59 +461,128 @@
     return s ? s.fuelMult : 1;
   }
 
-  // vice-versa) — escolhido no treino livre e vale pro resto do fim de
-  // semana (classificatória, sprint e corrida), não só pro treino em si
-  const CAR_SETUP_OPTIONS = {
-    aero: {
-      baixa: { label: 'Baixa carga aerodinâmica', desc: 'Mais veloz nas retas, escorrega mais nas curvas.', paceMod: 0.02, wearMod: -0.04 },
-      media: { label: 'Carga média', desc: 'Equilíbrio entre reta e curva.', paceMod: 0, wearMod: 0 },
-      alta: { label: 'Alta carga aerodinâmica', desc: 'Mais estável nas curvas, perde um pouco nas retas.', paceMod: -0.015, wearMod: 0.03 },
-    },
-    altura: {
-      baixa: { label: 'Carro baixo', desc: 'Mais rápido, mais risco em pista irregular.', paceMod: 0.012, wearMod: 0.02 },
-      media: { label: 'Altura média', desc: 'Ajuste neutro.', paceMod: 0, wearMod: 0 },
-      alta: { label: 'Carro alto', desc: 'Mais seguro, um pouco mais lento.', paceMod: -0.01, wearMod: -0.02 },
-    },
-    pressao: {
-      baixa: { label: 'Pressão baixa', desc: 'Mais aderência, desgasta o pneu mais rápido.', paceMod: 0.008, wearMod: 0.08 },
-      media: { label: 'Pressão média', desc: 'Equilíbrio.', paceMod: 0, wearMod: 0 },
-      alta: { label: 'Pressão alta', desc: 'Pneu dura mais, um pouco menos de aderência.', paceMod: -0.008, wearMod: -0.07 },
-    },
-  };
+  // ---------- Escalonamento de Voltas (caderno do Wagner) ----------
+  // corrida real do calendário chega a ter até 78 voltas (Mônaco) — tempo
+  // real jogável demais numa sessão de celular. Converte o número real de
+  // voltas do circuito num número bem menor de voltas "de jogo", mantendo
+  // a MESMA duração real da sessão (a corrida fica mais curta em voltas
+  // exibidas, não em tempo de tela). Sprint sempre fixo em 4, não escala
+  // com o circuito (mesmo espírito do sprint real: sessão curta sempre).
+  const SPRINT_LAPS_FIXED = 4;
+  function gameLapsForRealLaps(realLaps) {
+    if (!realLaps || realLaps <= 40) return 5;
+    if (realLaps <= 50) return 6;
+    if (realLaps <= 60) return 7;
+    if (realLaps <= 70) return 8;
+    return 9;
+  }
+  // quantas "voltas reais" cada volta de jogo representa — os compostos de
+  // pneu (calcTireWear/calcStintLaps) são calibrados em cima de corridas de
+  // 30-70 voltas reais; sem essa razão, comprimir a corrida pra 5-9 voltas
+  // de jogo faria o pneu quase não desgastar (a mesma duração real da
+  // sessão, dividida em poucas voltas "grandes", faz cada tick avançar uma
+  // fração bem menor de volta). Multiplica de volta o desgaste/teto de
+  // stint pra a decisão de pneu continuar valendo alguma coisa.
+  function lapCompressionRatio(realLaps, gameLaps) {
+    if (!realLaps || !gameLaps) return 1;
+    return realLaps / gameLaps;
+  }
+
+  // ---------- Acerto do carro: 7 ajustes de 0 a 99 (caderno do Wagner) ----------
+  // substitui o antigo sistema de 3 opções categóricas (aero/altura/
+  // pressão) por 7 sliders contínuos — escolhido no treino livre e vale
+  // pro resto do fim de semana (classificatória, sprint e corrida usam o
+  // mesmo acerto). Cada circuito tem um alvo "ideal" secreto (determinado
+  // pelo tipo de traçado + o próprio circuito), e o jogador é recompensado
+  // por chegar perto dele, sem nunca saber o número exato de antemão.
+  const SETUP_FIELDS = [
+    { key: 'altura', label: 'Altura do carro', lo: 'Rasteiro', hi: 'Alto' },
+    { key: 'suspensao', label: 'Dureza da suspensão', lo: 'Macia', hi: 'Dura' },
+    { key: 'pressaoDianteira', label: 'Pressão pneu dianteiro', lo: 'Baixa', hi: 'Alta' },
+    { key: 'pressaoTraseira', label: 'Pressão pneu traseiro', lo: 'Baixa', hi: 'Alta' },
+    { key: 'asaDianteira', label: 'Ângulo asa dianteira', lo: 'Fechada', hi: 'Aberta' },
+    { key: 'asaTraseira', label: 'Ângulo asa traseira', lo: 'Fechada', hi: 'Aberta' },
+    { key: 'freio', label: 'Distribuição de freio', lo: 'Traseiro', hi: 'Dianteiro' },
+  ];
+  const SETUP_FIELD_MAX = 99;
 
   function defaultCarSetup() {
-    return { aero: 'media', altura: 'media', pressao: 'media' };
+    const setup = {};
+    SETUP_FIELDS.forEach((f) => { setup[f.key] = 50; });
+    return setup;
   }
 
-  function setupPaceFactor(setup) {
-    if (!setup) return 1;
-    const sum = (CAR_SETUP_OPTIONS.aero[setup.aero] || { paceMod: 0 }).paceMod
-      + (CAR_SETUP_OPTIONS.altura[setup.altura] || { paceMod: 0 }).paceMod
-      + (CAR_SETUP_OPTIONS.pressao[setup.pressao] || { paceMod: 0 }).paceMod;
-    return 1 + sum;
+  // banda de valores "bons" por tipo de traçado — circuito de rua pede
+  // mais downforce (asas mais abertas) e suspensão macia (meio-fio,
+  // ondulação), permanente pede o oposto (menos downforce, suspensão
+  // dura, mais velocidade de reta); misto fica no meio das duas bandas
+  const SETUP_TYPE_BANDS = {
+    rua: { asaDianteira: [60, 90], asaTraseira: [60, 90], suspensao: [10, 40], altura: [40, 70], pressaoDianteira: [20, 60], pressaoTraseira: [20, 60], freio: [30, 70] },
+    permanente: { asaDianteira: [10, 40], asaTraseira: [10, 40], suspensao: [60, 90], altura: [20, 50], pressaoDianteira: [40, 80], pressaoTraseira: [40, 80], freio: [30, 70] },
+    misto: { asaDianteira: [35, 65], asaTraseira: [35, 65], suspensao: [35, 65], altura: [30, 60], pressaoDianteira: [30, 70], pressaoTraseira: [30, 70], freio: [30, 70] },
+  };
+
+  // alvo ideal determinístico (mesmo circuito = mesmo alvo sempre) — usa o
+  // mesmo gerador seedado das outras timelines determinísticas do jogo
+  function idealSetupForCircuit(circuitName, tipo) {
+    const rng = seededRng((circuitName || 'circuito') + '|setup');
+    const band = SETUP_TYPE_BANDS[tipo] || SETUP_TYPE_BANDS.misto;
+    const ideal = {};
+    SETUP_FIELDS.forEach((f) => {
+      const range = band[f.key] || [30, 70];
+      ideal[f.key] = Math.round(range[0] + rng() * (range[1] - range[0]));
+    });
+    return ideal;
   }
 
-  function setupWearFactor(setup) {
-    if (!setup) return 1;
-    const sum = (CAR_SETUP_OPTIONS.aero[setup.aero] || { wearMod: 0 }).wearMod
-      + (CAR_SETUP_OPTIONS.altura[setup.altura] || { wearMod: 0 }).wearMod
-      + (CAR_SETUP_OPTIONS.pressao[setup.pressao] || { wearMod: 0 }).wearMod;
-    return Math.max(0.7, 1 + sum);
+  function setupFieldDiff(value, ideal) {
+    return Math.abs((value == null ? 50 : value) - (ideal == null ? 50 : ideal));
   }
 
-  // altura ideal depende do asfalto do circuito — carro baixo é rápido no
-  // tapete liso mas sofre num piso ondulado, carro alto é mais seguro no
-  // ondulado mas perde ritmo num circuito liso. O jogador decide sozinho;
-  // isso só recompensa quem acertou o palpite, não escolhe por ele.
-  const ASPHALT_IDEAL_ALTURA = { liso: 'baixa', medio: 'media', ondulado: 'alta' };
-  const ALTURA_ORDER = ['baixa', 'media', 'alta'];
+  function setupFieldTier(diff) {
+    if (diff <= 0) return 'mosca';
+    if (diff <= 9) return 'verde';
+    if (diff <= 29) return 'amarelo';
+    return 'vermelho';
+  }
 
-  function setupAsphaltMatchFactor(altura, asphaltTipo) {
-    if (!altura || !asphaltTipo || !ASPHALT_IDEAL_ALTURA[asphaltTipo]) return 1;
-    const ideal = ASPHALT_IDEAL_ALTURA[asphaltTipo];
-    const distance = Math.abs(ALTURA_ORDER.indexOf(altura) - ALTURA_ORDER.indexOf(ideal));
-    if (distance === 0) return 1.012; // acertou o palpite, pequeno ganho
-    return 1 - distance * 0.018; // errou feio (baixo no ondulado, ou alto no liso) custa mais
+  // bônus por campo — fórmula exata do caderno do Wagner (documento
+  // "lógica completa — tabelas e estratégia"), pra bater 100% com o que a
+  // tabela de treino promete: mesmo espírito "não pode ser decisivo
+  // sozinho" dos outros sistemas — a MÉDIA dos 7 campos fica num teto
+  // pequeno, o bônus grande só vem de acertar todos os 7 exatos
+  // (setupIsPerfect abaixo).
+  function setupFieldBonus(diff) {
+    if (diff <= 0) return 0.04; // Na Mosca
+    if (diff <= 9) return 0.02 + (1 - diff / 9) * 0.01; // Verde: 2,89% (diff=1) até 2% (diff=9)
+    if (diff <= 29) return 0; // Amarelo: neutro
+    return -(diff / 99) * 0.05; // Vermelho: -1,5% (diff=30) até -5% (diff=99)
+  }
+
+  const SETUP_PERFECT_BONUS = 0.05;
+
+  function setupIsPerfect(values, ideal) {
+    if (!values || !ideal) return false;
+    return SETUP_FIELDS.every((f) => setupFieldDiff(values[f.key], ideal[f.key]) === 0);
+  }
+
+  function setupAverageBonus(values, ideal) {
+    if (!values || !ideal) return 0;
+    let sum = 0;
+    SETUP_FIELDS.forEach((f) => { sum += setupFieldBonus(setupFieldDiff(values[f.key], ideal[f.key])); });
+    return sum / SETUP_FIELDS.length;
+  }
+
+  function setupPaceFactor(values, ideal) {
+    if (!values || !ideal) return 1;
+    return 1 + setupAverageBonus(values, ideal) + (setupIsPerfect(values, ideal) ? SETUP_PERFECT_BONUS : 0);
+  }
+
+  function setupWearFactor(values, ideal) {
+    if (!values || !ideal) return 1;
+    // desgaste reage na metade da intensidade do ritmo — acerto bom reduz
+    // desgaste, acerto ruim aumenta, nunca em cima do próprio teto de ritmo
+    return Math.max(0.7, 1 - setupAverageBonus(values, ideal) * 0.5);
   }
 
   // ---------- POT: potência do motor ajustável AO VIVO durante a corrida ----------
@@ -555,8 +624,10 @@
     MOTOR_PERFORMANCE_MIN, MOTOR_PERFORMANCE_MAX, MOTOR_PERFORMANCE_STEP,
     rollMotorPerformances, motorPerformanceFactor, MOTOR_FUEL_PROFILES, motorSupplierFuelFactor,
     MOTOR_POWER_REF, MOTOR_POWER_MAX, motorPowerPaceFactor, motorPowerFuelMult, motorPowerWearMult,
-    CAR_SETUP_OPTIONS, defaultCarSetup, setupPaceFactor, setupWearFactor,
-    ASPHALT_IDEAL_ALTURA, setupAsphaltMatchFactor,
+    SPRINT_LAPS_FIXED, gameLapsForRealLaps, lapCompressionRatio,
+    SETUP_FIELDS, SETUP_FIELD_MAX, defaultCarSetup, idealSetupForCircuit,
+    setupFieldDiff, setupFieldTier, setupFieldBonus, SETUP_PERFECT_BONUS, setupIsPerfect,
+    setupPaceFactor, setupWearFactor,
     DRIVING_STYLES, defaultDrivingStyle, drivingStylePaceFactor, drivingStyleWearMult, drivingStyleFuelMult,
   };
 })();

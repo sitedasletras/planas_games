@@ -92,15 +92,40 @@
   .stint-cell.head { background: #16281f; color: #9fd8b8; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; font-size: 0.6rem; }
   .stint-cell.ok { color: #3fd67a; font-weight: bold; }
   .stint-cell.bad { color: #ff8a94; font-weight: bold; }
+  .stint-option { margin-bottom: 14px; }
+  .stint-option-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .stint-option-head span:first-child { font-size: 0.72rem; font-weight: bold; color: #cfeede; }
+  .stint-option-badge { font-size: 0.6rem; font-weight: bold; color: #3fd67a; border: 1px solid #3fd67a; border-radius: 6px; padding: 2px 7px; }
+  .stint-option-btn { font-size: 0.62rem; font-weight: bold; color: #ffd54a; border: 1px solid #ffd54a; background: #16281f; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
   .fuel-row { display: flex; justify-content: space-between; font-size: 0.76rem; padding: 4px 0; color: #cfeede; }
   .fuel-row b { color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
 
-  .setup-dial { margin-bottom: 12px; }
-  .setup-dial-label { font-size: 0.8rem; font-weight: bold; color: #ffd54a; margin-bottom: 6px; }
-  .setup-dial-options { display: flex; gap: 6px; }
-  .setup-opt-btn { flex: 1; padding: 8px 4px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15); background: #0f231a; color: white; font-size: 0.7rem; cursor: pointer; text-align: center; }
-  .setup-opt-btn.selected { border-color: #ffd54a; background: #1e3b2a; }
   .setup-opt-desc { font-size: 0.66rem; color: #9fd8b8; margin-top: 4px; min-height: 2.4em; }
+
+  .setup-slider-row { margin-bottom: 14px; }
+  .setup-slider-label { font-size: 0.78rem; font-weight: bold; color: #ffd54a; margin-bottom: 4px; }
+  .setup-slider-row input[type="range"] { width: 100%; accent-color: #ffd54a; }
+  .setup-slider-extremes { display: flex; justify-content: space-between; font-size: 0.62rem; color: #9fd8b8; margin-top: 2px; }
+  .setup-slider-value { color: #ffd54a; font-weight: bold; }
+
+  .setup-tier-badge { font-size: 0.6rem; font-weight: bold; padding: 2px 7px; border-radius: 6px; text-align: center; white-space: nowrap; }
+  .setup-tier-badge.mosca { background: #4a9eff; color: white; }
+  .setup-tier-badge.verde { background: #2a9d5c; color: white; }
+  .setup-tier-badge.amarelo { background: #f4a300; color: #0e1c15; }
+  .setup-tier-badge.vermelho { background: #e63946; color: white; }
+
+  .setup-report { margin-top: 10px; border: 1px solid #345c48; border-radius: 10px; overflow: hidden; }
+  .setup-report-row {
+    display: grid; grid-template-columns: 1.5fr 1.1fr 1fr; gap: 6px; padding: 7px 8px;
+    font-size: 0.68rem; align-items: center; border-bottom: 1px solid #234433; text-align: left;
+  }
+  .setup-report-row.header { background: #1e3b2a; font-weight: bold; color: #ffd54a; }
+  .setup-report-row:last-child { border-bottom: none; }
+  .setup-report-extremes { font-size: 0.6rem; color: #9fd8b8; }
+  .setup-perfect-banner {
+    margin-top: 8px; padding: 8px; text-align: center; border: 1px solid #ffd54a;
+    border-radius: 8px; color: #ffd54a; font-weight: bold; font-size: 0.78rem;
+  }
 
   @keyframes hudPulse {
     0%, 100% { opacity: 1; }
@@ -291,6 +316,7 @@
       <div class="overlay-title" id="result-title">Resultado</div>
       <div id="result-list"></div>
       <div class="points-line" id="points-line"></div>
+      <div id="setup-report-table"></div>
       <button class="primary-btn" id="result-continue-btn">Continuar</button>
     </div>
   </div>
@@ -333,6 +359,10 @@
     const isShortSession = isPractice || isQualy;
     const PRACTICE_LAPS = 12;
     const PRACTICE_REAL_MS = 70000;
+    // Escalonamento de Voltas: só a corrida principal (não sprint, não
+    // treino/classificatória) usa o número real de voltas do circuito
+    // como base — por isso só ela precisa da razão de compressão
+    const isMainRace = !isShortSession && sessionType !== 'sprint';
 
     let selectedSetup = window.WSPF1Corrida.defaultCarSetup();
 
@@ -365,6 +395,26 @@
     }
     let activeStrategyDriverId = playerDrivers.length ? playerDrivers[0].id : null;
     function activeStrategy() { return strategyByDriver[activeStrategyDriverId]; }
+
+    // clima da sessão INTEIRA, volta a volta, decidido de uma vez só e
+    // determinístico (mesma semente = mesma sequência sempre) — é o que
+    // permite a tabela de previsão (início/meio/fim) mostrar exatamente o
+    // que a sessão ao vivo vai seguir, nunca um palpite solto (pedido
+    // explícito do usuário: "a gente fica perdido" quando o tempo muda sem
+    // aviso). A MESMA semente é passada pro createRaceState mais abaixo.
+    // PRECISA vir antes de initStrategy()/initSetupPanel() logo abaixo —
+    // a tabela de estratégia (aggressiveStartCompound) já lê weatherTimeline
+    // pra montar a Opção B, e initStrategy roda antes de qualquer código
+    // mais adiante no arquivo (bug de temporal dead zone já visto aqui).
+    let weatherSeed = null;
+    let weatherTimeline = null;
+    if (weekend) {
+      weatherSeed = weekend.circuit + '|' + sessionType + '|s' + temporadaState.seasonNumber + '|w' + weekend.index;
+      weatherTimeline = window.WSPF1Corrida.buildWeatherTimeline(weatherSeed, sessionTotalLaps(), weekend.clima);
+      const cond0 = window.WSPF1Corrida.WEATHER_CONDITIONS[weatherTimeline.tiers[0]];
+      const el = document.getElementById('weather-tag');
+      if (el) el.textContent = (cond0 ? cond0.icon : '🌤️') + ' ' + weatherTimeline.temps[0] + '°C';
+    }
 
     const validSession = isPractice || isQualy || sessionType === 'sprint' || sessionType === 'corrida';
     const weekendGated = weekend && weekend.sessionIdx === 0 && !window.WSPF1Calendario.isWeekendAvailable(temporadaState);
@@ -411,22 +461,6 @@
         });
         row.appendChild(btn);
       });
-    }
-
-    // clima da sessão INTEIRA, volta a volta, decidido de uma vez só e
-    // determinístico (mesma semente = mesma sequência sempre) — é o que
-    // permite a tabela de previsão (início/meio/fim) mostrar exatamente o
-    // que a sessão ao vivo vai seguir, nunca um palpite solto (pedido
-    // explícito do usuário: "a gente fica perdido" quando o tempo muda sem
-    // aviso). A MESMA semente é passada pro createRaceState mais abaixo.
-    let weatherSeed = null;
-    let weatherTimeline = null;
-    if (weekend) {
-      weatherSeed = weekend.circuit + '|' + sessionType + '|s' + temporadaState.seasonNumber + '|w' + weekend.index;
-      weatherTimeline = window.WSPF1Corrida.buildWeatherTimeline(weatherSeed, sessionTotalLaps(), weekend.clima);
-      const cond0 = window.WSPF1Corrida.WEATHER_CONDITIONS[weatherTimeline.tiers[0]];
-      const el = document.getElementById('weather-tag');
-      if (el) el.textContent = (cond0 ? cond0.icon : '🌤️') + ' ' + weatherTimeline.temps[0] + '°C';
     }
 
     // ao vivo, na corrida, o HUD acompanha o clima real da simulação (que
@@ -493,10 +527,13 @@
       const grid = document.getElementById('circuit-data-grid');
       drawCircuitShapePreview();
       const typeLabel = { permanente: 'Permanente', rua: 'Rua', misto: 'Misto' }[w.type] || w.type;
+      // Escalonamento de Voltas: mostra a conversão real→jogo (não faz
+      // sentido pra sprint, que é sempre 4 fixo, mostrado à parte)
+      const gameLaps = window.WSPF1Corrida.gameLapsForRealLaps(w.laps);
       const items = [
         ['País / Cidade', w.pais + ' — ' + w.cidade],
         ['Traçado', typeLabel],
-        ['Voltas na corrida', w.laps],
+        ['Voltas', w.laps + ' reais → ' + gameLaps + ' no jogo'],
         ['Curvas', w.curves],
         ['Sentido', w.sentido],
         ['Clima predominante', w.clima],
@@ -539,41 +576,45 @@
       setupPanelEl.classList.remove('hidden');
       if (weekend.asfalto) {
         document.getElementById('setup-asphalt-hint').textContent =
-          '🛣️ Asfalto deste circuito: ' + window.WSPF1Calendario.ASPHALT_LABELS[weekend.asfalto.tipo];
+          '🛣️ Asfalto deste circuito: ' + window.WSPF1Calendario.ASPHALT_LABELS[weekend.asfalto.tipo]
+          + ' — traçado ' + (weekend.type === 'rua' ? 'de rua' : weekend.type === 'permanente' ? 'permanente' : 'misto') + '.';
       }
-      const options = window.WSPF1Corrida.CAR_SETUP_OPTIONS;
+      // 7 sliders 0-99 (pedido do usuário, caderno do Wagner) — cada
+      // circuito tem um alvo ideal secreto (idealSetupForCircuit em
+      // corrida.js), o jogador não vê o número, só descobre o quão perto
+      // chegou no relatório de fim de treino (ver finishPractice)
+      const fields = window.WSPF1Corrida.SETUP_FIELDS;
       const dialsEl = document.getElementById('setup-dials');
-      const dialLabels = { aero: 'Aerodinâmica', altura: 'Altura do carro', pressao: 'Pressão dos pneus' };
-      Object.keys(options).forEach((dialKey) => {
-        const dial = document.createElement('div');
-        dial.className = 'setup-dial';
+      dialsEl.innerHTML = '';
+      fields.forEach((f) => {
+        const row = document.createElement('div');
+        row.className = 'setup-slider-row';
         const label = document.createElement('div');
-        label.className = 'setup-dial-label';
-        label.textContent = dialLabels[dialKey];
-        dial.appendChild(label);
+        label.className = 'setup-slider-label';
+        label.textContent = f.label + ': ';
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'setup-slider-value';
+        valueSpan.textContent = selectedSetup[f.key];
+        label.appendChild(valueSpan);
+        row.appendChild(label);
 
-        const optsRow = document.createElement('div');
-        optsRow.className = 'setup-dial-options';
-        const descEl = document.createElement('div');
-        descEl.className = 'setup-opt-desc';
-        descEl.textContent = options[dialKey][selectedSetup[dialKey]].desc;
-
-        Object.keys(options[dialKey]).forEach((optKey) => {
-          const opt = options[dialKey][optKey];
-          const btn = document.createElement('button');
-          btn.className = 'setup-opt-btn' + (optKey === selectedSetup[dialKey] ? ' selected' : '');
-          btn.textContent = opt.label;
-          btn.addEventListener('click', () => {
-            selectedSetup[dialKey] = optKey;
-            [...optsRow.children].forEach((b) => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            descEl.textContent = opt.desc;
-          });
-          optsRow.appendChild(btn);
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = '0';
+        input.max = String(window.WSPF1Corrida.SETUP_FIELD_MAX);
+        input.value = selectedSetup[f.key];
+        input.addEventListener('input', () => {
+          selectedSetup[f.key] = Number(input.value);
+          valueSpan.textContent = input.value;
         });
-        dial.appendChild(optsRow);
-        dial.appendChild(descEl);
-        dialsEl.appendChild(dial);
+        row.appendChild(input);
+
+        const extremes = document.createElement('div');
+        extremes.className = 'setup-slider-extremes';
+        extremes.innerHTML = '<span>0 = ' + f.lo + '</span><span>' + window.WSPF1Corrida.SETUP_FIELD_MAX + ' = ' + f.hi + '</span>';
+        row.appendChild(extremes);
+
+        dialsEl.appendChild(row);
       });
     }
 
@@ -582,8 +623,21 @@
     // alvo quanto pra planilha de combustível
     function sessionTotalLaps() {
       if (isShortSession) return PRACTICE_LAPS;
-      if (sessionType === 'sprint') return Math.max(6, Math.round(weekend.laps / 3));
-      return weekend.laps;
+      if (sessionType === 'sprint') return window.WSPF1Corrida.SPRINT_LAPS_FIXED;
+      // Escalonamento de Voltas (pedido do usuário): corrida real do
+      // circuito pode ter até 78 voltas — comprimido pra 5-9 voltas de
+      // jogo, mesma duração real de sessão, menos voltas exibidas.
+      return window.WSPF1Corrida.gameLapsForRealLaps(weekend.laps);
+    }
+
+    // razão de compressão da corrida principal — usada TANTO na simulação
+    // ao vivo (startRace) QUANTO nas tabelas de projeção pré-largada
+    // (renderFuelTable/renderStintTable), pra elas nunca divergirem do que
+    // realmente acontece na pista (pedido explícito do usuário: "o
+    // resultado e dados destas tabelas tem que bater 100% os dados e
+    // resultados das pistas")
+    function currentLapCompressionRatio() {
+      return isMainRace ? window.WSPF1Corrida.lapCompressionRatio(weekend.laps, sessionTotalLaps()) : 1;
     }
 
     function initStrategy() {
@@ -675,7 +729,12 @@
       const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP * motorMult;
       const fuelNeeded = C.calcFuelNeeded(totalLaps, fuelPerLap);
       const styleWearMult = C.drivingStyleWearMult(strategy.drivingStyle);
-      const stintLaps = C.calcStintLaps(strategy.compound, 90, styleWearMult);
+      // calcStintLaps devolve voltas REAIS (calibrado pra corridas de
+      // 30-70 voltas) — convertido pra voltas de jogo com a mesma razão de
+      // compressão que a corrida ao vivo usa, senão a planilha promete um
+      // número de voltas que a pista não confirma depois
+      const lapRatio = currentLapCompressionRatio();
+      const stintLaps = Math.max(1, Math.round(C.calcStintLaps(strategy.compound, 90, styleWearMult) / lapRatio));
       const tireStopsNeeded = Math.max(0, Math.ceil(totalLaps / stintLaps) - 1);
       const stylePaceFactor = C.drivingStylePaceFactor(strategy.drivingStyle);
       const stylePacePct = Math.round((stylePaceFactor - 1) * 100);
@@ -702,33 +761,49 @@
       renderStintTable(strategy, totalLaps, fuelPerLap);
     }
 
-    // tabela de estratégia em 4 colunas (baseada no caderno do usuário):
-    // trecho da corrida (início / cada parada projetada), pneu daquele
-    // trecho, combustível necessário (litros/volta × voltas do trecho) e o
-    // cálculo base (desgaste batendo com o tanto de volta — "aguenta" ou
-    // não). Só projeta com o composto/estilo/volta-alvo ATUAIS da aba —
-    // troca de composto pro trecho seguinte usa a mesma regra simples que
-    // a corrida ao vivo usa (nextStrategyCompound em corridamotor.js).
+    // tabela de estratégia em 4 colunas, 2 OPÇÕES comparáveis por piloto
+    // (pedido do usuário, caderno do Wagner): Opção A é o composto JÁ
+    // selecionado no seletor manual acima (menos trocas, mais durável) —
+    // Opção B é uma alternativa mais agressiva (composto mais mole, mais
+    // paradas, mais ritmo) pro jogador comparar risco x ritmo. Escolher
+    // "Usar essa opção" troca o composto de largada de verdade — mesmo
+    // mecanismo que o seletor manual já usa (chama initStrategy de novo).
     function nextPlanCompound(current) {
       if (current === 'macio') return 'duro';
       if (current === 'duro') return 'medio';
       return 'medio';
     }
+    function aggressiveStartCompound() {
+      const startTier = weatherTimeline ? weatherTimeline.tiers[0] : 'seco';
+      if (startTier === 'chuva_grossa' || startTier === 'chuva_intensa') return 'chuva';
+      if (startTier === 'ventos_fortes') return 'intermediario';
+      return 'macio';
+    }
+    function nextPlanCompoundAggressive(current) {
+      if (current === 'chuva') return 'intermediario';
+      if (current === 'intermediario') return 'macio';
+      return 'macio';
+    }
 
-    function renderStintTable(strategy, totalLaps, fuelPerLap) {
+    // monta os trechos de UM cenário — usa a MESMA conta que a corrida ao
+    // vivo usa (calcStintLaps + lapCompressionRatio + hardStopCap no 1º
+    // trecho, igual defaultPlannedPitLap em corridamotor.js) pra a tabela
+    // nunca prometer algo que a pista não confirma depois.
+    function buildStintPlan(startCompound, nextCompoundFn, strategy, totalLaps, fuelPerLap, styleWearMult, lapRatio) {
       const C = window.WSPF1Corrida;
-      const styleWearMult = C.drivingStyleWearMult(strategy.drivingStyle);
+      const hardStopCap = Math.max(1, Math.floor(totalLaps * 0.75));
       const stints = [];
-      let compound = strategy.compound;
+      let compound = startCompound;
       let lapStart = 1;
       let remaining = totalLaps;
       let guard = 0;
       while (remaining > 0 && guard < 6) {
         guard++;
-        const stintCap = C.calcStintLaps(compound, 90, styleWearMult);
+        const stintCap = Math.max(1, Math.round(C.calcStintLaps(compound, 90, styleWearMult) / lapRatio));
         let stintLen = stintCap;
-        if (stints.length === 0 && strategy.fuelTargetLap) {
-          stintLen = Math.min(stintLen, strategy.fuelTargetLap - lapStart + 1);
+        if (stints.length === 0) {
+          stintLen = Math.min(stintLen, hardStopCap);
+          if (strategy.fuelTargetLap) stintLen = Math.min(stintLen, strategy.fuelTargetLap - lapStart + 1);
         }
         stintLen = Math.max(1, Math.min(stintLen, remaining));
         const lapEnd = lapStart + stintLen - 1;
@@ -740,10 +815,13 @@
         });
         remaining -= stintLen;
         lapStart = lapEnd + 1;
-        compound = nextPlanCompound(compound);
+        compound = nextCompoundFn(compound);
       }
+      return stints;
+    }
 
-      const compounds = C.TIRE_COMPOUNDS;
+    function renderOptionTable(stints, label, isCurrent, optionCompound) {
+      const compounds = window.WSPF1Corrida.TIRE_COMPOUNDS;
       const cells = [
         ['head', 'Trecho'], ['head', 'Pneu'], ['head', 'Combustível'], ['head', 'Cálculo base'],
       ];
@@ -756,10 +834,38 @@
         cells.push(['', s.fuelForStint + ' kg']);
         cells.push([s.aguenta ? 'ok' : 'bad', s.aguenta ? '✅ aguenta (folga ' + s.folgaVoltas + 'v)' : '⚠️ não aguenta']);
       });
+      const stops = Math.max(0, stints.length - 1);
+      const stopsLabel = stops + (stops === 1 ? ' parada' : ' paradas');
+      return '<div class="stint-option">'
+        + '<div class="stint-option-head"><span>' + label + ' — ' + stopsLabel + '</span>'
+        + (isCurrent
+          ? '<span class="stint-option-badge">EM USO</span>'
+          : '<button class="stint-option-btn" data-compound="' + optionCompound + '">Usar essa opção</button>')
+        + '</div>'
+        + '<div class="stint-grid">' + cells.map(([cls, text]) => '<div class="stint-cell ' + cls + '">' + text + '</div>').join('') + '</div>'
+        + '</div>';
+    }
+
+    function renderStintTable(strategy, totalLaps, fuelPerLap) {
+      const C = window.WSPF1Corrida;
+      const styleWearMult = C.drivingStyleWearMult(strategy.drivingStyle);
+      const lapRatio = currentLapCompressionRatio();
+
+      const optionA = buildStintPlan(strategy.compound, nextPlanCompound, strategy, totalLaps, fuelPerLap, styleWearMult, lapRatio);
+      const aggressiveStart = aggressiveStartCompound();
+      const optionB = buildStintPlan(aggressiveStart, nextPlanCompoundAggressive, strategy, totalLaps, fuelPerLap, styleWearMult, lapRatio);
 
       document.getElementById('stint-table').innerHTML =
-        '<div class="stint-table-title">📋 Tabela de estratégia por trecho</div>' +
-        '<div class="stint-grid">' + cells.map(([cls, text]) => '<div class="stint-cell ' + cls + '">' + text + '</div>').join('') + '</div>';
+        '<div class="stint-table-title">📋 Tabela de estratégia — 2 opções (' + totalLaps + ' voltas)</div>'
+        + renderOptionTable(optionA, 'Opção A', true, strategy.compound)
+        + renderOptionTable(optionB, 'Opção B', false, aggressiveStart);
+
+      document.querySelectorAll('#stint-table .stint-option-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          strategy.compound = btn.dataset.compound;
+          initStrategy();
+        });
+      });
     }
 
     // ---------- Corrida ao vivo ----------
@@ -803,9 +909,9 @@
       if (window.WSPF1Equipe) {
         const club = window.WSPF1Equipe.loadClub();
         // mesma proporção usada dentro do motor de corrida (raceRealMs/
-        // totalLaps) — sprint divide os dois pelo mesmo fator (~3), então
-        // a fração fica igual não importa a sessão
-        const avgLapMs = (isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS) / (isShortSession ? PRACTICE_LAPS : weekend.laps);
+        // totalLaps) — usa sessionTotalLaps() (já com o Escalonamento de
+        // Voltas aplicado), não mais o número real de voltas do circuito
+        const avgLapMs = (isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS) / sessionTotalLaps();
         pitStopMsByTeam = { player: window.WSPF1Corrida.pitStopMsForClub(club, avgLapMs) };
       }
       // um plano por piloto (chave = id do entrant, 'player_' + id do
@@ -818,7 +924,8 @@
       });
       raceState = window.WSPF1Motor.createRaceState(entrants, {
         isSprint: sessionType === 'sprint',
-        baseLaps: isShortSession ? PRACTICE_LAPS : weekend.laps,
+        baseLaps: sessionTotalLaps(),
+        lapCompressionRatio: currentLapCompressionRatio(),
         raceRealMs: isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS,
         hasFailureEvent: isShortSession ? false : weekend.hasFailureEvent,
         circuit: weekend.circuit,
@@ -827,6 +934,7 @@
         clima: weekend.clima,
         weatherSeed,
         carSetup: weekend.carSetup || selectedSetup,
+        carSetupIdeal: window.WSPF1Corrida.idealSetupForCircuit(weekend.circuit, weekend.type),
       });
       strategyPanelEl.classList.add('hidden');
       setupPanelEl.classList.add('hidden');
@@ -1692,9 +1800,15 @@
         // rende bônus pros dois pilotos ("Na Mosca" — pedido do usuário),
         // resultado da corrida ajusta por piloto individualmente, abandono
         // pesa contra
+        // Setup Perfeito (7x Na Mosca) dá o mesmo bônus de moral que o
+        // antigo "acerto de altura combina com o asfalto" dava — usa o
+        // acerto REAL aplicado no fim de semana (weekend.carSetup), não
+        // selectedSetup (que só é preenchido de verdade durante o próprio
+        // treino livre; em sessões seguintes fica no valor padrão)
         const C = window.WSPF1Corrida;
-        const setupMatched = weekend && weekend.asfalto && selectedSetup
-          && selectedSetup.altura === C.ASPHALT_IDEAL_ALTURA[weekend.asfalto.tipo];
+        const effectiveSetup = (weekend && weekend.carSetup) || selectedSetup;
+        const setupMatched = weekend && effectiveSetup
+          && C.setupIsPerfect(effectiveSetup, C.idealSetupForCircuit(weekend.circuit, weekend.type));
         table.forEach((car, i) => {
           if (!car.isPlayer) return;
           const driverId = car.id.replace('player_', '');
@@ -1723,10 +1837,36 @@
       });
 
       document.getElementById('result-title').textContent = 'Relatório do Treino Livre';
-      const options = window.WSPF1Corrida.CAR_SETUP_OPTIONS;
-      const setupSummary = ['aero', 'altura', 'pressao'].map((k) => options[k][selectedSetup[k]].label).join(' · ');
-      document.getElementById('points-line').textContent = (playerIdx >= 0 ? (playerIdx + 1) + 'º no treino. ' : '')
-        + 'Acerto aplicado pro resto do fim de semana: ' + setupSummary;
+
+      // tabela de cores por campo (pedido do usuário) — mostra o quão
+      // perto o palpite ficou do alvo ideal secreto do circuito, campo a
+      // campo, só depois que a sessão termina (não dá spoiler antes)
+      const C = window.WSPF1Corrida;
+      const ideal = C.idealSetupForCircuit(weekend.circuit, weekend.type);
+      const tierLabel = { mosca: '🔵 NA MOSCA', verde: '🟢 VERDE', amarelo: '🟡 AMARELO', vermelho: '🔴 VERMELHO' };
+      const rows = C.SETUP_FIELDS.map((f) => {
+        const value = selectedSetup[f.key];
+        const diff = C.setupFieldDiff(value, ideal[f.key]);
+        const tier = C.setupFieldTier(diff);
+        return '<div class="setup-report-row">'
+          + '<span>' + f.label + '</span>'
+          + '<span class="setup-report-extremes">' + value + ' (0=' + f.lo + ', 99=' + f.hi + ')</span>'
+          + '<span class="setup-tier-badge ' + tier + '">' + tierLabel[tier] + '</span>'
+          + '</div>';
+      }).join('');
+      const perfect = C.setupIsPerfect(selectedSetup, ideal);
+      const paceFactor = C.setupPaceFactor(selectedSetup, ideal);
+      const pct = Math.round((paceFactor - 1) * 1000) / 10;
+      const pctText = (pct >= 0 ? '+' : '') + pct + '%';
+      document.getElementById('setup-report-table').innerHTML =
+        '<div class="setup-report">'
+        + '<div class="setup-report-row header"><span>Ajuste</span><span>Seu valor</span><span>Resultado</span></div>'
+        + rows
+        + '</div>'
+        + (perfect ? '<div class="setup-perfect-banner">🔵 SETUP PERFEITO! Bônus extra de ritmo pro resto do fim de semana.</div>' : '')
+        + '<p class="setup-opt-desc" style="text-align:center;">Efeito no ritmo pro resto do fim de semana (classificatória, sprint e corrida): <b style="color:#ffd54a;">' + pctText + '</b></p>';
+
+      document.getElementById('points-line').textContent = playerIdx >= 0 ? (playerIdx + 1) + 'º no treino.' : '';
       document.getElementById('result-overlay').classList.remove('hidden');
     }
 
