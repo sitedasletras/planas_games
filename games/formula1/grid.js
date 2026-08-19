@@ -152,15 +152,17 @@
   }
 
   // acerto de carro escolhido no treino livre (7 sliders 0-99, ver
-  // idealSetupForCircuit em corrida.js) — só o jogador tem esse painel,
-  // então só o ritmo do jogador reflete a escolha. O alvo ideal depende do
-  // circuito+tipo de traçado, então precisa ser recalculado aqui igual foi
-  // no treino (mesma semente = mesmo alvo sempre).
-  function setupFactorForPlayer() {
+  // idealSetupForCircuit em corrida.js) — cada piloto titular faz o seu
+  // PRÓPRIO mapeamento (pedido explícito do usuário: um não herda o
+  // resultado do outro), então o fator entra POR PILOTO, não por equipe.
+  // O alvo ideal depende do circuito+tipo de traçado, então precisa ser
+  // recalculado aqui igual foi no treino (mesma semente = mesmo alvo
+  // sempre).
+  function setupFactorForDriver(driverId) {
     if (!window.WSPF1Corrida || !window.WSPF1Calendario) return 1;
     const state = window.WSPF1Calendario.loadState();
     const weekend = window.WSPF1Calendario.currentWeekend(state);
-    const setup = weekend && weekend.carSetup;
+    const setup = weekend && weekend.carSetup && weekend.carSetup[driverId];
     if (!setup || !weekend) return 1;
     const ideal = window.WSPF1Corrida.idealSetupForCircuit(weekend.circuit, weekend.type);
     return window.WSPF1Corrida.setupPaceFactor(setup, ideal);
@@ -180,8 +182,9 @@
       const chassiLevel = club.departments.chassi || 0;
       const motorFactor = motorFactorFor(club.motorSupplier);
       const chassiFactor = window.WSPF1Equipe.chassiPaceEffectFactor(club.chassiSupplier);
-      const setupFactor = setupFactorForPlayer();
+      const weekendForSetup = window.WSPF1Calendario.currentWeekend(window.WSPF1Calendario.loadState());
       equipe.drivers.filter((d) => d.role !== 'reserva').forEach((d) => {
+        const setupFactor = setupFactorForDriver(d.id);
         // rivais variam só ±3 de rating em torno do próprio ritmo de
         // equipe (generateRivalTeam) — usar 0.5 aqui deixava o piloto
         // sozinho abrir uma diferença bem maior que isso; 0.15 deixa o
@@ -206,6 +209,10 @@
           weatherSpecialty: d.weatherSpecialty || null,
           weatherPotencia: d.weatherPotencia || 0,
           moral: d.moral,
+          // acerto de carro é POR PILOTO — vai junto no entrant pra
+          // corridamotor.js calcular o desgaste (setupWearFactor) com o
+          // acerto DESTE piloto, não um valor de equipe compartilhado
+          carSetup: weekendForSetup && weekendForSetup.carSetup ? weekendForSetup.carSetup[d.id] : null,
         });
       });
     }

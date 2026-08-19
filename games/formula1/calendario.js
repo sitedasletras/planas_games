@@ -313,11 +313,15 @@
   }
 
   // acerto do carro escolhido no treino livre — vale pro resto do fim de
-  // semana (classificatória, sprint e corrida usam o mesmo weekend.carSetup)
-  function applyCarSetup(state, setup) {
+  // semana (classificatória, sprint e corrida usam o mesmo acerto), e é
+  // POR PILOTO (pedido explícito do usuário: cada titular faz sua própria
+  // volta de mapeamento, um não herda o resultado do outro) —
+  // w.carSetup guarda um objeto { [driverId]: setup }
+  function applyCarSetup(state, driverId, setup) {
     const w = currentWeekend(state);
-    if (!w) return { ok: false };
-    w.carSetup = setup;
+    if (!w || !driverId) return { ok: false };
+    if (!w.carSetup || w.carSetup.altura != null) w.carSetup = {}; // migra formato antigo (um setup só pro time)
+    w.carSetup[driverId] = setup;
     saveState(state);
     return { ok: true };
   }

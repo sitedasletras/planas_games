@@ -531,6 +531,39 @@ necessidade de retrabalhar nada disso.
       fim de semana inteiro (treino → classificatória → sprint → corrida)
       — zero erros de página em todas.
 
+13. **[IMPLEMENTADO 20/08] F1 — Treino Livre reescrito: volta a volta,
+    por piloto, entrada numérica**: usuário testou a versão anterior e
+    corrigiu o rumo — o Treino Livre NÃO devia rodar como corrida ao vivo
+    com botão de velocidade. O certo: ajustar os 7 valores por número,
+    clicar "Rodar volta", o jogo mostra a cor de cada campo na hora (sem
+    animação de pista), até 5 voltas — e cada piloto titular faz seu
+    PRÓPRIO acerto, um não herda o resultado do outro.
+    - `corrida.html`: Treino Livre não passa mais por `startRace()`/
+      `createRaceState` — virou um minijogo isolado (`initSetupPanel`,
+      `runSetupLap`, `confirmSetupForDriver`, `finishSetupPractice`).
+      Painel de estratégia (composto/estilo/combustível) e a tela de
+      corrida ao vivo ficam escondidos nessa sessão — não fazem sentido
+      mais aqui. Abas por piloto (reaproveita `.driver-tab-btn`) deixam
+      escolher qual titular está sendo configurado; confirmar um avança
+      pro próximo automaticamente; ao confirmar o último, mostra o
+      relatório final (mesma tabela de cores de antes, agora uma por
+      piloto) e marca a sessão como concluída no calendário.
+    - **Mudança de arquitetura**: `weekend.carSetup` era um objeto único
+      pro time inteiro — virou `{ [driverId]: setup }`
+      (`calendario.js: applyCarSetup` agora recebe o id do piloto).
+      Propagado em `grid.js` (`setupFactorForDriver`, POR piloto, não
+      mais uma equipe) e `corridamotor.js` (`wearFactor` lê `e.carSetup`
+      do próprio entrant, não mais um valor global de `opts`). Migração
+      automática de saves antigos (formato de time único vira `{}` na
+      primeira gravação nova).
+    - Testado com Playwright: fluxo isolado do treino (sem botão de
+      largar, sem tela de corrida, 7 campos numéricos, voltas rodando e
+      revelando cor na hora, piloto B começando do zero — não herda os
+      valores do piloto A, confirmar avança automaticamente, relatório
+      final com os dois pilotos) e fim de semana inteiro de novo (treino
+      reescrito → classificatória → corrida principal) — zero erros de
+      página.
+
 ## Outras notas importantes
 
 - **Google AdSense**: conta criada, site verificado (via `sitedasletras/sitedasletras.github.io`, repositório novo criado especificamente pra isso, com página de redirecionamento pro jogo), revisão pedida ao Google — só falta aguardar aprovação (pode levar horas/dias, chega por e-mail). Nada mais a fazer até a aprovação chegar.

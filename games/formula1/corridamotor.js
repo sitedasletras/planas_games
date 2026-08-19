@@ -160,7 +160,10 @@
         motorSupplier: e.motorSupplier || null,
         tireSupplier: e.tireSupplier || null,
         cambioReliability: e.cambioSupplier && C() ? C().cambioReliabilityPct(e.cambioSupplier) : null,
-        wearFactor: e.isPlayer && C() ? C().setupWearFactor(opts.carSetup, opts.carSetupIdeal) : 1,
+        // acerto de carro é POR PILOTO — cada entrant já vem com o SEU
+        // próprio carSetup (ver grid.js), não é mais um valor de equipe
+        // compartilhado entre os dois titulares
+        wearFactor: e.isPlayer && C() ? C().setupWearFactor(e.carSetup, opts.carSetupIdeal) : 1,
         grid: i,
         lapsCompleted: 0,
         distance: 0,

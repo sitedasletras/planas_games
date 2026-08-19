@@ -102,11 +102,19 @@
 
   .setup-opt-desc { font-size: 0.66rem; color: #9fd8b8; margin-top: 4px; min-height: 2.4em; }
 
-  .setup-slider-row { margin-bottom: 14px; }
-  .setup-slider-label { font-size: 0.78rem; font-weight: bold; color: #ffd54a; margin-bottom: 4px; }
+  .setup-slider-row { margin-bottom: 10px; }
+  .setup-slider-label { font-size: 0.72rem; font-weight: bold; color: #ffd54a; margin-bottom: 4px; }
   .setup-slider-row input[type="range"] { width: 100%; accent-color: #ffd54a; }
   .setup-slider-extremes { display: flex; justify-content: space-between; font-size: 0.62rem; color: #9fd8b8; margin-top: 2px; }
   .setup-slider-value { color: #ffd54a; font-weight: bold; }
+  .setup-input-row { display: flex; align-items: center; gap: 8px; }
+  .setup-num-input {
+    width: 64px; padding: 6px 8px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: #ffd54a; font-weight: bold; font-size: 0.85rem; text-align: center;
+  }
+  .setup-num-input:focus { border-color: #ffd54a; outline: none; }
+  .setup-lap-row { margin-top: 6px; }
+  .primary-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .setup-tier-badge { font-size: 0.6rem; font-weight: bold; padding: 2px 7px; border-radius: 6px; text-align: center; white-space: nowrap; }
   .setup-tier-badge.mosca { background: #4a9eff; color: white; }
@@ -242,10 +250,15 @@
     </div>
 
     <div id="setup-panel" class="panel hidden">
-      <h2>Acerto do carro</h2>
-      <p>Escolha o acerto pra sessão — ele vale pro resto do fim de semana (classificatória, sprint e corrida usam o mesmo acerto).</p>
+      <h2>Treino Livre — acerto do carro</h2>
+      <p>Ajuste os 7 pontos do carro e clique em "Rodar volta" pra ver o quão perto você chegou do ideal secreto do circuito. Até 5 voltas por piloto — o acerto final vale pro resto do fim de semana (classificatória, sprint e corrida).</p>
       <p id="setup-asphalt-hint" style="color:#ffd54a; font-weight:bold;"></p>
+      <div class="driver-tab-row hidden" id="setup-driver-tab-row"></div>
       <div id="setup-dials"></div>
+      <div class="setup-lap-row">
+        <button class="primary-btn" id="setup-run-lap-btn">🏁 Rodar volta (1/5)</button>
+      </div>
+      <button class="primary-btn" id="setup-confirm-btn" disabled>✅ Confirmar acerto</button>
     </div>
 
     <div id="strategy-panel" class="panel">
@@ -364,8 +377,6 @@
     // como base — por isso só ela precisa da razão de compressão
     const isMainRace = !isShortSession && sessionType !== 'sprint';
 
-    let selectedSetup = window.WSPF1Corrida.defaultCarSetup();
-
     // motor mais potente bebe mais combustível — pro jogador ver isso já
     // refletido na planilha antes de largar (não só sentir na corrida)
     let playerMotorLevel = 0;
@@ -396,6 +407,21 @@
     let activeStrategyDriverId = playerDrivers.length ? playerDrivers[0].id : null;
     function activeStrategy() { return strategyByDriver[activeStrategyDriverId]; }
 
+    // Treino Livre — minijogo de acerto volta a volta, POR PILOTO (pedido
+    // explícito do usuário: cada titular faz sua própria mapeamento, um
+    // não herda o resultado do outro; e não roda mais como corrida ao
+    // vivo com botão de velocidade — ajusta, roda 1 volta, vê a cor, até
+    // 5 voltas). Todo esse estado só é usado quando isPractice.
+    const SETUP_MAX_LAPS = 5;
+    let setupDriverIdx = 0;
+    const setupValuesByDriver = {};
+    const setupAttemptsByDriver = {};
+    const setupFeedbackByDriver = {};
+    const setupDoneByDriver = {};
+    const SETUP_TIER_LABEL = { mosca: '🔵 NA MOSCA', verde: '🟢 VERDE', amarelo: '🟡 AMARELO', vermelho: '🔴 VERMELHO' };
+    playerDrivers.forEach((d) => { setupValuesByDriver[d.id] = window.WSPF1Corrida.defaultCarSetup(); });
+    function currentSetupDriver() { return playerDrivers[setupDriverIdx] || null; }
+
     // clima da sessão INTEIRA, volta a volta, decidido de uma vez só e
     // determinístico (mesma semente = mesma sequência sempre) — é o que
     // permite a tabela de previsão (início/meio/fim) mostrar exatamente o
@@ -425,16 +451,18 @@
       }
       emptyOverlayEl.classList.remove('hidden');
       strategyPanelEl.classList.add('hidden');
+    } else if (isPractice) {
+      // Treino Livre não usa mais o painel de estratégia (composto/estilo/
+      // combustível) — vira o minijogo de acerto volta a volta sozinho
+      strategyPanelEl.classList.add('hidden');
+      initSetupPanel();
     } else {
-      if (isPractice) initSetupPanel();
       initStrategy();
     }
 
     document.getElementById('circuit-name').textContent = weekend ? weekend.circuit : 'Circuito';
     document.getElementById('session-tag').textContent = isPractice ? 'Treino Livre' : (isQualy ? 'Classificatória' : (sessionType === 'sprint' ? 'Corrida Sprint' : 'Corrida'));
-    if (isPractice) {
-      document.getElementById('strategy-title').textContent = 'Pneu do treino';
-    } else if (isQualy) {
+    if (isQualy) {
       document.getElementById('strategy-title').textContent = 'Pneu da classificatória';
     }
 
@@ -572,6 +600,12 @@
         + '<p class="weather-forecast-note">O clima muda no máximo 1 nível por vez (nunca pula de Chuva Intensa direto pra Clima Seco) — e pode ficar parado no mesmo nível a sessão inteira.</p>';
     }
 
+    // Treino Livre — minijogo de acerto volta a volta (pedido explícito
+    // do usuário: nada de corrida ao vivo com botão de velocidade aqui).
+    // O jogador ajusta os 7 valores por NÚMERO, clica "Rodar volta", o
+    // jogo mostra a cor de cada campo na hora (sem animação de pista),
+    // até 5 voltas. Feito PRA CADA piloto titular separadamente — o
+    // acerto de um não é copiado pro outro (weekend.carSetup[driverId]).
     function initSetupPanel() {
       setupPanelEl.classList.remove('hidden');
       if (weekend.asfalto) {
@@ -579,44 +613,166 @@
           '🛣️ Asfalto deste circuito: ' + window.WSPF1Calendario.ASPHALT_LABELS[weekend.asfalto.tipo]
           + ' — traçado ' + (weekend.type === 'rua' ? 'de rua' : weekend.type === 'permanente' ? 'permanente' : 'misto') + '.';
       }
-      // 7 sliders 0-99 (pedido do usuário, caderno do Wagner) — cada
-      // circuito tem um alvo ideal secreto (idealSetupForCircuit em
-      // corrida.js), o jogador não vê o número, só descobre o quão perto
-      // chegou no relatório de fim de treino (ver finishPractice)
-      const fields = window.WSPF1Corrida.SETUP_FIELDS;
+      renderSetupDriverTabs();
+      renderSetupFields();
+      updateSetupLapControls();
+    }
+
+    function renderSetupDriverTabs() {
+      const row = document.getElementById('setup-driver-tab-row');
+      if (playerDrivers.length < 2) {
+        row.classList.add('hidden');
+        return;
+      }
+      row.classList.remove('hidden');
+      row.innerHTML = '';
+      playerDrivers.forEach((d, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'driver-tab-btn' + (idx === setupDriverIdx ? ' selected' : '');
+        btn.textContent = d.name + (setupDoneByDriver[d.id] ? ' ✅' : '');
+        btn.addEventListener('click', () => {
+          setupDriverIdx = idx;
+          renderSetupDriverTabs();
+          renderSetupFields();
+          updateSetupLapControls();
+        });
+        row.appendChild(btn);
+      });
+    }
+
+    function renderSetupFields() {
+      const d = currentSetupDriver();
       const dialsEl = document.getElementById('setup-dials');
       dialsEl.innerHTML = '';
-      fields.forEach((f) => {
+      if (!d) return;
+      const values = setupValuesByDriver[d.id];
+      const feedback = setupFeedbackByDriver[d.id];
+      window.WSPF1Corrida.SETUP_FIELDS.forEach((f) => {
         const row = document.createElement('div');
         row.className = 'setup-slider-row';
         const label = document.createElement('div');
         label.className = 'setup-slider-label';
-        label.textContent = f.label + ': ';
-        const valueSpan = document.createElement('span');
-        valueSpan.className = 'setup-slider-value';
-        valueSpan.textContent = selectedSetup[f.key];
-        label.appendChild(valueSpan);
+        label.textContent = f.label + ' (0 = ' + f.lo + ', ' + window.WSPF1Corrida.SETUP_FIELD_MAX + ' = ' + f.hi + ')';
         row.appendChild(label);
 
+        const inputRow = document.createElement('div');
+        inputRow.className = 'setup-input-row';
         const input = document.createElement('input');
-        input.type = 'range';
+        input.type = 'number';
         input.min = '0';
         input.max = String(window.WSPF1Corrida.SETUP_FIELD_MAX);
-        input.value = selectedSetup[f.key];
+        input.className = 'setup-num-input';
+        input.value = values[f.key];
         input.addEventListener('input', () => {
-          selectedSetup[f.key] = Number(input.value);
-          valueSpan.textContent = input.value;
+          let v = parseInt(input.value, 10);
+          if (isNaN(v)) v = 0;
+          v = Math.max(0, Math.min(window.WSPF1Corrida.SETUP_FIELD_MAX, v));
+          values[f.key] = v;
         });
-        row.appendChild(input);
+        inputRow.appendChild(input);
 
-        const extremes = document.createElement('div');
-        extremes.className = 'setup-slider-extremes';
-        extremes.innerHTML = '<span>0 = ' + f.lo + '</span><span>' + window.WSPF1Corrida.SETUP_FIELD_MAX + ' = ' + f.hi + '</span>';
-        row.appendChild(extremes);
-
+        if (feedback && feedback[f.key]) {
+          const badge = document.createElement('span');
+          badge.className = 'setup-tier-badge ' + feedback[f.key];
+          badge.textContent = SETUP_TIER_LABEL[feedback[f.key]];
+          inputRow.appendChild(badge);
+        }
+        row.appendChild(inputRow);
         dialsEl.appendChild(row);
       });
     }
+
+    function updateSetupLapControls() {
+      const d = currentSetupDriver();
+      const lapBtn = document.getElementById('setup-run-lap-btn');
+      const confirmBtn = document.getElementById('setup-confirm-btn');
+      if (!d) { lapBtn.disabled = true; confirmBtn.disabled = true; return; }
+      const used = setupAttemptsByDriver[d.id] || 0;
+      lapBtn.textContent = '🏁 Rodar volta (' + Math.min(used + 1, SETUP_MAX_LAPS) + '/' + SETUP_MAX_LAPS + ')';
+      lapBtn.disabled = used >= SETUP_MAX_LAPS || !!setupDoneByDriver[d.id];
+      confirmBtn.disabled = used < 1 || !!setupDoneByDriver[d.id];
+      confirmBtn.textContent = setupDoneByDriver[d.id] ? '✅ Acerto confirmado' : '✅ Confirmar acerto de ' + d.name;
+    }
+
+    function runSetupLap() {
+      const d = currentSetupDriver();
+      if (!d) return;
+      const used = setupAttemptsByDriver[d.id] || 0;
+      if (used >= SETUP_MAX_LAPS) return;
+      setupAttemptsByDriver[d.id] = used + 1;
+      const C = window.WSPF1Corrida;
+      const ideal = C.idealSetupForCircuit(weekend.circuit, weekend.type);
+      const values = setupValuesByDriver[d.id];
+      const feedback = {};
+      C.SETUP_FIELDS.forEach((f) => {
+        feedback[f.key] = C.setupFieldTier(C.setupFieldDiff(values[f.key], ideal[f.key]));
+      });
+      setupFeedbackByDriver[d.id] = feedback;
+      renderSetupFields();
+      updateSetupLapControls();
+    }
+
+    function confirmSetupForDriver() {
+      const d = currentSetupDriver();
+      if (!d) return;
+      const used = setupAttemptsByDriver[d.id] || 0;
+      if (used < 1) return;
+      window.WSPF1Calendario.applyCarSetup(temporadaState, d.id, setupValuesByDriver[d.id]);
+      setupDoneByDriver[d.id] = true;
+      const nextIdx = playerDrivers.findIndex((pd) => !setupDoneByDriver[pd.id]);
+      if (nextIdx === -1) {
+        finishSetupPractice();
+        return;
+      }
+      setupDriverIdx = nextIdx;
+      renderSetupDriverTabs();
+      renderSetupFields();
+      updateSetupLapControls();
+    }
+
+    // fim do Treino Livre: não passa pelo motor de corrida (não tem mais
+    // simulação ao vivo pra essa sessão) — só marca a sessão como
+    // concluída no calendário e mostra o relatório de cada piloto
+    function finishSetupPractice() {
+      const order = window.WSPF1Grid.fullGrid().map((e) => e.id);
+      window.WSPF1Calendario.recordSessionResult(temporadaState, order);
+
+      const C = window.WSPF1Corrida;
+      const ideal = C.idealSetupForCircuit(weekend.circuit, weekend.type);
+      document.getElementById('result-title').textContent = 'Relatório do Treino Livre';
+      document.getElementById('result-list').innerHTML = '';
+      document.getElementById('points-line').textContent = '';
+
+      let html = '';
+      playerDrivers.forEach((d) => {
+        const values = setupValuesByDriver[d.id];
+        const rows = C.SETUP_FIELDS.map((f) => {
+          const diff = C.setupFieldDiff(values[f.key], ideal[f.key]);
+          const tier = C.setupFieldTier(diff);
+          return '<div class="setup-report-row">'
+            + '<span>' + f.label + '</span>'
+            + '<span class="setup-report-extremes">' + values[f.key] + ' (0=' + f.lo + ', 99=' + f.hi + ')</span>'
+            + '<span class="setup-tier-badge ' + tier + '">' + SETUP_TIER_LABEL[tier] + '</span>'
+            + '</div>';
+        }).join('');
+        const perfect = C.setupIsPerfect(values, ideal);
+        const paceFactor = C.setupPaceFactor(values, ideal);
+        const pct = Math.round((paceFactor - 1) * 1000) / 10;
+        const pctText = (pct >= 0 ? '+' : '') + pct + '%';
+        html += '<h3 style="color:#ffd54a; margin:14px 0 6px;">' + d.name + '</h3>'
+          + '<div class="setup-report">'
+          + '<div class="setup-report-row header"><span>Ajuste</span><span>Seu valor</span><span>Resultado</span></div>'
+          + rows
+          + '</div>'
+          + (perfect ? '<div class="setup-perfect-banner">🔵 SETUP PERFEITO! Bônus extra de ritmo pro resto do fim de semana.</div>' : '')
+          + '<p class="setup-opt-desc" style="text-align:center;">Efeito no ritmo pro resto do fim de semana: <b style="color:#ffd54a;">' + pctText + '</b></p>';
+      });
+      document.getElementById('setup-report-table').innerHTML = html;
+      document.getElementById('result-overlay').classList.remove('hidden');
+    }
+
+    document.getElementById('setup-run-lap-btn').addEventListener('click', runSetupLap);
+    document.getElementById('setup-confirm-btn').addEventListener('click', confirmSetupForDriver);
 
     // total de voltas da sessão atual (treino/sprint/corrida têm regras
     // diferentes de duração) — usado tanto pra montar os presets de volta-
@@ -901,9 +1057,11 @@
     }
 
     function startRace() {
-      if (isPractice) {
-        window.WSPF1Calendario.applyCarSetup(temporadaState, selectedSetup);
-      }
+      // Treino Livre não passa mais por aqui — virou um minijogo de
+      // ajuste volta a volta próprio (ver initSetupPanel/runSetupLap),
+      // sem simulação de corrida ao vivo. startRace só roda pra
+      // classificatória/sprint/corrida, sessões que já saem do treino
+      // com weekend.carSetup travado por piloto.
       const entrants = buildEntrants();
       let pitStopMsByTeam = null;
       if (window.WSPF1Equipe) {
@@ -933,7 +1091,6 @@
         pitStopMsByTeam,
         clima: weekend.clima,
         weatherSeed,
-        carSetup: weekend.carSetup || selectedSetup,
         carSetupIdeal: window.WSPF1Corrida.idealSetupForCircuit(weekend.circuit, weekend.type),
       });
       strategyPanelEl.classList.add('hidden');
@@ -1761,10 +1918,9 @@
       const order = table.map((c) => c.id);
       window.WSPF1Calendario.recordSessionResult(temporadaState, order);
 
-      if (isPractice) {
-        finishPractice(table);
-        return;
-      }
+      // Treino Livre não passa mais por finishRace() — vira o minijogo de
+      // acerto volta a volta (ver finishSetupPractice), chamado direto
+      // de confirmSetupForDriver quando os dois titulares terminam
       if (isQualy) {
         finishQualy(table);
         return;
@@ -1800,15 +1956,11 @@
         // rende bônus pros dois pilotos ("Na Mosca" — pedido do usuário),
         // resultado da corrida ajusta por piloto individualmente, abandono
         // pesa contra
-        // Setup Perfeito (7x Na Mosca) dá o mesmo bônus de moral que o
-        // antigo "acerto de altura combina com o asfalto" dava — usa o
-        // acerto REAL aplicado no fim de semana (weekend.carSetup), não
-        // selectedSetup (que só é preenchido de verdade durante o próprio
-        // treino livre; em sessões seguintes fica no valor padrão)
+        // Setup Perfeito (7x Na Mosca) dá bônus de moral — checado POR
+        // PILOTO agora (cada titular fez seu próprio mapeamento no treino
+        // livre, weekend.carSetup[driverId])
         const C = window.WSPF1Corrida;
-        const effectiveSetup = (weekend && weekend.carSetup) || selectedSetup;
-        const setupMatched = weekend && effectiveSetup
-          && C.setupIsPerfect(effectiveSetup, C.idealSetupForCircuit(weekend.circuit, weekend.type));
+        const setupIdeal = weekend ? C.idealSetupForCircuit(weekend.circuit, weekend.type) : null;
         table.forEach((car, i) => {
           if (!car.isPlayer) return;
           const driverId = car.id.replace('player_', '');
@@ -1819,56 +1971,18 @@
           if (i === 0) driver.careerVitorias = (driver.careerVitorias || 0) + 1;
           if (car.retired) window.WSPF1Pilotos.adjustMoralForRetirement(driver);
           else window.WSPF1Pilotos.adjustMoralForResult(driver, i + 1, pts, table.length);
-          if (setupMatched) window.WSPF1Pilotos.adjustMoralForSetupMatch(driver);
+          const driverSetup = weekend && weekend.carSetup && weekend.carSetup[driverId];
+          if (driverSetup && setupIdeal && C.setupIsPerfect(driverSetup, setupIdeal)) {
+            window.WSPF1Pilotos.adjustMoralForSetupMatch(driver);
+          }
         });
         window.WSPF1Pilotos.saveSquad(equipe);
       }
     }
 
-    function finishPractice(table) {
-      const playerIdx = table.findIndex((c) => c.isPlayer);
-      const listEl = document.getElementById('result-list');
-      listEl.innerHTML = '';
-      table.slice(0, 10).forEach((car, i) => {
-        const row = document.createElement('div');
-        row.className = 'result-row' + (car.isPlayer ? ' player' : '');
-        row.innerHTML = '<span>' + (i + 1) + '. ' + car.driverName + '</span><span>' + car.lapsCompleted + ' voltas</span>';
-        listEl.appendChild(row);
-      });
-
-      document.getElementById('result-title').textContent = 'Relatório do Treino Livre';
-
-      // tabela de cores por campo (pedido do usuário) — mostra o quão
-      // perto o palpite ficou do alvo ideal secreto do circuito, campo a
-      // campo, só depois que a sessão termina (não dá spoiler antes)
-      const C = window.WSPF1Corrida;
-      const ideal = C.idealSetupForCircuit(weekend.circuit, weekend.type);
-      const tierLabel = { mosca: '🔵 NA MOSCA', verde: '🟢 VERDE', amarelo: '🟡 AMARELO', vermelho: '🔴 VERMELHO' };
-      const rows = C.SETUP_FIELDS.map((f) => {
-        const value = selectedSetup[f.key];
-        const diff = C.setupFieldDiff(value, ideal[f.key]);
-        const tier = C.setupFieldTier(diff);
-        return '<div class="setup-report-row">'
-          + '<span>' + f.label + '</span>'
-          + '<span class="setup-report-extremes">' + value + ' (0=' + f.lo + ', 99=' + f.hi + ')</span>'
-          + '<span class="setup-tier-badge ' + tier + '">' + tierLabel[tier] + '</span>'
-          + '</div>';
-      }).join('');
-      const perfect = C.setupIsPerfect(selectedSetup, ideal);
-      const paceFactor = C.setupPaceFactor(selectedSetup, ideal);
-      const pct = Math.round((paceFactor - 1) * 1000) / 10;
-      const pctText = (pct >= 0 ? '+' : '') + pct + '%';
-      document.getElementById('setup-report-table').innerHTML =
-        '<div class="setup-report">'
-        + '<div class="setup-report-row header"><span>Ajuste</span><span>Seu valor</span><span>Resultado</span></div>'
-        + rows
-        + '</div>'
-        + (perfect ? '<div class="setup-perfect-banner">🔵 SETUP PERFEITO! Bônus extra de ritmo pro resto do fim de semana.</div>' : '')
-        + '<p class="setup-opt-desc" style="text-align:center;">Efeito no ritmo pro resto do fim de semana (classificatória, sprint e corrida): <b style="color:#ffd54a;">' + pctText + '</b></p>';
-
-      document.getElementById('points-line').textContent = playerIdx >= 0 ? (playerIdx + 1) + 'º no treino.' : '';
-      document.getElementById('result-overlay').classList.remove('hidden');
-    }
+    // Treino Livre não usa mais finishPractice/finishRace — o fim da
+    // sessão é finishSetupPractice (chamada de confirmSetupForDriver),
+    // já que não tem mais simulação de corrida ao vivo pra essa sessão.
 
     // resultado da classificatória: a ordem de chegada dessa sessão curta
     // vira a ordem de largada (gridOrder) da sprint/corrida do mesmo fim de
