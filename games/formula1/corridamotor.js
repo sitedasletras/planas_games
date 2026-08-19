@@ -350,7 +350,11 @@
       // de ter (ou não) uma especialidade
       const weatherSpecialtyFactor = C() ? C().weatherSpecialtyPaceFactor(car.weatherSpecialty, state.weather, car.weatherPotencia) : 1;
       // moral do piloto: afeta ritmo entre 0.90x (moral 0) e 1.10x (moral 100)
-      var moralMult = (window.WSPF1Pilotos && car._moralValue != null) ? window.WSPF1Pilotos.moralPaceMult(car._moralValue) : 1;
+      // — a função em si (moralPaceMult) se perdeu num upload manual quebrado
+      // no pilotos.js (commit "Refactor pilotos.js..." truncou o arquivo);
+      // guarda defensiva pra não quebrar a corrida enquanto isso não existe
+      var moralMult = (window.WSPF1Pilotos && typeof window.WSPF1Pilotos.moralPaceMult === 'function' && car._moralValue != null)
+        ? window.WSPF1Pilotos.moralPaceMult(car._moralValue) : 1;
       // Safety Car: todos andam devagar
       var scFactor = (state.safetyCar && state.safetyCar.active) ? SC_SPEED_FACTOR : 1;
       const variance = 1 + (Math.random() - 0.5) * 0.06;
