@@ -36,6 +36,15 @@
   // ---------- Fouls / cards / offside ----------
   const FOUL_CHANCE = 0.006;       // per-frame chance a tackle attempt is a foul
   const STEAL_CHANCE = 0.06;       // per-frame chance of a clean steal (unchanged)
+  // corpo a corpo entre um defensor e o DONO da bola, mesmo fora do raio
+  // minúsculo de disputa pela bola (PICKUP_R) — a bola fica deslocada na
+  // frente do dono (ver updateBall), então um defensor podia "trombar" no
+  // jogador sem nunca entrar no raio que checava falta antes. Raio mais
+  // largo (ombro a ombro de verdade) + chance por frame bem menor que
+  // FOUL_CHANCE, já que esse contato pode durar vários frames seguidos
+  // (marcação), diferente do lance rápido de disputa pela bola.
+  const BODY_CONTACT_R = PLAYER_R * 2 + 6;
+  const BODY_CONTACT_FOUL_CHANCE = 0.0018;
   const HARD_FOUL_SHARE = 0.2;     // fraction of fouls that come in hard
   const YELLOW_CHANCE_NORMAL = 0.08;
   const YELLOW_CHANCE_HARD = 0.25;
@@ -689,10 +698,37 @@
     return { gk, outfield, bench };
   }
 
+  // média de rating do PRÓPRIO elenco carregado nesta partida — é o que
+  // ancora o rating do rival agora (ver scaledAwayRating logo abaixo)
+  function playerSquadAverageRating() {
+    if (!homeSquad || !homeSquad.players || !homeSquad.players.length) return 60;
+    const sum = homeSquad.players.reduce((s, p) => s + (p.rating || 60), 0);
+    return sum / homeSquad.players.length;
+  }
+
+  // CORREÇÃO (bug real reportado pelo usuário: "um dos cara é noventa e
+  // oito e o meu é cinquenta"): antes o rating do rival vinha quase todo
+  // da força fixa do clube adversário (seasonOpponent.strength, definida só
+  // pelo nível da liga) — um rival de liga alta chegava perto de 99 não
+  // importa o quanto o jogador já tivesse desenvolvido o próprio elenco, e
+  // nunca existia alcance. Agora o rival é ancorado na média do PRÓPRIO
+  // elenco do jogador (medida ao vivo, então acompanha a evolução dele) —
+  // o "tier" da liga só empurra um pouco pra cima ou pra baixo desse
+  // centro, e o resultado final fica travado numa banda estreita ao redor
+  // da média do jogador. Mesmo espírito da trava usada na Fórmula 1 pro
+  // ritmo dos rivais (não deixar um fator sozinho decidir tudo).
+  const AWAY_RATING_BAND = 10; // rival nunca fica mais que isso acima/abaixo da média do jogador
+  const AWAY_STRENGTH_TILT_SPREAD = 16; // quanto o tier da liga ainda pode empurrar o centro da banda
+
   function scaledAwayRating(candidateRating) {
-    if (!seasonOpponent || seasonOpponent.strength == null) return candidateRating;
-    const base = 35 + seasonOpponent.strength * 60;
-    return Math.round(Math.max(35, Math.min(99, candidateRating * 0.4 + base * 0.6)));
+    const playerAvg = playerSquadAverageRating();
+    const strengthTilt = seasonOpponent && seasonOpponent.strength != null
+      ? (seasonOpponent.strength - 0.5) * AWAY_STRENGTH_TILT_SPREAD
+      : 0;
+    const target = playerAvg + strengthTilt;
+    const blended = candidateRating * 0.35 + target * 0.65;
+    const bandMin = playerAvg - AWAY_RATING_BAND, bandMax = playerAvg + AWAY_RATING_BAND;
+    return Math.round(Math.max(35, Math.min(99, Math.max(bandMin, Math.min(bandMax, blended)))));
   }
 
   function buildTeam(team, tacticKey) {
@@ -1494,7 +1530,33 @@
         }
       }
     }
+    if (checkBodyContactFoul()) return;
     if (ball.kickCooldown <= 0) ball.kickerImmune = null;
+  }
+
+  // falta por colisão de corpo — pedido explícito do usuário ("tromba
+  // jogador ali, não fala falta"): cobre o defensor que colide de corpo
+  // com o dono da bola sem entrar no raio minúsculo de disputa pela bola
+  // em si (checado acima, dentro do bloco "pickup"). Só verifica quando já
+  // existe dono de bola (não se aplica a bola solta) e não repete o
+  // trabalho se um foul já foi cravado nesse mesmo frame (updateBall já
+  // teria retornado antes de chegar aqui).
+  function checkBodyContactFoul() {
+    if (!ball.owner) return false;
+    const owner = ball.owner;
+    for (const p of players) {
+      if (p === owner || p.team === owner.team || p.staggerMs > 0) continue;
+      const d = dist(p, owner);
+      if (d >= PICKUP_R && d < BODY_CONTACT_R) {
+        let foulChance = BODY_CONTACT_FOUL_CHANCE;
+        if (p.instruction === 'racudo') foulChance *= 1.4;
+        if (Math.random() < foulChance) {
+          commitFoul(p, owner);
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   function onGoal(scoringTeam, viaPenalty) {
