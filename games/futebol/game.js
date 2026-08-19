@@ -811,7 +811,7 @@
       const prev = prevInstructions.find(x => x.team === p.team && x.number === p.number);
       if (prev) p.instruction = prev.instruction;
     }
-    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0, lastToucher: null, assistCandidate: null, restartKind: null };
+    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0, lastToucher: null, assistCandidate: null, restartKind: null, buildupState: 'open' };
   }
 
   function applyTactic(team, key) {
@@ -1126,6 +1126,52 @@
     ball.y = Math.max(BALL_R, Math.min(FIELD_H - BALL_R, ball.y));
   }
 
+  // pedido explícito do usuário: futebol de verdade não é "pegar a bola e
+  // correr pra qualquer lado" — o time segura a posse, faz a bola circular
+  // perto da entrada da área até abrir uma brecha de verdade, e só aí
+  // acelera pro ataque final. Este estado (recalculado no mesmo ritmo da
+  // decisão de passe/chute, ballCarrierAIAct) resume a situação do
+  // portador da bola em 3 baldes:
+  //  - 'pressured': marcador colado (< PRESSURE_TIGHT_R) — tem que se
+  //    livrar da bola rápido, não dá pra segurar
+  //  - 'open': ninguém à frente por uma distância boa — abriu brecha de
+  //    verdade, pode acelerar pro gol (contra-ataque/ruptura)
+  //  - 'contained': nem uma coisa nem outra — time ainda não achou
+  //    brecha, segura a bola/circula esperando abrir espaço
+  // CALIBRAÇÃO (as 2 primeiras tentativas travaram o jogo de verdade —
+  // partida inteira 0x0, quase sem finalização nenhuma: o raio de
+  // "pressionado" pegava marcação normal de perto o tempo todo, quase
+  // nunca soltava pra 'open', e o freio de avanço era forte demais mesmo
+  // assim). Raios bem mais apertados (só conta como pressão de verdade
+  // perto do corpo a corpo real) e freio de avanço bem mais leve — a
+  // diferença que deve aparecer é sobretudo na CHANCE DE PASSE, não em
+  // travar o jogador quase parado.
+  const BUILDUP_PRESSURE_TIGHT_R = 35;
+  const BUILDUP_OPEN_AHEAD_R = DRIBBLE_PRESSURE_R; // mesma régua já usada pro drible desviar do marcador
+  // chance de passe (vs. seguir com a bola) em cada estado — pressionado
+  // solta um pouco mais rápido, sem brecha recicla mais a posse (o "ficar
+  // rodando a bola" que o usuário pediu), com brecha aberta segura mais a
+  // bola e acelera pro gol
+  const BUILDUP_PASS_CHANCE = { pressured: 0.72, contained: 0.45, open: 0.3 };
+
+  function computeBuildupState(p) {
+    const opponents = opponentsOf(p.team).filter((o) => o.role !== 'GK');
+    if (!opponents.length) return 'open';
+    const marker = nearestTo(opponents, p);
+    const pressureDist = marker ? dist(p, marker) : Infinity;
+    if (pressureDist < BUILDUP_PRESSURE_TIGHT_R) return 'pressured';
+    const forward = p.team === 'home' ? -1 : 1;
+    let nearestAheadDist = Infinity;
+    opponents.forEach((o) => {
+      const isAhead = forward < 0 ? (o.y < p.y) : (o.y > p.y);
+      if (isAhead) {
+        const d = dist(p, o);
+        if (d < nearestAheadDist) nearestAheadDist = d;
+      }
+    });
+    return nearestAheadDist > BUILDUP_OPEN_AHEAD_R ? 'open' : 'contained';
+  }
+
   function pickPassTarget(p) {
     const mates = teammates(p.team).filter(m => m !== p && m.role !== 'GK');
     if (!mates.length) return null;
@@ -1265,19 +1311,31 @@
             steerX = (awayX / oppDist) * (1 - oppDist / DRIBBLE_PRESSURE_R);
           }
         }
+        // fase de construção (ball.buildupState, ver computeBuildupState):
+        // com brecha aberta ('open') o time acelera pro gol como antes; sem
+        // brecha ('contained') o portador segura a bola e circula perto da
+        // zona atual, avançando pouco, esperando abrir espaço; pressionado
+        // ('pressured') quase não avança e blinda mais a bola, dando tempo
+        // pro passe de saída (ballCarrierAIAct) — pedido explícito do
+        // usuário: não é "pegar a bola e correr", o time monta a jogada
+        const buildupState = ball.buildupState || 'open';
+        const forwardMult = buildupState === 'open' ? 1 : (buildupState === 'contained' ? 0.82 : 0.55);
+        const speedMult = buildupState === 'open' ? 1 : (buildupState === 'contained' ? 0.95 : 0.88);
         // driblador/habilidade escapam melhor da marcação; facão/aberto
-        // puxam o drible pra dentro ou pra linha lateral, respectivamente
-        const evasionMult = (p.instruction === 'driblador' || p.instruction === 'habilidade') ? 1.6 : 1;
+        // puxam o drible pra dentro ou pra linha lateral, respectivamente;
+        // pressionado blinda mais a bola do marcador (steer mais forte)
+        let evasionMult = (p.instruction === 'driblador' || p.instruction === 'habilidade') ? 1.6 : 1;
+        if (buildupState === 'pressured') evasionMult *= 1.3;
         let lateralPull = 0;
         if (p.instruction === 'facao') lateralPull = (p.x > FIELD_W / 2 ? -1 : 1) * 18;
         else if (p.instruction === 'aberto') lateralPull = (p.x > FIELD_W / 2 ? 1 : -1) * 18;
         let tx = p.x + steerX * 70 * evasionMult + lateralPull;
-        let ty = p.y + forward * 90;
+        let ty = p.y + forward * 90 * forwardMult;
         tx = Math.max(CLAMP_X_MIN + 10, Math.min(CLAMP_X_MAX - 10, tx));
         const dx = tx - p.x, dy = ty - p.y;
         const len = Math.hypot(dx, dy) || 1;
-        p.vx = (dx / len) * DRIBBLE_SPEED * fitFactor;
-        p.vy = (dy / len) * DRIBBLE_SPEED * fitFactor;
+        p.vx = (dx / len) * DRIBBLE_SPEED * fitFactor * speedMult;
+        p.vy = (dy / len) * DRIBBLE_SPEED * fitFactor * speedMult;
         p.facing = { x: dx / len, y: dy / len };
       } else if (isPressing) {
         const dx = ball.x - p.x, dy = ball.y - p.y;
@@ -1384,6 +1442,10 @@
 
     if (ball.owner && ball.owner.role !== 'GK') {
       const p = ball.owner;
+      // recalculado todo frame (não só no ritmo de decisão) pra updatePlayer
+      // usar um valor sempre fresco — é o que faz o portador segurar/circular
+      // a bola em vez de sempre correr reto pro gol (ver hasBall em updatePlayer)
+      ball.buildupState = computeBuildupState(p);
       if (ball.restartKind === 'corner') {
         // escanteio: quase sempre é um cruzamento pra área; gol direto (olímpico) é raro
         ball.restartKind = null;
@@ -1418,7 +1480,13 @@
         attemptShoot(p, bonus);
       } else if (ball.aiCooldown <= 0) {
         const pass = pickPassTarget(p);
-        const passChance = p.instruction === 'finalizador' ? 0.45 : 0.6;
+        // chance de passe depende da fase de construção — pressionado solta
+        // rápido, sem brecha (contained) circula/recicla a posse, com
+        // brecha aberta (open) segura mais a bola e acelera pro gol (o
+        // "contra-ataque"). Pedido explícito do usuário: não é sempre
+        // driblar pra frente, o time tem que montar a jogada.
+        const passChanceBase = BUILDUP_PASS_CHANCE[ball.buildupState] != null ? BUILDUP_PASS_CHANCE[ball.buildupState] : 0.6;
+        const passChance = p.instruction === 'finalizador' ? passChanceBase * 0.75 : passChanceBase;
         if (pass && Math.random() < passChance) {
           attemptPass(p, pass);
         } else {
