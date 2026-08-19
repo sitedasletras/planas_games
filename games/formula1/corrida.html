@@ -133,6 +133,20 @@
   }
   .driver-tab-btn.selected { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
 
+  .camera-mode-row { display: flex; gap: 6px; margin: 8px 14px 0; }
+  .camera-mode-btn {
+    flex: 1; padding: 7px 4px; border-radius: 9px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: #cfeede; font-size: 0.68rem; font-weight: bold; cursor: pointer; text-align: center;
+  }
+  .camera-mode-btn.selected { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
+  .camera-mode-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .camera-target-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 14px 0; }
+  .camera-target-row button {
+    padding: 5px 12px; border-radius: 8px; border: 1px solid #345c48; background: #16281f;
+    color: #ffd54a; font-weight: bold; cursor: pointer; font-size: 0.8rem;
+  }
+  .camera-target-label { font-size: 0.74rem; color: #cfeede; min-width: 130px; text-align: center; }
+
   #driver-controls { display: flex; flex-direction: column; gap: 8px; margin: 6px 14px; }
   .driver-card {
     background: #16281f; border: 1px solid #345c48; border-radius: 12px; padding: 8px 10px;
@@ -238,6 +252,17 @@
         <div class="hud-box"><div class="hud-label">Volta</div><div class="hud-value" id="hud-lap">0/0</div></div>
         <div class="hud-box"><div class="hud-label">Pneu</div><div class="hud-value" id="hud-tire">-</div></div>
         <div class="hud-box"><div class="hud-label">Combustível</div><div class="hud-value" id="hud-fuel">-</div></div>
+      </div>
+
+      <div class="camera-mode-row" id="camera-mode-row">
+        <button class="camera-mode-btn selected" id="camera-mode-geral" data-mode="geral">🎥 Geral</button>
+        <button class="camera-mode-btn" id="camera-mode-seguir" data-mode="seguir">🎯 Seguir Piloto</button>
+        <button class="camera-mode-btn" id="camera-mode-cockpit" data-mode="cockpit" disabled title="Em desenvolvimento">🚗 Cockpit</button>
+      </div>
+      <div class="camera-target-row hidden" id="camera-target-row">
+        <button id="camera-target-prev">◀</button>
+        <span class="camera-target-label" id="camera-target-label">—</span>
+        <button id="camera-target-next">▶</button>
       </div>
 
       <div class="track-wrap">
@@ -745,6 +770,17 @@
     let lastTs = null;
     let entrantsMeta = {};
 
+    // modo 2 de transmissão (pedido do usuário: 3 modos — 1 é o de sempre,
+    // "geral"; 2 é este, zoom seguindo só a disputa do piloto escolhido;
+    // 3 seria visão de cockpit, ainda não implementado, botão fica visível
+    // mas desabilitado pra já indicar o que vem a seguir).
+    // ZOOM_SEGUIR: fator de zoom quando "seguindo" — grande o bastante pra
+    // enxergar a disputa local do piloto, mas sem sair tanto da pista que
+    // vire só um carro sozinho na tela sem contexto de corrida.
+    const CAMERA_ZOOM_SEGUIR = 2.2;
+    let cameraMode = 'geral';
+    let cameraTargetId = null;
+
     function buildEntrants() {
       const all = window.WSPF1Grid.fullGrid();
       entrantsMeta = {};
@@ -1200,6 +1236,24 @@
       const rx = canvas.width / 2 - 30, ry = canvas.height / 2 - 30;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       updateEffects();
+      // modo 2 ("seguir piloto"): zoom com a câmera recentrada no carro
+      // escolhido a cada frame — reusa exatamente os mesmos desenhos do
+      // modo geral (mesmo cx/cy/rx/ry), só aplica um translate+scale em
+      // volta do ponto atual do piloto seguido antes de desenhar; se o
+      // carro sumiu (se retirou), cai de volta pro enquadramento geral
+      // sozinho, sem travar nem trocar o botão selecionado.
+      let cameraApplied = false;
+      if (cameraMode === 'seguir') {
+        const targetCar = raceState.cars.find((c) => c.id === cameraTargetId && !c.retired);
+        if (targetCar) {
+          const targetPoint = pointOnTrack(targetCar.distance / 100, cx, cy, rx, ry);
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.scale(CAMERA_ZOOM_SEGUIR, CAMERA_ZOOM_SEGUIR);
+          ctx.translate(-targetPoint.x, -targetPoint.y);
+          cameraApplied = true;
+        }
+      }
       drawGrassBackground(ctx, canvas.width, canvas.height);
       drawBarriers(ctx, cx, cy, rx, ry);
       drawRunoffArea(ctx, cx, cy, rx, ry);
@@ -1281,6 +1335,8 @@
           drawPositionMarker(ctx, p.x, p.y, pos, car.isPlayer);
         }
       });
+
+      if (cameraApplied) ctx.restore();
 
       renderHud();
       renderLeaderboard();
@@ -1531,6 +1587,55 @@
       const el = document.getElementById('ticker');
       if (raceState.log.length) el.textContent = raceState.log[0].text;
     }
+
+    // câmera "seguir piloto": alterna entre os carros ainda na corrida,
+    // ordenados pela posição atual (mesma ordem da classificação) — assim
+    // ◀▶ vai sempre do líder pro último, nunca pula ordem aleatória
+    function cameraTargetableCars() {
+      if (!raceState) return [];
+      return window.WSPF1Motor.standings(raceState).filter((c) => !c.retired);
+    }
+
+    function updateCameraTargetLabel() {
+      const label = document.getElementById('camera-target-label');
+      if (!label) return;
+      const car = raceState ? raceState.cars.find((c) => c.id === cameraTargetId) : null;
+      label.textContent = car ? '🎯 ' + car.driverName + ' — ' + car.teamName : '—';
+    }
+
+    function cycleCameraTarget(dir) {
+      const list = cameraTargetableCars();
+      if (!list.length) return;
+      let idx = list.findIndex((c) => c.id === cameraTargetId);
+      idx = idx === -1 ? 0 : (idx + dir + list.length) % list.length;
+      cameraTargetId = list[idx].id;
+      updateCameraTargetLabel();
+    }
+
+    function setCameraMode(mode) {
+      if (mode === 'cockpit') return; // ainda não implementado
+      cameraMode = mode;
+      ['geral', 'seguir'].forEach((m) => {
+        document.getElementById('camera-mode-' + m).classList.toggle('selected', m === mode);
+      });
+      const targetRow = document.getElementById('camera-target-row');
+      if (mode === 'seguir') {
+        targetRow.classList.remove('hidden');
+        if (cameraTargetId == null) {
+          const list = cameraTargetableCars();
+          const playerCar = list.find((c) => c.isPlayer);
+          cameraTargetId = playerCar ? playerCar.id : (list[0] && list[0].id);
+        }
+        updateCameraTargetLabel();
+      } else {
+        targetRow.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('camera-mode-geral').addEventListener('click', () => setCameraMode('geral'));
+    document.getElementById('camera-mode-seguir').addEventListener('click', () => setCameraMode('seguir'));
+    document.getElementById('camera-target-prev').addEventListener('click', () => cycleCameraTarget(-1));
+    document.getElementById('camera-target-next').addEventListener('click', () => cycleCameraTarget(1));
 
     document.getElementById('speed-btn').addEventListener('click', (e) => {
       speedMultiplier = speedMultiplier === 1 ? 2 : (speedMultiplier === 2 ? 4 : 1);

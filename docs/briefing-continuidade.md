@@ -440,6 +440,40 @@ necessidade de retrabalhar nada disso.
       cada mudança, incluindo um bug de rótulo ("2ª parada" em vez de "1ª
       parada" no 2º trecho) pego e corrigido durante o próprio teste.
 
+11. **[IMPLEMENTADO 19/08] F1 — modo de câmera "Seguir Piloto" (2 de 3
+    modos pedidos)**: usuário trouxe mais 3 relatórios (`relatoriof1.md`,
+    `relatoriofutebol.md`, `relatorioplataformaeoutros.md`) e pediu 3
+    modos de transmissão da corrida: 1) o geral de sempre; 2) câmera que
+    segue só a disputa de um piloto escolhido no trecho onde ele está no
+    momento; 3) visão de cockpit ("sensação de estar dirigindo"). Também
+    pediu visual 2.5D pros dois jogos.
+    - **Modo 2 implementado** (`corrida.html`): 2 botões acima da pista
+      (Geral/Seguir Piloto) + ◀▶ pra escolher o alvo entre os carros
+      ainda na corrida (ordenados pela posição atual). É uma
+      transformação de câmera só (`ctx.translate`/`ctx.scale` recentrado
+      no ponto do carro seguido a cada frame), reaproveitando 100% do
+      mesmo desenho de pista/carros do modo geral — nenhuma lógica de
+      corrida mudou. Minimapa e velocímetro continuam mostrando a corrida
+      inteira, só a pista principal dá zoom. Testado com Playwright
+      (troca de modo, ciclo de alvo, corrida rodando 3s+ sem erro de
+      página) e visualmente por screenshot (carro seguido centralizado,
+      disputa local visível ao redor, contexto preservado).
+    - **Modo 3 (cockpit) e visual 2.5D (F1 + futebol) — DEFERIDOS por
+      decisão própria**, não implementados: o botão "🚗 Cockpit" já
+      aparece na tela (desabilitado, "Em desenvolvimento") pra deixar
+      claro que não foi esquecido. Motivo de não tocar sozinho: a pista
+      hoje é desenhada em 2D de cima (elipse/traçado real), sem nenhuma
+      perspectiva de estrada — visão de cockpit de verdade e visual 2.5D
+      são reformas de renderização praticamente do zero, bem mais
+      subjetivas ("sensação de dirigir") que qualquer coisa feita até
+      aqui. Os próprios relatórios anteriores já marcavam isso como
+      "Fase 2/3, futuro distante". E a lição do build-up do futebol desta
+      mesma sessão é direta: mesmo testando sozinho a fundo, 2
+      calibrações erradas seguidas aconteceram numa mudança bem menor que
+      essa — decisão visual grande sem o usuário por perto pra dar
+      feedback ao vivo é risco de retrabalho alto demais. Fica esperando
+      o usuário decidir prioridade/direção quando acordar.
+
 ## Outras notas importantes
 
 - **Google AdSense**: conta criada, site verificado (via `sitedasletras/sitedasletras.github.io`, repositório novo criado especificamente pra isso, com página de redirecionamento pro jogo), revisão pedida ao Google — só falta aguardar aprovação (pode levar horas/dias, chega por e-mail). Nada mais a fazer até a aprovação chegar.
