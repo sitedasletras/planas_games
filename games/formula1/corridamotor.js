@@ -251,6 +251,60 @@
     if (state.log.length > 40) state.log.length = 40;
   }
 
+  // Rádio da equipe — pedido do usuário (ideia trazida de outra ferramenta,
+  // "Migoo"): mensagens do engenheiro avisando clima, pneu, combustível e
+  // posição durante a corrida, só pros carros do jogador. Roda no mesmo
+  // loop de stepRace, mas com cooldown por carro pra não virar spam — no
+  // máximo 1 aviso a cada RADIO_COOLDOWN_MS reais, escolhendo o alerta
+  // mais urgente entre os que estiverem valendo no momento.
+  const RADIO_COOLDOWN_MS = 25000;
+  const RADIO_TIRE_WEAR_THRESHOLD = 75;
+  const RADIO_FUEL_LOW_FRACTION = 0.15;
+
+  function checkTeamRadio(state, car, dtMs) {
+    if (!car.isPlayer || car.retired || car.finishedAt != null || car.pitting) return;
+    car._radioCooldown = (car._radioCooldown || 0) - dtMs;
+    if (car._radioCooldown > 0) return;
+
+    const alerts = [];
+    if (car.tireWear > RADIO_TIRE_WEAR_THRESHOLD) {
+      alerts.push({ priority: 2, text: '📻 ' + car.driverName + ', pneu com ' + Math.round(car.tireWear) + '% de desgaste — considere os boxes.' });
+    }
+    if (car.fuelKg < state.fullFuelKg * RADIO_FUEL_LOW_FRACTION) {
+      alerts.push({ priority: 3, text: '📻 ' + car.driverName + ', combustível baixo — fique de olho.' });
+    }
+    // clima prestes a mudar (mesma timeline da previsão pré-corrida) — dá
+    // um aviso ANTES da mudança acontecer, como um engenheiro de verdade faria
+    if (state.weatherTimeline && C()) {
+      const leaderLap = Math.max(0, ...state.cars.filter((c) => !c.retired).map((c) => c.lapsCompleted));
+      const nextIdx = Math.min(state.weatherTimeline.tiers.length - 1, leaderLap + 1);
+      const nextTier = state.weatherTimeline.tiers[nextIdx];
+      if (nextTier !== state.weather) {
+        const cond = C().WEATHER_CONDITIONS[nextTier];
+        alerts.push({ priority: 1, text: '📻 Fica de olho, o tempo deve mudar em breve: ' + (cond ? cond.icon + ' ' + cond.label : nextTier) + '.' });
+      }
+    }
+    // distância pro carro na frente (gap de posição, só quando não é líder)
+    const order = standings(state);
+    const idx = order.findIndex((c) => c.id === car.id);
+    if (idx > 0) {
+      const ahead = order[idx - 1];
+      if (!ahead.retired && ahead.finishedAt == null) {
+        const lapDiff = ahead.lapsCompleted - car.lapsCompleted;
+        const distDiff = lapDiff * 100 + (ahead.distance - car.distance);
+        const gapLaps = Math.max(0, distDiff / 100);
+        if (gapLaps < 0.15) {
+          alerts.push({ priority: 1, text: '📻 ' + car.driverName + ', ' + ahead.driverName + ' está bem perto na frente.' });
+        }
+      }
+    }
+
+    if (!alerts.length) return;
+    alerts.sort((a, b) => b.priority - a.priority);
+    pushLog(state, alerts[0].text);
+    car._radioCooldown = RADIO_COOLDOWN_MS;
+  }
+
   // lê a mesma timeline que a tabela de previsão pré-sessão mostrou — nunca
   // sorteia nada aqui, só segue a sequência já decidida na criação do
   // raceState (buildWeatherTimeline), volta a volta, na volta do LÍDER
@@ -332,6 +386,7 @@
     maybeDeploySafetyCar(state);
 
     state.cars.forEach((car) => {
+      checkTeamRadio(state, car, dtMs);
       if (car.retired) { car.displaySpeedKmh = 0; return; }
       if (car.finishedAt != null) return;
 
