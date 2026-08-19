@@ -132,6 +132,11 @@
       }
       card.appendChild(specialtyChip);
 
+      const moralChip = document.createElement('span');
+      moralChip.className = 'weather-specialty-chip';
+      moralChip.textContent = P.moralLabel(d.moral) + ' — moral ' + Math.round(d.moral == null ? P.MORAL_DEFAULT : d.moral) + '/100';
+      card.appendChild(moralChip);
+
       const stats = document.createElement('div');
       stats.className = 'driver-stats';
       stats.innerHTML = '<span>⭐ ' + d.rating + '</span><span>🎂 ' + d.age + ' anos</span>'

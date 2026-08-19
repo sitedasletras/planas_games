@@ -204,6 +204,7 @@
           traits: d.traits || [],
           weatherSpecialty: d.weatherSpecialty || null,
           weatherPotencia: d.weatherPotencia || 0,
+          moral: d.moral,
         });
       });
     }

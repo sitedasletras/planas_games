@@ -1583,6 +1583,13 @@
         const fisicaLevel = (club.departments && club.departments.fisioterapia) || 0;
         const playerIds = equipe.drivers.filter((d) => d.role !== 'reserva').map((d) => d.id);
         window.WSPF1Pilotos.applyMatchConditionDrop(equipe, playerIds, fisicaLevel / 20);
+        // moral: acerto de altura pra chuva/asfalto acertado no treino livre
+        // rende bônus pros dois pilotos ("Na Mosca" — pedido do usuário),
+        // resultado da corrida ajusta por piloto individualmente, abandono
+        // pesa contra
+        const C = window.WSPF1Corrida;
+        const setupMatched = weekend && weekend.asfalto && selectedSetup
+          && selectedSetup.altura === C.ASPHALT_IDEAL_ALTURA[weekend.asfalto.tipo];
         table.forEach((car, i) => {
           if (!car.isPlayer) return;
           const driverId = car.id.replace('player_', '');
@@ -1591,6 +1598,9 @@
           const pts = i < pointsTable.length ? pointsTable[i] : 0;
           driver.careerPoints = (driver.careerPoints || 0) + pts;
           if (i === 0) driver.careerVitorias = (driver.careerVitorias || 0) + 1;
+          if (car.retired) window.WSPF1Pilotos.adjustMoralForRetirement(driver);
+          else window.WSPF1Pilotos.adjustMoralForResult(driver, i + 1, pts, table.length);
+          if (setupMatched) window.WSPF1Pilotos.adjustMoralForSetupMatch(driver);
         });
         window.WSPF1Pilotos.saveSquad(equipe);
       }

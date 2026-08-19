@@ -201,6 +201,78 @@
     saveEquipe(equipe);
   }
 
+  // ---------- Moral do piloto ----------
+  // pedido do usuário (ideia trazida de outra ferramenta, "Migoo"): moral
+  // individual 0-100 (50=neutro) que sobe/desce com o resultado da corrida
+  // e afeta o ritmo em corrida (até ±10%) — mesmo campo (_moralValue) que
+  // corridamotor.js já lia defensivamente antes dessa função existir.
+  const MORAL_DEFAULT = 50;
+  const MORAL_TIERS = [
+    { min: 80, label: '🔥 Excelente' },
+    { min: 60, label: '😄 Motivado' },
+    { min: 40, label: '😐 Neutro' },
+    { min: 20, label: '😟 Desmotivado' },
+    { min: 0, label: '😰 Em Crise' },
+  ];
+
+  function moralLabel(moral) {
+    const m = moral == null ? MORAL_DEFAULT : moral;
+    for (const tier of MORAL_TIERS) if (m >= tier.min) return tier.label;
+    return MORAL_TIERS[MORAL_TIERS.length - 1].label;
+  }
+
+  // 0 -> -10% de ritmo, 50 -> neutro, 100 -> +10%
+  function moralPaceMult(moral) {
+    const m = moral == null ? MORAL_DEFAULT : Math.max(0, Math.min(100, moral));
+    return 1 + ((m - MORAL_DEFAULT) / MORAL_DEFAULT) * 0.10;
+  }
+
+  // ajuste pelo resultado da corrida — pts já vem calculado (RACE_POINTS/
+  // SPRINT_POINTS), então funciona igual pra corrida (top 10) e sprint
+  // (top 8) sem precisar saber qual tabela foi usada
+  function adjustMoralForResult(driver, position, pts, totalEntrants) {
+    let delta;
+    if (position === 1) delta = 12;
+    else if (position <= 3) delta = 7;
+    else if (position <= 5) delta = 3;
+    else if (pts > 0) delta = 1;
+    else if (position === totalEntrants) delta = -5;
+    else delta = -2;
+    driver.moral = Math.max(0, Math.min(100, (driver.moral == null ? MORAL_DEFAULT : driver.moral) + delta));
+    return delta;
+  }
+
+  function adjustMoralForRetirement(driver) {
+    driver.moral = Math.max(0, Math.min(100, (driver.moral == null ? MORAL_DEFAULT : driver.moral) - 4));
+  }
+
+  function adjustMoralForSetupMatch(driver) {
+    driver.moral = Math.max(0, Math.min(100, (driver.moral == null ? MORAL_DEFAULT : driver.moral) + 3));
+  }
+
+  // recuperação natural entre corridas — mesmo padrão de
+  // applyConditionRecovery (tempo real decorrido desde a última checagem),
+  // a moral tende de volta ao neutro (50) com o tempo, não fica presa no
+  // extremo pra sempre
+  function applyMoralRecovery(equipe) {
+    const now = Date.now();
+    const last = equipe.moralUpdatedAt || now;
+    const dayMs = (window.WSPF1Calendario && window.WSPF1Calendario.GAME_DAY_REAL_MS) || (2 * 60 * 60 * 1000);
+    const daysElapsed = (now - last) / dayMs;
+    equipe.moralUpdatedAt = now;
+    if (daysElapsed <= 0) return false;
+    const recoveryFraction = Math.min(1, daysElapsed * 0.12);
+    let changed = false;
+    equipe.drivers.forEach((d) => {
+      if (d.moral == null) { d.moral = MORAL_DEFAULT; changed = true; return; }
+      if (d.moral !== MORAL_DEFAULT) {
+        d.moral = d.moral + (MORAL_DEFAULT - d.moral) * recoveryFraction;
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
   function makeRandomDriver(role, usedNames) {
     let name;
     do {
@@ -241,6 +313,7 @@
       weatherSpecialty,
       weatherPotencia: weatherSpecialty ? randomWeatherPotencia(age) : 0,
       contractYearsLeft: CONTRACT_LENGTH_SEASONS,
+      moral: MORAL_DEFAULT,
     };
   }
 
@@ -373,7 +446,9 @@
           if (d.weatherSpecialty === undefined) { d.weatherSpecialty = randomWeatherSpecialty(); changed = true; }
           if (d.weatherPotencia == null) { d.weatherPotencia = d.weatherSpecialty ? randomWeatherPotencia(d.age) : 0; changed = true; }
           if (d.contractYearsLeft == null) { d.contractYearsLeft = CONTRACT_LENGTH_SEASONS; changed = true; }
+          if (d.moral == null) { d.moral = MORAL_DEFAULT; changed = true; }
         });
+        if (applyMoralRecovery(parsed)) changed = true;
         if (changed) saveEquipe(parsed);
         return parsed;
       }
@@ -524,5 +599,7 @@
     isInjured, setInjury, clearInjury, reduceInjuryBy,
     applyConditionRecovery, applyMatchConditionDrop,
     expiredContracts, renewContract,
+    MORAL_DEFAULT, moralLabel, moralPaceMult, adjustMoralForResult, adjustMoralForRetirement,
+    adjustMoralForSetupMatch, applyMoralRecovery,
   };
 })();

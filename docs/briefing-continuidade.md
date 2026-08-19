@@ -352,6 +352,94 @@ necessidade de retrabalhar nada disso.
      especialidade em ação, aposentadoria+promoção, contrato
      vencido→renovar/dispensar), sem quebrar nada do que já existia.
 
+10. **[IMPLEMENTADO 19/08] Bateria de pedidos do usuário — futebol (3
+    itens) + F1 (correção de emergência + 3 itens novos):**
+    - **Futebol — equilíbrio de força**: rating do rival (`game.js`,
+      `scaledAwayRating`) estava ancorado quase só na força fixa do clube
+      adversário (definida pelo tier da liga), então um rival de liga alta
+      chegava perto de 99 mesmo com o jogador em 50, sem nunca dar
+      alcance (mesmo bug já resolvido na F1 antes). Agora ancorado na
+      média do PRÓPRIO elenco do jogador (medida ao vivo a cada partida),
+      travado a no máximo ±10 acima/abaixo — testado nos dois sentidos.
+    - **Futebol — falta em colisão de corpo**: falta só era checada no
+      raio minúsculo de disputa pela bola (~22px); um defensor podia
+      colidir de corpo com o dono da bola sem entrar nesse raio (a bola
+      fica deslocada na frente do dono) e nada acontecia. Nova checagem
+      de contato mais ampla (~32px), chance por frame bem menor pra não
+      virar faltômetro.
+    - **Futebol — construção de jogada de verdade**: antes o portador da
+      bola SEMPRE corria reto pro gol. Agora cada posse tem um estado
+      (`computeBuildupState`): pressionado (solta rápido), aberto (pode
+      acelerar) ou contido (segura/circula esperando brecha) — muda tanto
+      o movimento quanto a chance de passar vs. seguir driblando. Duas
+      calibrações erradas travaram o jogo de verdade (partida inteira
+      0x0, quase sem finalização) antes de chegar na versão final
+      (testada até o fim: gol de verdade com assistência).
+    - **Futebol — velocidade geral**: pedido explícito "ainda está muito
+      rápida" — velocidades de jogador/bola reduzidas ~20%
+      (`TEAMMATE_SPEED`/`CHASER_SPEED`/`DRIBBLE_SPEED`/`GK_SPEED`/
+      `SHOOT_POWER`/`PASS_POWER`/`CLEAR_POWER`) e `HALF_REAL_SECONDS`
+      subiu de 170 pra 220 (relógio da partida mais devagar também).
+    - **F1 — pilotos.js corrompido (emergência)**: ao empurrar o commit
+      do futebol, o `git push` revelou que o `pilotos.js` no GitHub tinha
+      sido truncado de 528 pra 42 linhas por um upload manual malsucedido
+      (o usuário tentando subir uma "mecânica de Safety Car" direto pelo
+      site) — `node --check` dava erro de sintaxe, o módulo de F1 inteiro
+      quebraria. Restaurado a partir do último commit bom, preservando as
+      mudanças reais que vieram junto no merge (visual do carro/pista, e
+      a mecânica de Safety Car de verdade — `SC_CHANCE_PER_LAP` etc. em
+      `corridamotor.js`, com sistema de "moral do piloto" referenciado
+      mas nunca implementado, virou guarda defensiva neutra). 4 arquivos
+      de upload duplicado (`corrida (1).html`, `*.txt`) removidos.
+    - **F1 — relatório "Migoo" comparado com o código real**: o usuário
+      trouxe um relatório de outra ferramenta de IA com uma lista de
+      "bugs" e ideias novas. Boa parte dos bugs listados (personalização
+      em branco, mercado com R$0/sem candidatos, combustível zerado sem
+      consequência, pilotos.js sem elenco base) **não existiam mais** —
+      testado ao vivo, tudo funcionando. "Sprint roda 1/3 das voltas" não
+      é bug, é regra real de Sprint. Das ideias novas, 3 foram
+      implementadas (abaixo); 2 ficaram de fora por decisão própria
+      (não pedidas de volta ainda): sliders de setup 0-99 (substituiria
+      um sistema categórico já testado, sem o usuário presente pra
+      calibrar em tempo real) e patrocínio cruzado com o Celeiro
+      Literário (decisão de branding, cruza com outro projeto).
+    - **F1 — POT (potência do motor ao vivo)**: controle ajustável
+      DURANTE a corrida (0-20, 10=neutro, botões +/- por piloto) — mais
+      potência ganha até +5% de ritmo mas custa até +12% de combustível e
+      +10% de desgaste de pneu (`motorPowerPaceFactor`/
+      `motorPowerFuelMult`/`motorPowerWearMult` em `corrida.js`,
+      `setMotorPower` em `corridamotor.js`). Testado: uma corrida inteira
+      em potência máxima chegou a ficar sem combustível antes do fim.
+    - **F1 — rádio da equipe**: mensagens do engenheiro ao vivo, só pros
+      carros do jogador — pneu gasto (>75%), combustível baixo (<15%),
+      clima prestes a mudar (mesma timeline da previsão pré-corrida, avisa
+      ANTES de acontecer) e rival colado na frente. Cooldown de 25s reais
+      por carro, aparece no log/ticker já existente (`checkTeamRadio` em
+      `corridamotor.js`).
+    - **F1 — tabela de estratégia em 4 colunas**: baseada no caderno do
+      usuário — abaixo da planilha de combustível já existente, uma nova
+      tabela projeta TODOS os trechos da corrida (início + cada parada
+      esperada), com trecho/pneu/combustível/cálculo base (aguenta ou não,
+      com folga em voltas). Atualiza sozinha ao trocar composto/estilo.
+    - **F1 — moral do piloto**: completa um stub que já existia
+      (`moralPaceMult` era chamado defensivamente em `corridamotor.js`
+      desde a correção de emergência, mas a função nunca tinha sido
+      implementada de verdade). Cada piloto tem moral 0-100 (padrão 50,
+      neutro) com 5 faixas de rótulo (🔥 Excelente a 😰 Em Crise),
+      afetando o ritmo em corrida em até ±10%
+      (`moralPaceMult` em `pilotos.js`). Sobe com resultado bom (P1 +12,
+      pódio +7, pontos +3/+1), desce com abandono (-4) ou último lugar
+      (-5), sobe também quando o acerto de carro combina com o asfalto do
+      fim de semana (+3). Sem corrida, tende de volta ao neutro sozinha
+      com o tempo (`applyMoralRecovery`, mesmo padrão de recuperação de
+      condição física já usado em `equipe.js`). Chip de moral visível em
+      Pilotos e Mercado. Testado via harness Node (rótulo, multiplicador,
+      ajustes de resultado/abandono/acerto, clamp 0-100, recuperação ao
+      longo do tempo, backfill de elenco salvo sem o campo).
+    - Regressão completa (harness Node + Playwright) rodada depois de
+      cada mudança, incluindo um bug de rótulo ("2ª parada" em vez de "1ª
+      parada" no 2º trecho) pego e corrigido durante o próprio teste.
+
 ## Outras notas importantes
 
 - **Google AdSense**: conta criada, site verificado (via `sitedasletras/sitedasletras.github.io`, repositório novo criado especificamente pra isso, com página de redirecionamento pro jogo), revisão pedida ao Google — só falta aguardar aprovação (pode levar horas/dias, chega por e-mail). Nada mais a fazer até a aprovação chegar.

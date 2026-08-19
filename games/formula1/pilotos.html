@@ -110,6 +110,11 @@
         }
         card.appendChild(specialtyChip);
 
+        const moralChip = document.createElement('span');
+        moralChip.className = 'weather-specialty-chip';
+        moralChip.textContent = P.moralLabel(d.moral) + ' — moral ' + Math.round(d.moral == null ? P.MORAL_DEFAULT : d.moral) + '/100';
+        card.appendChild(moralChip);
+
         const yearsLeft = d.contractYearsLeft == null ? P.CONTRACT_LENGTH_SEASONS : d.contractYearsLeft;
         const contractChip = document.createElement('span');
         contractChip.className = 'contract-chip' + (yearsLeft <= 0 ? ' expiring' : '');
