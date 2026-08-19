@@ -133,6 +133,13 @@
   .driver-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
   .driver-card-name { font-size: 0.78rem; font-weight: bold; color: #ffd54a; }
   .driver-card-tire { font-size: 0.72rem; color: #cfeede; }
+  .pot-row { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; background: #0f231a; border-radius: 9px; padding: 5px 8px; }
+  .pot-label { font-size: 0.66rem; color: #9fd8b8; flex-shrink: 0; }
+  .pot-btn { width: 26px; height: 26px; border-radius: 7px; border: 2px solid rgba(255,255,255,0.15); background: #16281f; color: #ffd54a; font-weight: bold; font-size: 0.9rem; cursor: pointer; flex-shrink: 0; }
+  .pot-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .pot-bar-wrap { flex: 1; height: 8px; background: #0a1811; border-radius: 4px; overflow: hidden; }
+  .pot-bar-fill { height: 100%; background: linear-gradient(90deg, #2a9d5c, #ffd54a, #e63946); border-radius: 4px; transition: width 0.15s; }
+  .pot-value { font-size: 0.7rem; font-weight: bold; color: #ffd54a; min-width: 22px; text-align: right; flex-shrink: 0; }
   .pit-compound-row { display: flex; gap: 4px; flex-wrap: wrap; }
   .pit-compound-btn {
     flex: 1 1 18%; min-width: 44px; padding: 6px 3px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
@@ -1307,6 +1314,40 @@
         });
         card.appendChild(styleRow);
 
+        // POT: potência do motor ajustável ao vivo (0-20, 10=neutro) — mais
+        // potência ganha ritmo, mas custa mais combustível/desgaste de pneu
+        const potRow = document.createElement('div');
+        potRow.className = 'pot-row';
+        const potLabel = document.createElement('span');
+        potLabel.className = 'pot-label';
+        potLabel.textContent = '⚡ POT';
+        potRow.appendChild(potLabel);
+        const potMinus = document.createElement('button');
+        potMinus.className = 'pot-btn';
+        potMinus.textContent = '−';
+        potRow.appendChild(potMinus);
+        const potBarWrap = document.createElement('div');
+        potBarWrap.className = 'pot-bar-wrap';
+        const potBarFill = document.createElement('div');
+        potBarFill.className = 'pot-bar-fill';
+        potBarWrap.appendChild(potBarFill);
+        potRow.appendChild(potBarWrap);
+        const potPlus = document.createElement('button');
+        potPlus.className = 'pot-btn';
+        potPlus.textContent = '+';
+        potRow.appendChild(potPlus);
+        const potValue = document.createElement('span');
+        potValue.className = 'pot-value';
+        potRow.appendChild(potValue);
+        const potMax = window.WSPF1Corrida.MOTOR_POWER_MAX;
+        potMinus.addEventListener('click', () => {
+          window.WSPF1Motor.setMotorPower(raceState, car.id, Math.max(0, car.motorPower - 1));
+        });
+        potPlus.addEventListener('click', () => {
+          window.WSPF1Motor.setMotorPower(raceState, car.id, Math.min(potMax, car.motorPower + 1));
+        });
+        card.appendChild(potRow);
+
         const pitRow = document.createElement('div');
         pitRow.className = 'pit-compound-row';
         const pitBtns = {};
@@ -1325,7 +1366,7 @@
         card.appendChild(pitRow);
 
         wrap.appendChild(card);
-        driverControlRefs.push({ carId: car.id, tireEl, styleBtns, pitBtns });
+        driverControlRefs.push({ carId: car.id, tireEl, styleBtns, pitBtns, potMinus, potPlus, potBarFill, potValue });
       });
     }
 
@@ -1351,6 +1392,12 @@
           btn.classList.toggle('current', key === car.tireCompound);
           btn.disabled = car.retired || car.pitting;
         });
+
+        const potMax = window.WSPF1Corrida.MOTOR_POWER_MAX;
+        ref.potValue.textContent = car.motorPower;
+        ref.potBarFill.style.width = Math.round((car.motorPower / potMax) * 100) + '%';
+        ref.potMinus.disabled = car.retired || car.motorPower <= 0;
+        ref.potPlus.disabled = car.retired || car.motorPower >= potMax;
       });
     }
 

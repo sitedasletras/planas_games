@@ -516,6 +516,29 @@
     return 1 - distance * 0.018; // errou feio (baixo no ondulado, ou alto no liso) custa mais
   }
 
+  // ---------- POT: potência do motor ajustável AO VIVO durante a corrida ----------
+  // pedido do usuário (ideia trazida de outra ferramenta, "Migoo"): um
+  // controle de potência que o jogador ajusta durante a corrida — mais
+  // potência ganha ritmo mas gasta mais combustível e desgasta mais o
+  // pneu; menos potência poupa os dois, perdendo ritmo. Escala 0-20 (igual
+  // a outras "potências" do projeto, ex.: weatherPotencia), 10 = neutro.
+  // Mesmo espírito "não decide sozinho" dos outros sistemas: teto de ±5%
+  // de ritmo no extremo, mas o custo em combustível/desgaste é maior
+  // (~±12%/±10%), pra ser uma escolha real de risco x benefício.
+  const MOTOR_POWER_REF = 10;
+  const MOTOR_POWER_MAX = 20;
+  const MOTOR_POWER_PACE_SWING = 0.05;
+  const MOTOR_POWER_FUEL_SWING = 0.12;
+  const MOTOR_POWER_WEAR_SWING = 0.10;
+
+  function motorPowerTilt(potencia) {
+    const p = potencia == null ? MOTOR_POWER_REF : Math.max(0, Math.min(MOTOR_POWER_MAX, potencia));
+    return (p - MOTOR_POWER_REF) / MOTOR_POWER_REF; // -1 (mínimo) .. 0 (neutro) .. 1 (máximo)
+  }
+  function motorPowerPaceFactor(potencia) { return 1 + motorPowerTilt(potencia) * MOTOR_POWER_PACE_SWING; }
+  function motorPowerFuelMult(potencia) { return 1 + motorPowerTilt(potencia) * MOTOR_POWER_FUEL_SWING; }
+  function motorPowerWearMult(potencia) { return 1 + motorPowerTilt(potencia) * MOTOR_POWER_WEAR_SWING; }
+
   window.WSPF1Corrida = {
     TIRE_COMPOUNDS, WEATHER_CONDITIONS, WEATHER_TIER_KEYS, TIRE_MISMATCH_PENALTY, TIRE_SUPPLIERS,
     seededRng, CLIMA_TEMP_RANGE, buildWeatherTimeline, weatherForecastCheckpoints,
@@ -531,6 +554,7 @@
     CAMBIO_RELIABILITY_PROFILES, cambioReliabilityPct,
     MOTOR_PERFORMANCE_MIN, MOTOR_PERFORMANCE_MAX, MOTOR_PERFORMANCE_STEP,
     rollMotorPerformances, motorPerformanceFactor, MOTOR_FUEL_PROFILES, motorSupplierFuelFactor,
+    MOTOR_POWER_REF, MOTOR_POWER_MAX, motorPowerPaceFactor, motorPowerFuelMult, motorPowerWearMult,
     CAR_SETUP_OPTIONS, defaultCarSetup, setupPaceFactor, setupWearFactor,
     ASPHALT_IDEAL_ALTURA, setupAsphaltMatchFactor,
     DRIVING_STYLES, defaultDrivingStyle, drivingStylePaceFactor, drivingStyleWearMult, drivingStyleFuelMult,

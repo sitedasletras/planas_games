@@ -176,6 +176,10 @@
         weatherSpecialty: e.weatherSpecialty || null,
         weatherPotencia: e.weatherPotencia != null ? e.weatherPotencia : 0,
         _moralValue: e.moral != null ? e.moral : 50,
+        // POT: potência do motor ajustável AO VIVO (0-20, 10 = neutro) —
+        // igual ao estilo de pilotagem, é por carro e o jogador troca
+        // durante a corrida (ver setMotorPower)
+        motorPower: C() ? C().MOTOR_POWER_REF : 10,
       };
     });
 
@@ -230,6 +234,16 @@
     if (!C() || !C().DRIVING_STYLES[style]) return;
     const car = state.cars.find((c) => c.id === carId);
     if (car) car.drivingStyle = style;
+  }
+
+  // POT: chamada externa que muda a potência do motor de UM carro em tempo
+  // real (0-20, 10 = neutro) — mesmo padrão do setDrivingStyle, o próximo
+  // tick de stepRace já aplica o novo ritmo/consumo/desgaste
+  function setMotorPower(state, carId, power) {
+    const car = state.cars.find((c) => c.id === carId);
+    if (!car) return;
+    const max = C() ? C().MOTOR_POWER_MAX : 20;
+    car.motorPower = Math.max(0, Math.min(max, Math.round(power)));
   }
 
   function pushLog(state, text) {
@@ -357,8 +371,12 @@
         ? window.WSPF1Pilotos.moralPaceMult(car._moralValue) : 1;
       // Safety Car: todos andam devagar
       var scFactor = (state.safetyCar && state.safetyCar.active) ? SC_SPEED_FACTOR : 1;
+      // POT: potência do motor ajustável ao vivo (0-20, 10=neutro) — mais
+      // potência ganha ritmo mas custa mais combustível/desgaste (ver
+      // motorPowerFuelMult/motorPowerWearMult logo abaixo)
+      const motorPowerFactor = C() ? C().motorPowerPaceFactor(car.motorPower) : 1;
       const variance = 1 + (Math.random() - 0.5) * 0.06;
-      const speedFactor = (car.pace / 75) * stylePaceFactor * weatherSpecialtyFactor * moralMult * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance * scFactor;
+      const speedFactor = (car.pace / 75) * stylePaceFactor * weatherSpecialtyFactor * moralMult * motorPowerFactor * grip * (1 - wearPenalty) * (1 - fuelPenalty) * variance * scFactor;
       const speed = state.baseSpeedPerMs * speedFactor;
       car.displaySpeedKmh = Math.max(0, SPEED_DISPLAY_BASE_KMH * speedFactor);
 
@@ -369,14 +387,16 @@
       var scFuelMult = (state.safetyCar && state.safetyCar.active) ? SC_FUEL_MULT : 1;
       const weatherWearMult = C() ? C().weatherWearMult(state.weather) : 1;
       const weatherFuelMult = C() ? C().weatherFuelMult(state.weather) : 1;
+      const motorPowerWear = C() ? C().motorPowerWearMult(car.motorPower) : 1;
       const wearAdd = C() ? C().calcTireWear(car.tireCompound, dtMs / (state.raceRealMs / state.totalLaps), 1) : 0;
-      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult * weatherWearMult * scWearMult);
+      car.tireWear = Math.min(100, car.tireWear + wearAdd * (car.wearFactor || 1) * styleWearMult * weatherWearMult * scWearMult * motorPowerWear);
       // combustível: motor mais potente (nível) bebe mais, E cada fabricante
       // de motor tem uma característica fixa de consumo própria — vale pra
       // todo mundo no grid, não só o jogador
       const motorFuelMult = C() ? C().motorFuelMult(car.motorLevel) : 1;
       const motorSupplierFuel = C() ? C().motorSupplierFuelFactor(car.motorSupplier) : 1;
-      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult * motorFuelMult * motorSupplierFuel * weatherFuelMult * scFuelMult);
+      const motorPowerFuel = C() ? C().motorPowerFuelMult(car.motorPower) : 1;
+      car.fuelKg = Math.max(0, car.fuelKg - (state.fullFuelKg / state.totalLaps) * (dtMs / (state.raceRealMs / state.totalLaps)) * styleFuelMult * motorFuelMult * motorSupplierFuel * weatherFuelMult * scFuelMult * motorPowerFuel);
 
       // sem combustível = carro para (bug fix: antes rodava com 0kg)
       if (car.fuelKg <= 0 && !car.retired) {
@@ -431,7 +451,7 @@
   }
 
   window.WSPF1Motor = {
-    createRaceState, stepRace, isFinished, standings, requestPit, setDrivingStyle,
+    createRaceState, stepRace, isFinished, standings, requestPit, setDrivingStyle, setMotorPower,
     isSafetyCarActive: function(state) { return state.safetyCar && state.safetyCar.active; },
   };
 })();
