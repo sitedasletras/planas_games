@@ -11,21 +11,23 @@
   const CLAMP_Y_MIN = 16, CLAMP_Y_MAX = FIELD_H - 16;
   const CLAMP_X_MIN = 16, CLAMP_X_MAX = FIELD_W - 16;
 
-  const TEAMMATE_SPEED = 98;   // px/sec, AI support
-  const CHASER_SPEED = 108;    // px/sec, AI chasing ball
-  const DRIBBLE_SPEED = 92;    // px/sec, quem está com a bola avançando
-  const GK_SPEED = 82;
+  // pedido explícito do usuário: jogo ainda rápido demais (2ª rodada de
+  // ajuste de ritmo) — velocidades de jogador/bola reduzidas ~20%
+  const TEAMMATE_SPEED = 78;   // px/sec, AI support
+  const CHASER_SPEED = 86;     // px/sec, AI chasing ball
+  const DRIBBLE_SPEED = 74;    // px/sec, quem está com a bola avançando
+  const GK_SPEED = 66;
   const DRIBBLE_PRESSURE_R = 70; // raio em que o marcador mais próximo influencia o drible
 
   const PICKUP_R = PLAYER_R + BALL_R + 2;
-  const SHOOT_POWER = 260, PASS_POWER = 190, CLEAR_POWER = 230;
+  const SHOOT_POWER = 220, PASS_POWER = 160, CLEAR_POWER = 195;
   const KICK_COOLDOWN_MS = 300;
   const AI_DECISION_MIN_MS = 650, AI_DECISION_MAX_MS = 1300;
 
   // ---------- Clock ----------
   // Each half shows 46 game-minutes on the scoreboard, compressed into
   // HALF_REAL_SECONDS of actual wall-clock play.
-  const HALF_REAL_SECONDS = 170; // 2:50 — mais devagar, dá tempo de acompanhar faltas/barreiras
+  const HALF_REAL_SECONDS = 220; // 3:40 — pedido explícito do usuário (2ª rodada: "ainda está muito rápida")
   const HALF_DISPLAY_MINUTES = 46;
   const HALF_DISPLAY_SECONDS = HALF_DISPLAY_MINUTES * 60;
   const CLOCK_SCALE = HALF_DISPLAY_SECONDS / HALF_REAL_SECONDS; // game-seconds per real-second
