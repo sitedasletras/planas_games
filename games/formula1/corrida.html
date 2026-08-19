@@ -85,6 +85,13 @@
   .weather-forecast-note { font-size: 0.66rem; color: #9fd8b8; margin-top: 6px; line-height: 1.35; }
 
   .fuel-table { margin-top: 10px; border-top: 1px solid #345c48; padding-top: 10px; }
+  .stint-table { margin-top: 12px; border-top: 1px solid #345c48; padding-top: 10px; }
+  .stint-table-title { font-size: 0.8rem; font-weight: bold; color: #ffd54a; margin-bottom: 8px; }
+  .stint-grid { display: grid; grid-template-columns: 1.3fr 0.9fr 1fr 1.1fr; gap: 1px; background: #234433; border-radius: 8px; overflow: hidden; font-size: 0.68rem; }
+  .stint-cell { background: #0f231a; padding: 6px 5px; color: #cfeede; }
+  .stint-cell.head { background: #16281f; color: #9fd8b8; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; font-size: 0.6rem; }
+  .stint-cell.ok { color: #3fd67a; font-weight: bold; }
+  .stint-cell.bad { color: #ff8a94; font-weight: bold; }
   .fuel-row { display: flex; justify-content: space-between; font-size: 0.76rem; padding: 4px 0; color: #cfeede; }
   .fuel-row b { color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
 
@@ -220,6 +227,7 @@
 
       <div class="fuel-table" id="fuel-table"></div>
       <p class="campus-tier-note" id="fuel-table-note" style="margin-top:6px;">Essa planilha projeta só a <b>1ª parada</b>. Depois disso a estratégia é sua: durante a corrida você escolhe o pneu de cada parada seguinte, e pode parar quantas vezes quiser (ou nenhuma a mais, se achar que o pneu aguenta).</p>
+      <div class="stint-table" id="stint-table"></div>
 
       <button class="primary-btn" id="start-btn">🏁 Largar</button>
     </div>
@@ -665,6 +673,68 @@
       document.getElementById('fuel-table').innerHTML = rows.map(([label, value]) => (
         '<div class="fuel-row"><span>' + label + '</span><b>' + value + '</b></div>'
       )).join('');
+
+      renderStintTable(strategy, totalLaps, fuelPerLap);
+    }
+
+    // tabela de estratégia em 4 colunas (baseada no caderno do usuário):
+    // trecho da corrida (início / cada parada projetada), pneu daquele
+    // trecho, combustível necessário (litros/volta × voltas do trecho) e o
+    // cálculo base (desgaste batendo com o tanto de volta — "aguenta" ou
+    // não). Só projeta com o composto/estilo/volta-alvo ATUAIS da aba —
+    // troca de composto pro trecho seguinte usa a mesma regra simples que
+    // a corrida ao vivo usa (nextStrategyCompound em corridamotor.js).
+    function nextPlanCompound(current) {
+      if (current === 'macio') return 'duro';
+      if (current === 'duro') return 'medio';
+      return 'medio';
+    }
+
+    function renderStintTable(strategy, totalLaps, fuelPerLap) {
+      const C = window.WSPF1Corrida;
+      const styleWearMult = C.drivingStyleWearMult(strategy.drivingStyle);
+      const stints = [];
+      let compound = strategy.compound;
+      let lapStart = 1;
+      let remaining = totalLaps;
+      let guard = 0;
+      while (remaining > 0 && guard < 6) {
+        guard++;
+        const stintCap = C.calcStintLaps(compound, 90, styleWearMult);
+        let stintLen = stintCap;
+        if (stints.length === 0 && strategy.fuelTargetLap) {
+          stintLen = Math.min(stintLen, strategy.fuelTargetLap - lapStart + 1);
+        }
+        stintLen = Math.max(1, Math.min(stintLen, remaining));
+        const lapEnd = lapStart + stintLen - 1;
+        stints.push({
+          lapStart, lapEnd, compound,
+          fuelForStint: Math.round(fuelPerLap * stintLen),
+          aguenta: stintLen <= stintCap,
+          folgaVoltas: stintCap - stintLen,
+        });
+        remaining -= stintLen;
+        lapStart = lapEnd + 1;
+        compound = nextPlanCompound(compound);
+      }
+
+      const compounds = C.TIRE_COMPOUNDS;
+      const cells = [
+        ['head', 'Trecho'], ['head', 'Pneu'], ['head', 'Combustível'], ['head', 'Cálculo base'],
+      ];
+      stints.forEach((s, i) => {
+        const trechoLabel = i === 0 ? 'Início (volta ' + s.lapStart + ')' : i + 'ª parada (volta ' + s.lapStart + ')';
+        const trechoRange = ' — até volta ' + s.lapEnd;
+        const c = compounds[s.compound];
+        cells.push(['', trechoLabel + trechoRange]);
+        cells.push(['', c.icon + ' ' + c.label]);
+        cells.push(['', s.fuelForStint + ' kg']);
+        cells.push([s.aguenta ? 'ok' : 'bad', s.aguenta ? '✅ aguenta (folga ' + s.folgaVoltas + 'v)' : '⚠️ não aguenta']);
+      });
+
+      document.getElementById('stint-table').innerHTML =
+        '<div class="stint-table-title">📋 Tabela de estratégia por trecho</div>' +
+        '<div class="stint-grid">' + cells.map(([cls, text]) => '<div class="stint-cell ' + cls + '">' + text + '</div>').join('') + '</div>';
     }
 
     // ---------- Corrida ao vivo ----------
