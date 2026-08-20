@@ -87,34 +87,58 @@
   .fuel-table { margin-top: 10px; border-top: 1px solid #345c48; padding-top: 10px; }
   .stint-table { margin-top: 12px; border-top: 1px solid #345c48; padding-top: 10px; }
   .stint-table-title { font-size: 0.8rem; font-weight: bold; color: #ffd54a; margin-bottom: 8px; }
-  .stint-grid { display: grid; grid-template-columns: 1.3fr 0.9fr 1fr 1.1fr; gap: 1px; background: #234433; border-radius: 8px; overflow: hidden; font-size: 0.68rem; }
+  .stint-circuit-bar { background: #0f231a; border: 1px solid #345c48; border-radius: 8px; padding: 8px 10px; font-size: 0.66rem; color: #cfeede; line-height: 1.5; margin-bottom: 10px; }
+  .stint-circuit-bar b { color: #ffd54a; }
+  .stint-driver-heading { font-size: 0.75rem; font-weight: bold; color: #ffd54a; margin: 12px 0 6px; padding-top: 8px; border-top: 1px dashed #345c48; }
+  .stint-driver-heading:first-of-type { border-top: none; padding-top: 0; }
+  .stint-grid-wrap { overflow-x: auto; border-radius: 8px; }
+  .stint-grid { display: grid; grid-template-columns: 78px 48px 76px 68px 66px 150px; gap: 1px; background: #234433; border-radius: 8px; overflow: hidden; font-size: 0.66rem; width: max-content; min-width: 100%; }
   .stint-cell { background: #0f231a; padding: 6px 5px; color: #cfeede; }
-  .stint-cell.head { background: #16281f; color: #9fd8b8; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; font-size: 0.6rem; }
+  .stint-cell.head { background: #16281f; color: #9fd8b8; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; font-size: 0.58rem; }
   .stint-cell.ok { color: #3fd67a; font-weight: bold; }
   .stint-cell.bad { color: #ff8a94; font-weight: bold; }
-  .stint-option { margin-bottom: 14px; }
+  .stint-option { margin-bottom: 10px; }
   .stint-option-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
   .stint-option-head span:first-child { font-size: 0.72rem; font-weight: bold; color: #cfeede; }
   .stint-option-badge { font-size: 0.6rem; font-weight: bold; color: #3fd67a; border: 1px solid #3fd67a; border-radius: 6px; padding: 2px 7px; }
   .stint-option-btn { font-size: 0.62rem; font-weight: bold; color: #ffd54a; border: 1px solid #ffd54a; background: #16281f; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+  .stint-risk-line { font-size: 0.64rem; margin-top: 4px; padding: 5px 8px; border-radius: 6px; background: #0f231a; }
+  .stint-risk-line.ok { color: #9fd8b8; }
+  .stint-risk-line.bad { color: #ff8a94; }
+  .stint-footer-note { margin-top: 10px; font-size: 0.66rem; font-weight: bold; color: #ffd54a; text-align: center; background: #0f231a; border: 1px solid #345c48; border-radius: 8px; padding: 8px; }
   .fuel-row { display: flex; justify-content: space-between; font-size: 0.76rem; padding: 4px 0; color: #cfeede; }
   .fuel-row b { color: #ffd54a; font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
 
   .setup-opt-desc { font-size: 0.66rem; color: #9fd8b8; margin-top: 4px; min-height: 2.4em; }
 
-  .setup-slider-row { margin-bottom: 10px; }
-  .setup-slider-label { font-size: 0.72rem; font-weight: bold; color: #ffd54a; margin-bottom: 4px; }
-  .setup-slider-row input[type="range"] { width: 100%; accent-color: #ffd54a; }
-  .setup-slider-extremes { display: flex; justify-content: space-between; font-size: 0.62rem; color: #9fd8b8; margin-top: 2px; }
-  .setup-slider-value { color: #ffd54a; font-weight: bold; }
-  .setup-input-row { display: flex; align-items: center; gap: 8px; }
   .setup-num-input {
-    width: 64px; padding: 6px 8px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
-    background: #0f231a; color: #ffd54a; font-weight: bold; font-size: 0.85rem; text-align: center;
+    width: 44px; padding: 5px 4px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: #ffd54a; font-weight: bold; font-size: 0.72rem; text-align: center; flex-shrink: 0;
   }
   .setup-num-input:focus { border-color: #ffd54a; outline: none; }
   .setup-lap-row { margin-top: 6px; }
   .primary-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Tabela única de Treino Livre (# / Ajuste / 0= / 99= / Slider / Cor),
+     pedido do usuário pra substituir as linhas separadas de antes */
+  .setup-table-wrap { overflow-x: auto; border-radius: 8px; }
+  .setup-table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 0.66rem; background: #234433; border-radius: 8px; overflow: hidden; }
+  .setup-table th, .setup-table td { padding: 6px 6px; background: #0f231a; color: #cfeede; text-align: left; }
+  .setup-table th { background: #16281f; color: #9fd8b8; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.3px; }
+  .setup-table-label { font-weight: bold; color: #ffd54a; white-space: nowrap; min-width: 110px; }
+  .setup-table-lo, .setup-table-hi { color: #9fd8b8; white-space: nowrap; }
+  .setup-table-slider { display: flex; align-items: center; gap: 6px; min-width: 130px; }
+  .setup-range-input { width: 80px; accent-color: #ffd54a; }
+  .setup-table-cor-empty { color: #5c7a6d; }
+
+  .setup-legend { margin-top: 12px; background: #0f231a; border: 1px solid #345c48; border-radius: 8px; padding: 10px; }
+  .setup-legend-title { font-size: 0.75rem; font-weight: bold; color: #ffd54a; margin-bottom: 8px; }
+  .setup-legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.68rem; color: #cfeede; }
+  .setup-legend-row .setup-tier-badge { flex-shrink: 0; }
+  .setup-perfect-callout {
+    margin-top: 6px; padding: 8px; border-radius: 8px; background: rgba(255,213,74,0.1);
+    border: 1px solid #ffd54a; color: #ffd54a; font-size: 0.68rem; font-weight: bold; text-align: center; line-height: 1.5;
+  }
 
   .setup-tier-badge { font-size: 0.6rem; font-weight: bold; padding: 2px 7px; border-radius: 6px; text-align: center; white-space: nowrap; }
   .setup-tier-badge.mosca { background: #4a9eff; color: white; }
@@ -194,6 +218,7 @@
   .pot-bar-wrap { flex: 1; height: 8px; background: #0a1811; border-radius: 4px; overflow: hidden; }
   .pot-bar-fill { height: 100%; background: linear-gradient(90deg, #2a9d5c, #ffd54a, #e63946); border-radius: 4px; transition: width 0.15s; }
   .pot-value { font-size: 0.7rem; font-weight: bold; color: #ffd54a; min-width: 22px; text-align: right; flex-shrink: 0; }
+  .pit-label { font-size: 0.66rem; color: #9fd8b8; margin: 6px 0 4px; }
   .pit-compound-row { display: flex; gap: 4px; flex-wrap: wrap; }
   .pit-compound-btn {
     flex: 1 1 18%; min-width: 44px; padding: 6px 3px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
@@ -555,13 +580,24 @@
       const grid = document.getElementById('circuit-data-grid');
       drawCircuitShapePreview();
       const typeLabel = { permanente: 'Permanente', rua: 'Rua', misto: 'Misto' }[w.type] || w.type;
-      // Escalonamento de Voltas: mostra a conversão real→jogo (não faz
-      // sentido pra sprint, que é sempre 4 fixo, mostrado à parte)
-      const gameLaps = window.WSPF1Corrida.gameLapsForRealLaps(w.laps);
+      // Escalonamento de Voltas só vale pra corrida principal — treino,
+      // classificatória e sprint rodam um número de voltas fixo, sem
+      // relação com o total real do circuito. Mostrar sempre a conversão
+      // "real → jogo" (bug real reportado pelo usuário: a Classificatória
+      // dizia "7 no jogo" aqui, mas rodava 12 na prática) confundia o
+      // jogador — agora o rótulo reflete a sessão que está na tela.
+      let voltasLabel;
+      if (isShortSession) {
+        voltasLabel = sessionTotalLaps() + ' (sessão curta — não escala com o circuito)';
+      } else if (sessionType === 'sprint') {
+        voltasLabel = sessionTotalLaps() + ' (sprint, sempre fixo)';
+      } else {
+        voltasLabel = w.laps + ' reais → ' + sessionTotalLaps() + ' no jogo';
+      }
       const items = [
         ['País / Cidade', w.pais + ' — ' + w.cidade],
         ['Traçado', typeLabel],
-        ['Voltas', w.laps + ' reais → ' + gameLaps + ' no jogo'],
+        ['Voltas', voltasLabel],
         ['Curvas', w.curves],
         ['Sentido', w.sentido],
         ['Clima predominante', w.clima],
@@ -640,6 +676,12 @@
       });
     }
 
+    // Tabela única (# / Ajuste / 0= / 99= / Slider / Cor), pedido do
+    // usuário pra substituir as linhas separadas de antes — mesma lógica
+    // de baixo (setupFieldTier/setupFieldBonus em corrida.js), só o visual
+    // mudou. O slider (input range) É o controle de verdade — o número ao
+    // lado é só leitura fina pra quem quer acertar o valor exato (a única
+    // forma de cravar "Na Mosca", já que arrastar não gruda no pixel certo).
     function renderSetupFields() {
       const d = currentSetupDriver();
       const dialsEl = document.getElementById('setup-dials');
@@ -647,39 +689,80 @@
       if (!d) return;
       const values = setupValuesByDriver[d.id];
       const feedback = setupFeedbackByDriver[d.id];
-      window.WSPF1Corrida.SETUP_FIELDS.forEach((f) => {
-        const row = document.createElement('div');
-        row.className = 'setup-slider-row';
-        const label = document.createElement('div');
-        label.className = 'setup-slider-label';
-        label.textContent = f.label + ' (0 = ' + f.lo + ', ' + window.WSPF1Corrida.SETUP_FIELD_MAX + ' = ' + f.hi + ')';
-        row.appendChild(label);
+      const max = window.WSPF1Corrida.SETUP_FIELD_MAX;
 
-        const inputRow = document.createElement('div');
-        inputRow.className = 'setup-input-row';
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.min = '0';
-        input.max = String(window.WSPF1Corrida.SETUP_FIELD_MAX);
-        input.className = 'setup-num-input';
-        input.value = values[f.key];
-        input.addEventListener('input', () => {
-          let v = parseInt(input.value, 10);
+      const table = document.createElement('table');
+      table.className = 'setup-table';
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>#</th><th>Ajuste</th><th>0 =</th><th>' + max + ' =</th><th>Slider</th><th>Cor</th></tr>';
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+
+      window.WSPF1Corrida.SETUP_FIELDS.forEach((f, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + (idx + 1) + '</td><td class="setup-table-label">' + f.label + '</td>'
+          + '<td class="setup-table-lo">' + f.lo + '</td><td class="setup-table-hi">' + f.hi + '</td>';
+
+        const sliderTd = document.createElement('td');
+        sliderTd.className = 'setup-table-slider';
+        const range = document.createElement('input');
+        range.type = 'range';
+        range.min = '0';
+        range.max = String(max);
+        range.className = 'setup-range-input';
+        range.value = values[f.key];
+        const numInput = document.createElement('input');
+        numInput.type = 'number';
+        numInput.min = '0';
+        numInput.max = String(max);
+        numInput.className = 'setup-num-input';
+        numInput.value = values[f.key];
+        range.addEventListener('input', () => { values[f.key] = parseInt(range.value, 10); numInput.value = range.value; });
+        numInput.addEventListener('input', () => {
+          let v = parseInt(numInput.value, 10);
           if (isNaN(v)) v = 0;
-          v = Math.max(0, Math.min(window.WSPF1Corrida.SETUP_FIELD_MAX, v));
+          v = Math.max(0, Math.min(max, v));
           values[f.key] = v;
+          range.value = v;
         });
-        inputRow.appendChild(input);
+        sliderTd.appendChild(range);
+        sliderTd.appendChild(numInput);
+        tr.appendChild(sliderTd);
 
+        const corTd = document.createElement('td');
         if (feedback && feedback[f.key]) {
           const badge = document.createElement('span');
           badge.className = 'setup-tier-badge ' + feedback[f.key];
           badge.textContent = SETUP_TIER_LABEL[feedback[f.key]];
-          inputRow.appendChild(badge);
+          corTd.appendChild(badge);
+        } else {
+          corTd.className = 'setup-table-cor-empty';
+          corTd.textContent = '—';
         }
-        row.appendChild(inputRow);
-        dialsEl.appendChild(row);
+        tr.appendChild(corTd);
+        tbody.appendChild(tr);
       });
+      table.appendChild(tbody);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'setup-table-wrap';
+      wrap.appendChild(table);
+      dialsEl.appendChild(wrap);
+      dialsEl.appendChild(buildSetupLegend());
+    }
+
+    // legenda fixa de cores — números reais de setupFieldBonus/corrida.js,
+    // nunca um texto solto (pedido do usuário no mockup: "LEGENDA DE CORES")
+    function buildSetupLegend() {
+      const legend = document.createElement('div');
+      legend.className = 'setup-legend';
+      legend.innerHTML = '<div class="setup-legend-title">Legenda de cores:</div>'
+        + '<div class="setup-legend-row"><span class="setup-tier-badge mosca">🔵 NA MOSCA</span><span>Diferença 0 — acertou o número exato → <b>+4%</b> bônus</span></div>'
+        + '<div class="setup-legend-row"><span class="setup-tier-badge verde">🟢 VERDE</span><span>Diferença 1-9 — muito perto → <b>+2% a +2,9%</b> bônus</span></div>'
+        + '<div class="setup-legend-row"><span class="setup-tier-badge amarelo">🟡 AMARELO</span><span>Diferença 10-29 — perto → neutro (<b>0%</b>)</span></div>'
+        + '<div class="setup-legend-row"><span class="setup-tier-badge vermelho">🔴 VERMELHO</span><span>Diferença 30+ — longe → penalidade até <b>-5%</b></span></div>'
+        + '<div class="setup-perfect-callout">🏆 Setup perfeito (7x Na Mosca) = <b>+5% bônus extra</b><br>Cada circuito tem um alvo ideal diferente — rua ≠ permanente ≠ misto.</div>';
+      return legend;
     }
 
     function updateSetupLapControls() {
@@ -914,11 +997,13 @@
         '<div class="fuel-row"><span>' + label + '</span><b>' + value + '</b></div>'
       )).join('');
 
-      renderStintTable(strategy, totalLaps, fuelPerLap);
+      renderStintTable();
     }
 
-    // tabela de estratégia em 4 colunas, 2 OPÇÕES comparáveis por piloto
-    // (pedido do usuário, caderno do Wagner): Opção A é o composto JÁ
+    // tabela de estratégia em 6 colunas (Trecho/Volta/Pneu/Combustível/
+    // Desgaste/Observação), 2 OPÇÕES comparáveis por piloto, os DOIS
+    // pilotos titulares visíveis ao mesmo tempo (pedido do usuário, mockup
+    // com "DADOS DO CIRCUITO" embutido no topo): Opção A é o composto JÁ
     // selecionado no seletor manual acima (menos trocas, mais durável) —
     // Opção B é uma alternativa mais agressiva (composto mais mole, mais
     // paradas, mais ritmo) pro jogador comparar risco x ritmo. Escolher
@@ -944,7 +1029,9 @@
     // monta os trechos de UM cenário — usa a MESMA conta que a corrida ao
     // vivo usa (calcStintLaps + lapCompressionRatio + hardStopCap no 1º
     // trecho, igual defaultPlannedPitLap em corridamotor.js) pra a tabela
-    // nunca prometer algo que a pista não confirma depois.
+    // nunca prometer algo que a pista não confirma depois. Também calcula
+    // o desgaste (0→X%) e o clima na largada de cada trecho (pedido do
+    // usuário: colunas Volta/Desgaste/Observação, além das que já existiam).
     function buildStintPlan(startCompound, nextCompoundFn, strategy, totalLaps, fuelPerLap, styleWearMult, lapRatio) {
       const C = window.WSPF1Corrida;
       const hardStopCap = Math.max(1, Math.floor(totalLaps * 0.75));
@@ -963,11 +1050,15 @@
         }
         stintLen = Math.max(1, Math.min(stintLen, remaining));
         const lapEnd = lapStart + stintLen - 1;
+        const desgasteFim = Math.min(100, Math.round(C.calcTireWear(compound, stintLen * lapRatio, styleWearMult)));
+        const weatherTier = weatherTimeline ? weatherTimeline.tiers[Math.min(lapStart - 1, weatherTimeline.tiers.length - 1)] : null;
         stints.push({
           lapStart, lapEnd, compound,
           fuelForStint: Math.round(fuelPerLap * stintLen),
           aguenta: stintLen <= stintCap,
           folgaVoltas: stintCap - stintLen,
+          desgasteFim,
+          weatherTier,
         });
         remaining -= stintLen;
         lapStart = lapEnd + 1;
@@ -976,50 +1067,143 @@
       return stints;
     }
 
-    function renderOptionTable(stints, label, isCurrent, optionCompound) {
+    // texto de observação por trecho — sempre derivado de dados reais já
+    // calculados (clima da timeline determinística, folga de voltas), nunca
+    // um palpite solto, pra planilha continuar "batendo 100%" com a pista
+    function stintObservacao(s, i, isLast) {
+      const C = window.WSPF1Corrida;
+      const condLabel = s.weatherTier ? C.WEATHER_CONDITIONS[s.weatherTier].label : null;
+      if (i === 0) return condLabel ? 'Largada em ' + condLabel : 'Largada';
+      if (isLast) {
+        return s.aguenta
+          ? (s.folgaVoltas >= 2 ? 'Sobra folga até o fim (' + s.folgaVoltas + 'v)' : 'Aperta no fim, folga de ' + s.folgaVoltas + 'v')
+          : 'Pneu no limite — não aguenta até a bandeirada';
+      }
+      return condLabel ? 'Troca prevista, ' + condLabel.toLowerCase() : 'Troca por desgaste do pneu';
+    }
+
+    function riskLine(stints, stopsCount) {
+      const worst = stints.reduce((min, s) => Math.min(min, s.folgaVoltas), Infinity);
+      if (!stints.some((s) => !s.aguenta) && worst < 1) {
+        const last = stints[stints.length - 1];
+        return { cls: 'bad', text: '⚠️ Risco: ' + window.WSPF1Corrida.TIRE_COMPOUNDS[last.compound].label + ' sem folga no trecho final.' };
+      }
+      if (stints.some((s) => !s.aguenta)) {
+        return { cls: 'bad', text: '⚠️ Risco: um dos trechos não aguenta as voltas planejadas com esse pneu.' };
+      }
+      if (stopsCount <= 1) {
+        return { cls: 'ok', text: '🛡️ Conservador: menos tempo parado nos boxes, mas menos margem de segurança no fim.' };
+      }
+      return { cls: 'ok', text: '🔥 Agressivo: mais paradas, mas o pneu sempre com folga (' + worst + 'v de sobra no pior trecho).' };
+    }
+
+    function renderOptionTable(stints, label, isCurrent, optionCompound, driverId) {
       const compounds = window.WSPF1Corrida.TIRE_COMPOUNDS;
       const cells = [
-        ['head', 'Trecho'], ['head', 'Pneu'], ['head', 'Combustível'], ['head', 'Cálculo base'],
+        ['head', 'Trecho'], ['head', 'Volta'], ['head', 'Pneu'], ['head', 'Combustível'], ['head', 'Desgaste'], ['head', 'Observação'],
       ];
       stints.forEach((s, i) => {
-        const trechoLabel = i === 0 ? 'Início (volta ' + s.lapStart + ')' : i + 'ª parada (volta ' + s.lapStart + ')';
-        const trechoRange = ' — até volta ' + s.lapEnd;
+        const isLast = i === stints.length - 1;
+        const trechoLabel = i === 0 ? 'Largada' : (i === stints.length - 1 ? 'Stint final' : i + 'ª parada');
+        const voltaLabel = s.lapStart === s.lapEnd ? String(s.lapStart) : s.lapStart + '-' + s.lapEnd;
         const c = compounds[s.compound];
-        cells.push(['', trechoLabel + trechoRange]);
+        cells.push(['', trechoLabel]);
+        cells.push(['', voltaLabel]);
         cells.push(['', c.icon + ' ' + c.label]);
         cells.push(['', s.fuelForStint + ' kg']);
-        cells.push([s.aguenta ? 'ok' : 'bad', s.aguenta ? '✅ aguenta (folga ' + s.folgaVoltas + 'v)' : '⚠️ não aguenta']);
+        cells.push([s.aguenta ? '' : 'bad', '0→' + s.desgasteFim + '%']);
+        cells.push([s.aguenta ? '' : 'bad', stintObservacao(s, i, isLast)]);
       });
       const stops = Math.max(0, stints.length - 1);
       const stopsLabel = stops + (stops === 1 ? ' parada' : ' paradas');
+      const risk = riskLine(stints, stops);
       return '<div class="stint-option">'
         + '<div class="stint-option-head"><span>' + label + ' — ' + stopsLabel + '</span>'
         + (isCurrent
           ? '<span class="stint-option-badge">EM USO</span>'
-          : '<button class="stint-option-btn" data-compound="' + optionCompound + '">Usar essa opção</button>')
+          : '<button class="stint-option-btn" data-compound="' + optionCompound + '" data-driver-id="' + driverId + '">Usar essa opção</button>')
         + '</div>'
-        + '<div class="stint-grid">' + cells.map(([cls, text]) => '<div class="stint-cell ' + cls + '">' + text + '</div>').join('') + '</div>'
+        + '<div class="stint-grid-wrap"><div class="stint-grid">' + cells.map(([cls, text]) => '<div class="stint-cell ' + cls + '">' + text + '</div>').join('') + '</div></div>'
+        + '<div class="stint-risk-line ' + risk.cls + '">' + risk.text + '</div>'
         + '</div>';
     }
 
-    function renderStintTable(strategy, totalLaps, fuelPerLap) {
+    // barra de dados do circuito embutida no topo da tabela (pedido do
+    // usuário: unir circuito + combustível/volta + referência de pneu num
+    // resumo só, em vez de espalhado em telas separadas) — reusa os mesmos
+    // valores já calculados em renderCircuitInfo/renderFuelTable, nunca
+    // recalcula nada novo
+    function renderStrategyCircuitBar(totalLaps, fuelPerLap) {
       const C = window.WSPF1Corrida;
-      const styleWearMult = C.drivingStyleWearMult(strategy.drivingStyle);
-      const lapRatio = currentLapCompressionRatio();
+      const styleWearMult = 1;
+      const duroLaps = Math.max(1, Math.round(C.calcStintLaps('duro', 90, styleWearMult) / currentLapCompressionRatio()));
+      const climaParts = weatherTimeline
+        ? C.WEATHER_CONDITIONS[weatherTimeline.tiers[0]].label + ' → ' + C.WEATHER_CONDITIONS[weatherTimeline.tiers[weatherTimeline.tiers.length - 1]].label
+        : '-';
+      // mesma regra de renderCircuitInfo: Escalonamento de Voltas só vale
+      // pra corrida principal — bug já corrigido uma vez lá (7 vs 12
+      // voltas), não repetir aqui na barra nova da tabela de estratégia
+      let voltasLabel;
+      if (isShortSession) {
+        voltasLabel = totalLaps + ' (sessão curta — não escala com o circuito)';
+      } else if (sessionType === 'sprint') {
+        voltasLabel = totalLaps + ' (sprint, sempre fixo)';
+      } else {
+        voltasLabel = weekend.laps + ' reais → ' + totalLaps + ' no jogo';
+      }
+      return '<div class="stint-circuit-bar">'
+        + '<b>DADOS DO CIRCUITO:</b><br>'
+        + 'Circuito: ' + weekend.circuit + ' | Voltas: ' + voltasLabel + ' | Curvas: ' + weekend.curves + '<br>'
+        + 'Clima (previsão): ' + climaParts + ' | Combustível/volta: ' + fuelPerLap.toFixed(1) + ' kg | Pneu Duro aguenta ' + duroLaps + ' volta' + (duroLaps === 1 ? '' : 's')
+        + '</div>';
+    }
 
-      const optionA = buildStintPlan(strategy.compound, nextPlanCompound, strategy, totalLaps, fuelPerLap, styleWearMult, lapRatio);
-      const aggressiveStart = aggressiveStartCompound();
-      const optionB = buildStintPlan(aggressiveStart, nextPlanCompoundAggressive, strategy, totalLaps, fuelPerLap, styleWearMult, lapRatio);
+    // renderiza a comparação completa: TODOS os pilotos titulares do
+    // jogador, cada um com Opção A/B lado a lado — pedido explícito do
+    // usuário ("os dois pilotos ao mesmo tempo", não escondido atrás de
+    // aba) — a aba (#driver-tab-row) continua só pra decidir QUAL piloto
+    // os controles de cima (composto/estilo/combustível) estão editando
+    function renderStintTable() {
+      const C = window.WSPF1Corrida;
+      const totalLaps = sessionTotalLaps();
+      const motorMult = C.motorFuelMult(playerMotorLevel);
+      const fuelPerLap = C.FUEL_BASE_CONSUMPTION_PER_LAP * motorMult;
 
-      document.getElementById('stint-table').innerHTML =
-        '<div class="stint-table-title">📋 Tabela de estratégia — 2 opções (' + totalLaps + ' voltas)</div>'
-        + renderOptionTable(optionA, 'Opção A', true, strategy.compound)
-        + renderOptionTable(optionB, 'Opção B', false, aggressiveStart);
+      let html = renderStrategyCircuitBar(totalLaps, fuelPerLap)
+        + '<div class="stint-table-title">📋 Tabela de estratégia — 2 opções por piloto</div>';
 
+      playerDrivers.forEach((d) => {
+        const strategy = strategyByDriver[d.id];
+        if (!strategy) return;
+        const styleWearMult = C.drivingStyleWearMult(strategy.drivingStyle);
+        const lapRatio = currentLapCompressionRatio();
+        const optionA = buildStintPlan(strategy.compound, nextPlanCompound, strategy, totalLaps, fuelPerLap, styleWearMult, lapRatio);
+        const aggressiveStart = aggressiveStartCompound();
+        const optionB = buildStintPlan(aggressiveStart, nextPlanCompoundAggressive, strategy, totalLaps, fuelPerLap, styleWearMult, lapRatio);
+        html += '<div class="stint-driver-heading">🏎️ ' + d.name + '</div>'
+          + renderOptionTable(optionA, 'Opção A', true, strategy.compound, d.id)
+          + renderOptionTable(optionB, 'Opção B', false, aggressiveStart, d.id);
+      });
+
+      html += '<div class="stint-footer-note">O jogador escolhe qual opção usar pra cada piloto antes de largar — depois disso, cada parada extra é decidida ao vivo, na pista.</div>';
+
+      document.getElementById('stint-table').innerHTML = html;
+
+      // cada botão "Usar essa opção" pertence a UM piloto (data-driver-id) —
+      // troca só a estratégia daquele piloto, nunca a do outro (bug real
+      // pego no teste: antes referenciava uma variável "strategy" única que
+      // não existe mais nesse escopo, já que a tabela mostra os dois
+      // pilotos ao mesmo tempo agora)
       document.querySelectorAll('#stint-table .stint-option-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
-          strategy.compound = btn.dataset.compound;
-          initStrategy();
+          const s = strategyByDriver[btn.dataset.driverId];
+          if (!s) return;
+          s.compound = btn.dataset.compound;
+          if (btn.dataset.driverId === activeStrategyDriverId) {
+            initStrategy();
+          } else {
+            renderStintTable();
+          }
         });
       });
     }
@@ -1738,6 +1922,14 @@
           window.WSPF1Motor.setMotorPower(raceState, car.id, Math.min(potMax, car.motorPower + 1));
         });
         card.appendChild(potRow);
+
+        // rótulo explícito (pedido do usuário: os botões pareciam travados/
+        // decorativos sem nenhum texto explicando que são clicáveis — só
+        // tinham um `title` de tooltip, que não aparece no toque do celular)
+        const pitLabel = document.createElement('div');
+        pitLabel.className = 'pit-label';
+        pitLabel.textContent = '🔧 Toque num pneu pra chamar pro pit agora:';
+        card.appendChild(pitLabel);
 
         const pitRow = document.createElement('div');
         pitRow.className = 'pit-compound-row';
