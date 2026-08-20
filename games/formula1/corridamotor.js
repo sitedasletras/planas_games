@@ -153,6 +153,7 @@
         teamId: e.teamId,
         teamName: e.teamName,
         driverName: e.driverName,
+        number: e.number || null,
         isPlayer: !!e.isPlayer,
         pace: e.pace,
         motorLevel: e.motorLevel || 0,
