@@ -1140,9 +1140,20 @@
       const climaParts = weatherTimeline
         ? C.WEATHER_CONDITIONS[weatherTimeline.tiers[0]].label + ' → ' + C.WEATHER_CONDITIONS[weatherTimeline.tiers[weatherTimeline.tiers.length - 1]].label
         : '-';
+      // mesma regra de renderCircuitInfo: Escalonamento de Voltas só vale
+      // pra corrida principal — bug já corrigido uma vez lá (7 vs 12
+      // voltas), não repetir aqui na barra nova da tabela de estratégia
+      let voltasLabel;
+      if (isShortSession) {
+        voltasLabel = totalLaps + ' (sessão curta — não escala com o circuito)';
+      } else if (sessionType === 'sprint') {
+        voltasLabel = totalLaps + ' (sprint, sempre fixo)';
+      } else {
+        voltasLabel = weekend.laps + ' reais → ' + totalLaps + ' no jogo';
+      }
       return '<div class="stint-circuit-bar">'
         + '<b>DADOS DO CIRCUITO:</b><br>'
-        + 'Circuito: ' + weekend.circuit + ' | Voltas: ' + weekend.laps + ' reais → ' + totalLaps + ' no jogo | Curvas: ' + weekend.curves + '<br>'
+        + 'Circuito: ' + weekend.circuit + ' | Voltas: ' + voltasLabel + ' | Curvas: ' + weekend.curves + '<br>'
         + 'Clima (previsão): ' + climaParts + ' | Combustível/volta: ' + fuelPerLap.toFixed(1) + ' kg | Pneu Duro aguenta ' + duroLaps + ' volta' + (duroLaps === 1 ? '' : 's')
         + '</div>';
     }
@@ -1174,7 +1185,7 @@
           + renderOptionTable(optionB, 'Opção B', false, aggressiveStart, d.id);
       });
 
-      html += '<div class="stint-footer-note">O jogador escolhe qual opção usar pra cada piloto antes de largar — depois disso, cada parada extra é decidida ao vivo, na corrida.</div>';
+      html += '<div class="stint-footer-note">O jogador escolhe qual opção usar pra cada piloto antes de largar — depois disso, cada parada extra é decidida ao vivo, na pista.</div>';
 
       document.getElementById('stint-table').innerHTML = html;
 
