@@ -203,6 +203,12 @@
     color: #ffd54a; font-weight: bold; cursor: pointer; font-size: 0.8rem;
   }
   .camera-target-label { font-size: 0.74rem; color: #cfeede; min-width: 130px; text-align: center; }
+  .camera-my-drivers-row { display: flex; gap: 6px; margin: 6px 14px 0; }
+  .camera-my-driver-btn {
+    flex: 1; padding: 6px 4px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: #cfeede; font-size: 0.66rem; font-weight: bold; cursor: pointer; text-align: center;
+  }
+  .camera-my-driver-btn.selected { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
 
   #driver-controls { display: flex; flex-direction: column; gap: 8px; margin: 6px 14px; }
   .driver-card {
@@ -327,6 +333,7 @@
         <span class="camera-target-label" id="camera-target-label">—</span>
         <button id="camera-target-next">▶</button>
       </div>
+      <div class="camera-my-drivers-row hidden" id="camera-my-drivers-row"></div>
 
       <div class="track-wrap">
         <canvas id="track" width="400" height="280"></canvas>
@@ -377,6 +384,15 @@
   (() => {
     'use strict';
     const NORMAL_RACE_REAL_MS = 320000;
+    // Sprint é uma sessão de corrida de verdade (largada, estratégia de
+    // pneu, pontuação) — não é uma "sessão curta" tipo treino/qualy — mas
+    // também não devia durar o MESMO tempo real que a corrida principal
+    // (bug real achado jogando um fim de semana inteiro: Sprint caía no
+    // "senão" do ternário isShortSession e herdava NORMAL_RACE_REAL_MS
+    // inteiro, apesar de ter só 4 voltas de jogo, sempre fixas). ~40% da
+    // duração da corrida principal, sensivelmente mais curta mas ainda dá
+    // tempo de reagir a uma parada.
+    const SPRINT_REAL_MS = 130000;
 
     const temporadaState = window.WSPF1Calendario.loadState();
     const weekend = window.WSPF1Calendario.currentWeekend(temporadaState);
@@ -397,6 +413,14 @@
     const isShortSession = isPractice || isQualy;
     const PRACTICE_LAPS = 12;
     const PRACTICE_REAL_MS = 70000;
+    // duração real (wall-clock) da sessão ao vivo atual — cada tipo de
+    // sessão tem a sua, nunca cair num "senão" genérico (era assim que o
+    // Sprint acabava herdando a duração inteira da corrida principal)
+    function sessionRealMs() {
+      if (isShortSession) return PRACTICE_REAL_MS;
+      if (sessionType === 'sprint') return SPRINT_REAL_MS;
+      return NORMAL_RACE_REAL_MS;
+    }
     // Escalonamento de Voltas: só a corrida principal (não sprint, não
     // treino/classificatória) usa o número real de voltas do circuito
     // como base — por isso só ela precisa da razão de compressão
@@ -1253,7 +1277,7 @@
         // mesma proporção usada dentro do motor de corrida (raceRealMs/
         // totalLaps) — usa sessionTotalLaps() (já com o Escalonamento de
         // Voltas aplicado), não mais o número real de voltas do circuito
-        const avgLapMs = (isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS) / sessionTotalLaps();
+        const avgLapMs = sessionRealMs() / sessionTotalLaps();
         pitStopMsByTeam = { player: window.WSPF1Corrida.pitStopMsForClub(club, avgLapMs) };
       }
       // um plano por piloto (chave = id do entrant, 'player_' + id do
@@ -1268,7 +1292,7 @@
         isSprint: sessionType === 'sprint',
         baseLaps: sessionTotalLaps(),
         lapCompressionRatio: currentLapCompressionRatio(),
-        raceRealMs: isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS,
+        raceRealMs: sessionRealMs(),
         hasFailureEvent: isShortSession ? false : weekend.hasFailureEvent,
         circuit: weekend.circuit,
         playerStrategies,
@@ -2058,6 +2082,43 @@
       if (!label) return;
       const car = raceState ? raceState.cars.find((c) => c.id === cameraTargetId) : null;
       label.textContent = car ? '🎯 ' + car.driverName + ' — ' + car.teamName : '—';
+      updateMyDriversRow();
+    }
+
+    // atalho direto pros DOIS pilotos do jogador (pedido explícito: "se eu
+    // quiser acompanhar o 1º piloto, eu acompanho; se eu quiser o 2º,
+    // também tem que ter o mesmo procedimento") — o ◀▶ genérico cicla por
+    // TODOS os carros da corrida (20), então trocar entre os 2 pilotos do
+    // próprio jogador podia exigir vários cliques passando por rivais no
+    // meio. Estes botões pulam direto pro carro certo.
+    function renderMyDriversRow() {
+      const row = document.getElementById('camera-my-drivers-row');
+      if (!row || !raceState) return;
+      const myCars = raceState.cars.filter((c) => c.isPlayer);
+      if (myCars.length < 2) { row.classList.add('hidden'); row.innerHTML = ''; return; }
+      row.innerHTML = '';
+      myCars.forEach((car) => {
+        const btn = document.createElement('button');
+        btn.className = 'camera-my-driver-btn';
+        btn.textContent = '🏎️ ' + car.driverName;
+        btn.addEventListener('click', () => {
+          cameraTargetId = car.id;
+          updateCameraTargetLabel();
+        });
+        row.appendChild(btn);
+      });
+      updateMyDriversRow();
+    }
+
+    function updateMyDriversRow() {
+      const row = document.getElementById('camera-my-drivers-row');
+      if (!row || cameraMode !== 'seguir') return;
+      const myCars = raceState ? raceState.cars.filter((c) => c.isPlayer) : [];
+      if (myCars.length < 2) return;
+      row.classList.remove('hidden');
+      [...row.children].forEach((btn, i) => {
+        btn.classList.toggle('selected', myCars[i] && myCars[i].id === cameraTargetId);
+      });
     }
 
     function cycleCameraTarget(dir) {
@@ -2076,6 +2137,7 @@
         document.getElementById('camera-mode-' + m).classList.toggle('selected', m === mode);
       });
       const targetRow = document.getElementById('camera-target-row');
+      const myDriversRow = document.getElementById('camera-my-drivers-row');
       if (mode === 'seguir') {
         targetRow.classList.remove('hidden');
         if (cameraTargetId == null) {
@@ -2083,9 +2145,11 @@
           const playerCar = list.find((c) => c.isPlayer);
           cameraTargetId = playerCar ? playerCar.id : (list[0] && list[0].id);
         }
+        renderMyDriversRow();
         updateCameraTargetLabel();
       } else {
         targetRow.classList.add('hidden');
+        if (myDriversRow) myDriversRow.classList.add('hidden');
       }
     }
 
