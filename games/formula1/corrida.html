@@ -203,6 +203,12 @@
     color: #ffd54a; font-weight: bold; cursor: pointer; font-size: 0.8rem;
   }
   .camera-target-label { font-size: 0.74rem; color: #cfeede; min-width: 130px; text-align: center; }
+  .camera-my-drivers-row { display: flex; gap: 6px; margin: 6px 14px 0; }
+  .camera-my-driver-btn {
+    flex: 1; padding: 6px 4px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
+    background: #0f231a; color: #cfeede; font-size: 0.66rem; font-weight: bold; cursor: pointer; text-align: center;
+  }
+  .camera-my-driver-btn.selected { border-color: #ffd54a; background: #1e3b2a; color: #ffd54a; }
 
   #driver-controls { display: flex; flex-direction: column; gap: 8px; margin: 6px 14px; }
   .driver-card {
@@ -213,6 +219,10 @@
   .driver-card-tire { font-size: 0.72rem; color: #cfeede; }
   .pot-row { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; background: #0f231a; border-radius: 9px; padding: 5px 8px; }
   .pot-label { font-size: 0.66rem; color: #9fd8b8; flex-shrink: 0; }
+  .pot-hint { font-size: 0.62rem; color: #9fd8b8; margin: 6px 0 2px; }
+  .pot-fuel-info { font-size: 0.62rem; color: #9fd8b8; margin-top: 4px; line-height: 1.4; }
+  .pot-fuel-info.warn { color: #f4a300; font-weight: bold; }
+  .pot-fuel-info.danger { color: #ff8a94; font-weight: bold; }
   .pot-btn { width: 26px; height: 26px; border-radius: 7px; border: 2px solid rgba(255,255,255,0.15); background: #16281f; color: #ffd54a; font-weight: bold; font-size: 0.9rem; cursor: pointer; flex-shrink: 0; }
   .pot-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .pot-bar-wrap { flex: 1; height: 8px; background: #0a1811; border-radius: 4px; overflow: hidden; }
@@ -327,6 +337,7 @@
         <span class="camera-target-label" id="camera-target-label">—</span>
         <button id="camera-target-next">▶</button>
       </div>
+      <div class="camera-my-drivers-row hidden" id="camera-my-drivers-row"></div>
 
       <div class="track-wrap">
         <canvas id="track" width="400" height="280"></canvas>
@@ -377,6 +388,15 @@
   (() => {
     'use strict';
     const NORMAL_RACE_REAL_MS = 320000;
+    // Sprint é uma sessão de corrida de verdade (largada, estratégia de
+    // pneu, pontuação) — não é uma "sessão curta" tipo treino/qualy — mas
+    // também não devia durar o MESMO tempo real que a corrida principal
+    // (bug real achado jogando um fim de semana inteiro: Sprint caía no
+    // "senão" do ternário isShortSession e herdava NORMAL_RACE_REAL_MS
+    // inteiro, apesar de ter só 4 voltas de jogo, sempre fixas). ~40% da
+    // duração da corrida principal, sensivelmente mais curta mas ainda dá
+    // tempo de reagir a uma parada.
+    const SPRINT_REAL_MS = 130000;
 
     const temporadaState = window.WSPF1Calendario.loadState();
     const weekend = window.WSPF1Calendario.currentWeekend(temporadaState);
@@ -397,6 +417,14 @@
     const isShortSession = isPractice || isQualy;
     const PRACTICE_LAPS = 12;
     const PRACTICE_REAL_MS = 70000;
+    // duração real (wall-clock) da sessão ao vivo atual — cada tipo de
+    // sessão tem a sua, nunca cair num "senão" genérico (era assim que o
+    // Sprint acabava herdando a duração inteira da corrida principal)
+    function sessionRealMs() {
+      if (isShortSession) return PRACTICE_REAL_MS;
+      if (sessionType === 'sprint') return SPRINT_REAL_MS;
+      return NORMAL_RACE_REAL_MS;
+    }
     // Escalonamento de Voltas: só a corrida principal (não sprint, não
     // treino/classificatória) usa o número real de voltas do circuito
     // como base — por isso só ela precisa da razão de compressão
@@ -1253,7 +1281,7 @@
         // mesma proporção usada dentro do motor de corrida (raceRealMs/
         // totalLaps) — usa sessionTotalLaps() (já com o Escalonamento de
         // Voltas aplicado), não mais o número real de voltas do circuito
-        const avgLapMs = (isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS) / sessionTotalLaps();
+        const avgLapMs = sessionRealMs() / sessionTotalLaps();
         pitStopMsByTeam = { player: window.WSPF1Corrida.pitStopMsForClub(club, avgLapMs) };
       }
       // um plano por piloto (chave = id do entrant, 'player_' + id do
@@ -1268,7 +1296,7 @@
         isSprint: sessionType === 'sprint',
         baseLaps: sessionTotalLaps(),
         lapCompressionRatio: currentLapCompressionRatio(),
-        raceRealMs: isShortSession ? PRACTICE_REAL_MS : NORMAL_RACE_REAL_MS,
+        raceRealMs: sessionRealMs(),
         hasFailureEvent: isShortSession ? false : weekend.hasFailureEvent,
         circuit: weekend.circuit,
         playerStrategies,
@@ -1616,6 +1644,43 @@
       ctx.textBaseline = 'alphabetic';
     }
 
+    // selo do carro do jogador: número do carro + posição atual, num
+    // pingente só (pedido do usuário depois de ver a bolinha de posição
+    // isolada empilhar em cima do brilho do próprio carro — "deveria
+    // mostrar o número do carro e a posição que estão na corrida"). Só
+    // pro jogador porque só o jogador tem número de carro cadastrado
+    // (rival não tem esse campo, ver grid.js).
+    function drawPlayerCarBadge(ctx, x, y, number, pos) {
+      const label = (number != null ? '#' + number : '') + (number != null && pos != null ? ' · ' : '') + (pos != null ? 'P' + pos : '');
+      if (!label) return;
+      const badgeY = y - 13;
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 5);
+      ctx.lineTo(x, badgeY + 5);
+      ctx.stroke();
+
+      ctx.font = 'bold 7px Arial';
+      const textW = ctx.measureText(label).width;
+      const padX = 4, h = 10;
+      const w = textW + padX * 2;
+      ctx.fillStyle = '#ffd54a';
+      ctx.beginPath();
+      ctx.roundRect(x - w / 2, badgeY - h / 2, w, h, h / 2);
+      ctx.fill();
+      ctx.strokeStyle = '#16281f';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#16281f';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x, badgeY + 0.5);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
+
     // rastro leve atrás do carro do jogador + faíscas na chegada dos 3
     // primeiros — mesmo espírito das partículas do futebol, versão corrida
     let particles = [];
@@ -1779,9 +1844,15 @@
           ctx.fillText('🔧', p.x + 7, p.y - 7);
         }
 
+        // carro do jogador: selo próprio com número do carro + posição
+        // (pedido explícito do usuário). Carros do pódio (que não são o
+        // jogador): a bolinha de posição de sempre. Nunca os dois juntos
+        // no mesmo carro — evita a "caixa empilhada" que tinha antes.
         const pos = posByCarId[car.id];
-        if (pos != null && (pos <= 3 || car.isPlayer) && !car.pitting) {
-          drawPositionMarker(ctx, p.x, p.y, pos, car.isPlayer);
+        if (car.isPlayer && !car.pitting) {
+          drawPlayerCarBadge(ctx, p.x, p.y, car.number, pos);
+        } else if (pos != null && pos <= 3 && !car.pitting) {
+          drawPositionMarker(ctx, p.x, p.y, pos, false);
         }
       });
 
@@ -1890,12 +1961,25 @@
         card.appendChild(styleRow);
 
         // POT: potência do motor ajustável ao vivo (0-20, 10=neutro) — mais
-        // potência ganha ritmo, mas custa mais combustível/desgaste de pneu
+        // potência ganha ritmo, mas custa mais combustível/desgaste de pneu.
+        // Rótulo "POT" sozinho não dizia nada (pedido do usuário: "esse
+        // negócio, aquela barra... serve pra quê?"), e depois de explicado
+        // o usuário apontou uma contradição real: dava pra escolher
+        // "Poupar" no estilo de pilotagem e ainda assim botar o POT no
+        // talo. Pedido dele: transformar o POT no "botão de combustível" —
+        // sempre mostrando quanto ainda tem e pra quantas voltas dá NO
+        // NÍVEL DE POTÊNCIA ATUAL, avisando quando estiver na hora de
+        // parar. updateDriverControls() recalcula isso a cada tick.
+        const potHint = document.createElement('div');
+        potHint.className = 'pot-hint';
+        potHint.textContent = '⚡ Potência do motor: mais rápido, mas gasta mais combustível e pneu';
+        card.appendChild(potHint);
+
         const potRow = document.createElement('div');
         potRow.className = 'pot-row';
         const potLabel = document.createElement('span');
         potLabel.className = 'pot-label';
-        potLabel.textContent = '⚡ POT';
+        potLabel.textContent = 'POT';
         potRow.appendChild(potLabel);
         const potMinus = document.createElement('button');
         potMinus.className = 'pot-btn';
@@ -1923,6 +2007,10 @@
         });
         card.appendChild(potRow);
 
+        const potFuelInfo = document.createElement('div');
+        potFuelInfo.className = 'pot-fuel-info';
+        card.appendChild(potFuelInfo);
+
         // rótulo explícito (pedido do usuário: os botões pareciam travados/
         // decorativos sem nenhum texto explicando que são clicáveis — só
         // tinham um `title` de tooltip, que não aparece no toque do celular)
@@ -1949,7 +2037,7 @@
         card.appendChild(pitRow);
 
         wrap.appendChild(card);
-        driverControlRefs.push({ carId: car.id, tireEl, styleBtns, pitBtns, potMinus, potPlus, potBarFill, potValue });
+        driverControlRefs.push({ carId: car.id, tireEl, styleBtns, pitBtns, potMinus, potPlus, potBarFill, potValue, potFuelInfo });
       });
     }
 
@@ -1981,6 +2069,39 @@
         ref.potBarFill.style.width = Math.round((car.motorPower / potMax) * 100) + '%';
         ref.potMinus.disabled = car.retired || car.motorPower <= 0;
         ref.potPlus.disabled = car.retired || car.motorPower >= potMax;
+
+        // combustível ao vivo — pedido do usuário depois de apontar a
+        // contradição de ter "Poupar" e o POT no talo ao mesmo tempo: o
+        // POT vira o "botão de combustível", sempre avisando quanto
+        // sobra e pra quantas voltas dá NO RITMO ATUAL (motor+estilo+
+        // clima+potência, a mesma conta que stepRace usa de verdade em
+        // corridamotor.js — nunca promete um número que a pista não confirma)
+        if (ref.potFuelInfo) {
+          if (car.retired || car.pitting) {
+            ref.potFuelInfo.textContent = '';
+          } else {
+            const C = window.WSPF1Corrida;
+            const perLapFuelKg = (raceState.fullFuelKg / raceState.totalLaps)
+              * C.drivingStyleFuelMult(car.drivingStyle)
+              * C.motorFuelMult(car.motorLevel)
+              * C.motorSupplierFuelFactor(car.motorSupplier)
+              * C.weatherFuelMult(raceState.weather)
+              * C.motorPowerFuelMult(car.motorPower);
+            const lapsLeftInTank = perLapFuelKg > 0 ? car.fuelKg / perLapFuelKg : 99;
+            const lapsToFinish = Math.max(0, raceState.totalLaps - car.lapsCompleted);
+            let text = '⛽ ' + car.fuelKg.toFixed(1) + 'kg no tanque — dá pra ~' + Math.max(0, Math.floor(lapsLeftInTank)) + (Math.floor(lapsLeftInTank) === 1 ? ' volta' : ' voltas') + ' nesse ritmo';
+            let cls = 'pot-fuel-info';
+            if (lapsLeftInTank < lapsToFinish) {
+              text += '. ⚠️ Não aguenta até o fim (faltam ' + lapsToFinish + ') — considere entrar no pit!';
+              cls += ' danger';
+            } else if (lapsLeftInTank < lapsToFinish + 1) {
+              text += '. ⚠️ Bem apertado pro fim — considere entrar no pit.';
+              cls += ' warn';
+            }
+            ref.potFuelInfo.textContent = text;
+            ref.potFuelInfo.className = cls;
+          }
+        }
       });
     }
 
@@ -2058,6 +2179,43 @@
       if (!label) return;
       const car = raceState ? raceState.cars.find((c) => c.id === cameraTargetId) : null;
       label.textContent = car ? '🎯 ' + car.driverName + ' — ' + car.teamName : '—';
+      updateMyDriversRow();
+    }
+
+    // atalho direto pros DOIS pilotos do jogador (pedido explícito: "se eu
+    // quiser acompanhar o 1º piloto, eu acompanho; se eu quiser o 2º,
+    // também tem que ter o mesmo procedimento") — o ◀▶ genérico cicla por
+    // TODOS os carros da corrida (20), então trocar entre os 2 pilotos do
+    // próprio jogador podia exigir vários cliques passando por rivais no
+    // meio. Estes botões pulam direto pro carro certo.
+    function renderMyDriversRow() {
+      const row = document.getElementById('camera-my-drivers-row');
+      if (!row || !raceState) return;
+      const myCars = raceState.cars.filter((c) => c.isPlayer);
+      if (myCars.length < 2) { row.classList.add('hidden'); row.innerHTML = ''; return; }
+      row.innerHTML = '';
+      myCars.forEach((car) => {
+        const btn = document.createElement('button');
+        btn.className = 'camera-my-driver-btn';
+        btn.textContent = '🏎️ ' + car.driverName;
+        btn.addEventListener('click', () => {
+          cameraTargetId = car.id;
+          updateCameraTargetLabel();
+        });
+        row.appendChild(btn);
+      });
+      updateMyDriversRow();
+    }
+
+    function updateMyDriversRow() {
+      const row = document.getElementById('camera-my-drivers-row');
+      if (!row || cameraMode !== 'seguir') return;
+      const myCars = raceState ? raceState.cars.filter((c) => c.isPlayer) : [];
+      if (myCars.length < 2) return;
+      row.classList.remove('hidden');
+      [...row.children].forEach((btn, i) => {
+        btn.classList.toggle('selected', myCars[i] && myCars[i].id === cameraTargetId);
+      });
     }
 
     function cycleCameraTarget(dir) {
@@ -2076,6 +2234,7 @@
         document.getElementById('camera-mode-' + m).classList.toggle('selected', m === mode);
       });
       const targetRow = document.getElementById('camera-target-row');
+      const myDriversRow = document.getElementById('camera-my-drivers-row');
       if (mode === 'seguir') {
         targetRow.classList.remove('hidden');
         if (cameraTargetId == null) {
@@ -2083,9 +2242,11 @@
           const playerCar = list.find((c) => c.isPlayer);
           cameraTargetId = playerCar ? playerCar.id : (list[0] && list[0].id);
         }
+        renderMyDriversRow();
         updateCameraTargetLabel();
       } else {
         targetRow.classList.add('hidden');
+        if (myDriversRow) myDriversRow.classList.add('hidden');
       }
     }
 

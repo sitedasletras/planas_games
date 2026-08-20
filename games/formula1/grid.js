@@ -201,6 +201,7 @@
           teamId: 'player',
           teamName: equipe.teamName,
           driverName: d.name,
+          number: d.number,
           isPlayer: true,
           pace: Math.max(40, Math.min(99, cappedPace)),
           motorLevel, chassiLevel,
