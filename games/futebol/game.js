@@ -22,12 +22,37 @@
   const PICKUP_R = PLAYER_R + BALL_R + 2;
   const SHOOT_POWER = 220, PASS_POWER = 160, CLEAR_POWER = 195;
   const KICK_COOLDOWN_MS = 300;
-  const AI_DECISION_MIN_MS = 650, AI_DECISION_MAX_MS = 1300;
+  // pedido explícito do usuário (2ª reclamação sobre "boi bumba, pega a
+  // bola e sai correndo"): decisão de passe mais frequente — segurar a
+  // bola quase 1,3s antes de sequer considerar tocar deixava tudo parecer
+  // corrida solo, mesmo com chance de passe alta.
+  // CALIBRAÇÃO: 400-750ms combinado com chance de passe muito alta virou
+  // "batata quente" (200+ passes em 3 minutos, só 5 chutes — time nunca
+  // avançava de verdade). Um pouco mais lento que isso, ainda bem mais
+  // rápido que o original (650-1300ms).
+  const AI_DECISION_MIN_MS = 550, AI_DECISION_MAX_MS = 1000;
+  // primeiro toque: ao RECEBER a bola (passe ou disputa ganha), decide se
+  // toca de novo rápido, em vez de herdar o cooldown de quem tinha a bola
+  // antes — é o que faz o time trocar passe rápido em vez de cada
+  // jogador segurar a bola por conta própria depois de receber
+  const FIRST_TOUCH_DECISION_MIN_MS = 200, FIRST_TOUCH_DECISION_MAX_MS = 450;
+  // cooldown mínimo entre finalizações (achado num teste: rebote solto na
+  // área virava pebolim — vários atacantes chutando na hora a cada bola
+  // solta, dezenas de chutes sem gol nenhum). Sem isso, chutar não tinha
+  // NENHUM cooldown (diferente do passe, que já tinha ball.aiCooldown) —
+  // agora dá um toque de controle antes de chutar de novo.
+  const SHOT_COOLDOWN_MS = 350;
+  // chance de um defensor que esbarra no caminho do chute realmente
+  // bloquear a bola (em vez de travar 100% das vezes só por estar perto)
+  const SHOT_BLOCK_CHANCE = 0.32;
 
   // ---------- Clock ----------
   // Each half shows 46 game-minutes on the scoreboard, compressed into
   // HALF_REAL_SECONDS of actual wall-clock play.
-  const HALF_REAL_SECONDS = 220; // 3:40 — pedido explícito do usuário (2ª rodada: "ainda está muito rápida")
+  // pedido explícito do usuário: "8 minutos uma corrida? tá muito demorada,
+  // tem que ser metade deste tempo" — partida inteira (2 tempos) caiu de
+  // ~7min20s para ~3min40s.
+  const HALF_REAL_SECONDS = 110; // 1:50 por tempo
   const HALF_DISPLAY_MINUTES = 46;
   const HALF_DISPLAY_SECONDS = HALF_DISPLAY_MINUTES * 60;
   const CLOCK_SCALE = HALF_DISPLAY_SECONDS / HALF_REAL_SECONDS; // game-seconds per real-second
@@ -813,7 +838,7 @@
       const prev = prevInstructions.find(x => x.team === p.team && x.number === p.number);
       if (prev) p.instruction = prev.instruction;
     }
-    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0, lastToucher: null, assistCandidate: null, restartKind: null, buildupState: 'open' };
+    ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, owner: null, kickerImmune: null, kickCooldown: 0, aiCooldown: 0, shotCooldown: 0, shotSeq: 0, lastToucher: null, assistCandidate: null, restartKind: null, buildupState: 'open' };
   }
 
   function applyTactic(team, key) {
@@ -1154,7 +1179,19 @@
   // solta um pouco mais rápido, sem brecha recicla mais a posse (o "ficar
   // rodando a bola" que o usuário pediu), com brecha aberta segura mais a
   // bola e acelera pro gol
-  const BUILDUP_PASS_CHANCE = { pressured: 0.72, contained: 0.45, open: 0.3 };
+  // AJUSTE (2ª reclamação explícita: "muito mais toques entre
+  // companheiros e menos boi bumba/pega a bola e sai correndo") — a
+  // versão anterior ainda deixava "open" (o estado mais comum, já que
+  // a marcação da IA raramente aperta de verdade) driblando 70% das
+  // vezes. Chances mais altas nos 3 estados que a versão original.
+  // CALIBRAÇÃO (2 tentativas erradas antes desta — 0.88/0.7/0.55 e depois
+  // 0.8/0.6/0.42, as duas viraram "batata quente": time passando o tempo
+  // todo mas quase sem chute, porque os companheiros sem bola não
+  // corriam pra frente pra receber mais adiantado — só reciclavam posse
+  // na mesma profundidade. A causa real era a corrida de apoio fraca
+  // demais (corrigida acima), não a chance de passe em si — aqui volta
+  // mais perto do original (0.72/0.45/0.3), só um degrau acima.
+  const BUILDUP_PASS_CHANCE = { pressured: 0.76, contained: 0.52, open: 0.36 };
 
   function computeBuildupState(p) {
     const opponents = opponentsOf(p.team).filter((o) => o.role !== 'GK');
@@ -1185,7 +1222,12 @@
     // que ignorava se o cara estava marcado ou impedido. A instrução de quem
     // está passando ajusta os pesos: lançamento aceita passe mais longo,
     // saída rápida e tabela preferem opção curta e segura por perto
-    let advW = 0.55, openW = 1.3, distPenaltyW = 0.4, distPenaltyFree = 220;
+    // AJUSTE (passe ficou frequente demais só reciclando a bola em vez de
+    // avançar — diagnosticado com contador de chutes: 200+ passes em 3
+    // minutos e só 5 chutes) — avanço pesa quase tanto quanto espaço livre
+    // agora, não 2,4x menos. Time ainda evita passar pro marcado, mas
+    // prioriza empurrar a jogada pra frente, não só reciclar posse segura.
+    let advW = 0.85, openW = 1.1, distPenaltyW = 0.4, distPenaltyFree = 220;
     if (p.instruction === 'lancamento_preciso') { distPenaltyW = 0.15; advW = 0.75; }
     else if (p.instruction === 'saida_rapida') { advW = 0.3; openW = 1.6; distPenaltyW = 0.7; distPenaltyFree = 130; }
     else if (p.instruction === 'fazedor_tabela') { distPenaltyW = 0.9; distPenaltyFree = 90; openW = 1.5; }
@@ -1231,6 +1273,8 @@
   }
 
   function attemptShoot(p, bonus) {
+    ball.shotCooldown = SHOT_COOLDOWN_MS;
+    ball.shotSeq = (ball.shotSeq || 0) + 1;
     lastShooter = p;
     lastAssistCandidate = ball.assistCandidate; // captura antes do próprio chute limpar ball.assistCandidate
     const attackingGoalY = p.team === 'home' ? 8 : FIELD_H - 8;
@@ -1286,7 +1330,28 @@
     }
     if (p.role === 'GK') {
       const ownGoalY = p.team === 'home' ? FIELD_H - 20 : 20;
-      const targetX = Math.max(GOAL_L + 14, Math.min(GOAL_R - 14, ball.x));
+      // achado em teste: goleiro rastreando ball.x em tempo real, sem
+      // nenhum erro, é onisciente — o desvio de um chute no alvo (~±23px)
+      // é bem menor que o quanto o goleiro já cobre a trave (~±46px), então
+      // ele praticamente sempre já está em cima do lance antes da bola sair
+      // do pé (0 gols em quase toda partida de teste). Ao ser alvo de um
+      // chute do time adversário, o goleiro "lê" o lance com um erro fixo
+      // (sorteado uma vez por chute, menor quanto melhor o rating dele) em
+      // vez de grudar no pixel exato da bola o tempo inteiro — simula
+      // reação humana/escolha de lado, não onisciência.
+      let readX = ball.x;
+      if (ball.owner === null && ball.shotSeq && lastShooter && lastShooter.team !== p.team) {
+        if (p._gkReadSeq !== ball.shotSeq) {
+          p._gkReadSeq = ball.shotSeq;
+          const errRange = Math.max(18, 55 - (p.rating || 60) * 0.4);
+          p._gkError = (Math.random() - 0.5) * 2 * errRange;
+        }
+        readX = ball.x + p._gkError;
+      } else {
+        p._gkReadSeq = null;
+        p._gkError = 0;
+      }
+      const targetX = Math.max(GOAL_L + 14, Math.min(GOAL_R - 14, readX));
       const dx = targetX - p.x, dy = ownGoalY - p.y;
       const len = Math.hypot(dx, dy) || 1;
       p.vx = (dx / len) * GK_SPEED * Math.min(1, Math.abs(dx) / 10);
@@ -1397,7 +1462,20 @@
           if (ball.owner && ball.owner.team === p.team && ball.owner !== p) {
             const sideSign = (p.x - ball.owner.x) >= 0 ? 1 : -1;
             tx += sideSign * (16 + advancement * 10);
-            ty += forward * (12 + advancement * 26);
+            // AJUSTE (raiz real do "time recicla passe sem nunca avançar",
+            // achado com contador de chutes: 200+ passes em 3 minutos e só
+            // 5 chutes): antes o carregador de bola avançava sozinho no
+            // drible, então passar mais não custava progresso. Com passe
+            // mais frequente, os companheiros SEM bola precisam correr bem
+            // mais pra frente oferecendo linha, senão o time só troca
+            // passe na mesma profundidade — dobra o avanço de quem já joga
+            // mais adiantado (atacante chega a se soltar bem mais que o
+            // zagueiro, que segue quase parado, mantendo a marcação).
+            // CALIBRAÇÃO: valor inicial (18+58) lotava a área de atacante
+            // ao mesmo tempo — virava pebolim de rebote (32 chutes sem gol
+            // num teste). Reduzido pra dar profundidade real sem
+            // amontoar todo mundo no mesmo pedaço da área.
+            ty += forward * (14 + advancement * 34);
           } else if (ball.owner && ball.owner.team !== p.team) {
             const towardX = ball.x - p.x, towardY = ball.y - p.y;
             const tlen = Math.hypot(towardX, towardY) || 1;
@@ -1441,6 +1519,7 @@
 
   function ballCarrierAIAct(dt) {
     if (ball.aiCooldown > 0) ball.aiCooldown -= dt * 1000;
+    if (ball.shotCooldown > 0) ball.shotCooldown -= dt * 1000;
 
     if (ball.owner && ball.owner.role !== 'GK') {
       const p = ball.owner;
@@ -1475,7 +1554,13 @@
       // dezenas de finalizações por partida); finalizador arrisca um pouco mais
       const shootRange = p.instruction === 'finalizador' ? 175 : 150;
       const nearGoal = p.team === 'home' ? p.y < shootRange : p.y > FIELD_H - shootRange;
-      if (nearGoal) {
+      // cooldown de chute (achado num teste: rebote na área virava pebolim
+      // — vários atacantes chutando de novo instantaneamente a cada bola
+      // solta, 32 chutes sem gol numa partida). Sem cooldown pra
+      // finalização, só pra passe — um jogador que acabou de ganhar a
+      // bola no rebote agora dá um toque de controle antes de chutar de
+      // novo, em vez de bater na hora sempre que estiver perto do gol.
+      if (nearGoal && (ball.shotCooldown || 0) <= 0) {
         const bonus = !!ball.freeKickBonus;
         ball.freeKickBonus = false;
         lastShotOrigin = bonus ? 'falta' : 'jogo';
@@ -1557,9 +1642,40 @@
     }
 
     // pickup
+    // achado em teste (diagnóstico com contadores): o motivo real de quase
+    // nenhum gol sair não era o goleiro — era a defesa. Qualquer defensor
+    // dentro do raio de PICKUP_R do trajeto do chute recuperava a bola na
+    // hora, sempre, então numa área lotada (efeito do reforço de corrida de
+    // apoio) o chute quase nunca sobrevivia até o goleiro. Bloqueio de
+    // defesa vira um lance disputado (uma rolagem por chute/jogador, não
+    // travado à distância) em vez de garantido só por estar perto.
+    const isLiveShotChase = !!(ball.shotSeq && lastShooter && ball.lastToucher === lastShooter);
     let pickupCandidate = null, pickupDist = Infinity;
     for (const p of players) {
       if (ball.kickerImmune === p && ball.kickCooldown > 0) continue;
+      if (isLiveShotChase && p.role !== 'GK' && p.team !== lastShooter.team) {
+        if (p._shotBlockSeq !== ball.shotSeq) {
+          p._shotBlockSeq = ball.shotSeq;
+          p._shotBlockHit = Math.random() < SHOT_BLOCK_CHANCE;
+        }
+        if (!p._shotBlockHit) continue; // não bloqueou esse chute, deixa a bola passar
+      }
+      // achado em teste: mesmo com o erro de leitura de posição do goleiro
+      // (acima, no bloco role==='GK'), o chute em si costuma sair de perto
+      // do centro do campo (efeito da corrida de apoio puxando todo mundo
+      // pro meio) — o goleiro já estava perto o bastante ANTES do chute
+      // (rastreio em tempo real sem erro durante toda a jogada anterior)
+      // pra alcançar o alvo errado a tempo mesmo assim. 11 de 12 chutes
+      // ainda viravam defesa num teste. Rolagem de defesa (uma por chute,
+      // não por quadro) resolve isso sem depender só de geometria.
+      if (isLiveShotChase && p.role === 'GK' && p.team !== lastShooter.team) {
+        if (p._gkSaveSeq !== ball.shotSeq) {
+          p._gkSaveSeq = ball.shotSeq;
+          const saveChance = Math.max(0.35, Math.min(0.82, 0.3 + (p.rating || 60) / 100 * 0.45));
+          p._gkSaveHit = Math.random() < saveChance;
+        }
+        if (!p._gkSaveHit) continue; // não defendeu esse chute, a bola segue
+      }
       const d = dist(p, ball);
       if (d < PICKUP_R && d < pickupDist) { pickupCandidate = p; pickupDist = d; }
     }
@@ -1572,6 +1688,10 @@
         }
         ball.owner = pickupCandidate;
         ball.lastToucher = pickupCandidate;
+        // primeiro toque: decide rápido em vez de herdar o cooldown de
+        // quem tinha a bola antes — senão cada recepção de passe virava
+        // corrida solo por até 1,3s antes do próximo toque
+        ball.aiCooldown = FIRST_TOUCH_DECISION_MIN_MS + Math.random() * (FIRST_TOUCH_DECISION_MAX_MS - FIRST_TOUCH_DECISION_MIN_MS);
         if (ball.assistCandidate && (ball.assistCandidate === pickupCandidate || ball.assistCandidate.team !== pickupCandidate.team)) {
           ball.assistCandidate = null; // interceptado ou bola solta sem ligação com o passe
         }
@@ -1595,6 +1715,7 @@
           const previousOwner = ball.owner;
           ball.owner = pickupCandidate;
           ball.lastToucher = pickupCandidate;
+          ball.aiCooldown = FIRST_TOUCH_DECISION_MIN_MS + Math.random() * (FIRST_TOUCH_DECISION_MAX_MS - FIRST_TOUCH_DECISION_MIN_MS);
           ball.assistCandidate = null; // roubada de bola quebra a corrente de assistência
           if (duelCooldownMs <= 0) showDuel(pickupCandidate, previousOwner);
         }

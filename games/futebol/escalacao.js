@@ -5,6 +5,7 @@
   const STORAGE_KEY = 'wsp_lineup_v1';
   const BUCKET_ABBR = { GK: 'GOL', DEF: 'ZAG', MID: 'MEI', ATT: 'ATA' };
   const LINE_LABEL = { gk: 'Goleiro', def: 'Defesa', mid: 'Meio-campo', att: 'Ataque' };
+  const LINE_BUCKET = { gk: 'GK', def: 'DEF', mid: 'MID', att: 'ATT' };
   const BUCKET_ORDER = ['GK', 'DEF', 'MID', 'ATT'];
   const FOOT_LABEL = {};
   FEET.forEach((f) => { FOOT_LABEL[f.key] = f.label; });
@@ -98,15 +99,20 @@
     pickerTitleEl.textContent = 'Escolher jogador — ' + LINE_LABEL[line] + (line === 'gk' ? '' : ' ' + (index + 1));
     const used = usedIds();
     const current = getSlotValue(line, index);
+    const bucket = LINE_BUCKET[line];
+    // cada vaga só mostra jogadores da posição correspondente (goleiro só
+    // lista goleiros, defesa só zagueiros/laterais etc.) — antes listava o
+    // elenco inteiro em qualquer vaga, o que obrigava a rolar a lista toda
+    // pra achar quem servia
     const available = squad.players
-      .filter((p) => !used.has(p.id) || p.id === current)
-      .sort((a, b) => BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket) || a.number - b.number);
+      .filter((p) => p.bucket === bucket && (!used.has(p.id) || p.id === current))
+      .sort((a, b) => a.number - b.number);
 
     pickerListEl.innerHTML = '';
     if (!available.length) {
       const empty = document.createElement('div');
       empty.style.cssText = 'color:#888;font-size:0.8rem;padding:8px;';
-      empty.textContent = 'Nenhum jogador disponível — libere uma vaga em outra posição primeiro.';
+      empty.textContent = 'Nenhum ' + LINE_LABEL[line].toLowerCase() + ' disponível no elenco pra essa vaga.';
       pickerListEl.appendChild(empty);
     }
     available.forEach((p) => {
