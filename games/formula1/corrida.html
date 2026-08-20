@@ -194,6 +194,7 @@
   .pot-bar-wrap { flex: 1; height: 8px; background: #0a1811; border-radius: 4px; overflow: hidden; }
   .pot-bar-fill { height: 100%; background: linear-gradient(90deg, #2a9d5c, #ffd54a, #e63946); border-radius: 4px; transition: width 0.15s; }
   .pot-value { font-size: 0.7rem; font-weight: bold; color: #ffd54a; min-width: 22px; text-align: right; flex-shrink: 0; }
+  .pit-label { font-size: 0.66rem; color: #9fd8b8; margin: 6px 0 4px; }
   .pit-compound-row { display: flex; gap: 4px; flex-wrap: wrap; }
   .pit-compound-btn {
     flex: 1 1 18%; min-width: 44px; padding: 6px 3px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15);
@@ -555,13 +556,24 @@
       const grid = document.getElementById('circuit-data-grid');
       drawCircuitShapePreview();
       const typeLabel = { permanente: 'Permanente', rua: 'Rua', misto: 'Misto' }[w.type] || w.type;
-      // Escalonamento de Voltas: mostra a conversão real→jogo (não faz
-      // sentido pra sprint, que é sempre 4 fixo, mostrado à parte)
-      const gameLaps = window.WSPF1Corrida.gameLapsForRealLaps(w.laps);
+      // Escalonamento de Voltas só vale pra corrida principal — treino,
+      // classificatória e sprint rodam um número de voltas fixo, sem
+      // relação com o total real do circuito. Mostrar sempre a conversão
+      // "real → jogo" (bug real reportado pelo usuário: a Classificatória
+      // dizia "7 no jogo" aqui, mas rodava 12 na prática) confundia o
+      // jogador — agora o rótulo reflete a sessão que está na tela.
+      let voltasLabel;
+      if (isShortSession) {
+        voltasLabel = sessionTotalLaps() + ' (sessão curta — não escala com o circuito)';
+      } else if (sessionType === 'sprint') {
+        voltasLabel = sessionTotalLaps() + ' (sprint, sempre fixo)';
+      } else {
+        voltasLabel = w.laps + ' reais → ' + sessionTotalLaps() + ' no jogo';
+      }
       const items = [
         ['País / Cidade', w.pais + ' — ' + w.cidade],
         ['Traçado', typeLabel],
-        ['Voltas', w.laps + ' reais → ' + gameLaps + ' no jogo'],
+        ['Voltas', voltasLabel],
         ['Curvas', w.curves],
         ['Sentido', w.sentido],
         ['Clima predominante', w.clima],
@@ -1738,6 +1750,14 @@
           window.WSPF1Motor.setMotorPower(raceState, car.id, Math.min(potMax, car.motorPower + 1));
         });
         card.appendChild(potRow);
+
+        // rótulo explícito (pedido do usuário: os botões pareciam travados/
+        // decorativos sem nenhum texto explicando que são clicáveis — só
+        // tinham um `title` de tooltip, que não aparece no toque do celular)
+        const pitLabel = document.createElement('div');
+        pitLabel.className = 'pit-label';
+        pitLabel.textContent = '🔧 Toque num pneu pra chamar pro pit agora:';
+        card.appendChild(pitLabel);
 
         const pitRow = document.createElement('div');
         pitRow.className = 'pit-compound-row';

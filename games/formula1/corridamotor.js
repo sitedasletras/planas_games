@@ -341,6 +341,13 @@
 
   function maybePlanPit(car, state, opts) {
     if (car.retired || car.pitting || car.pendingPitCompound) return;
+    // A estratégia de pit do jogador é 100% manual (pedido explícito: "eu
+    // que faço a estratégia... não é você que define"). A troca automática
+    // por clima e a "1ª parada planejada" abaixo continuam valendo só pros
+    // rivais, que não têm o painel de controle ao vivo (#driver-controls) —
+    // pro jogador, `plannedPitLap`/clima ficam só como referência na
+    // planilha pré-largada, sem executar pit sozinhos.
+    if (car.isPlayer) return;
     const cond = C() ? C().WEATHER_CONDITIONS[state.weather] : null;
     const isWetWeather = state.weather !== 'seco';
     if (isWetWeather && cond && !cond.idealTires.includes(car.tireCompound)) {
