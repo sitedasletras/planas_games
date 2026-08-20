@@ -301,6 +301,17 @@
 .condition-tag.mid { background: #3a2f0e; color: #ffd54a; }
 .condition-tag.low { background: #3a1616; color: #f5a5a5; }
 
+.oop-tag {
+  font-size: 0.62rem;
+  font-weight: bold;
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: #3a1616;
+  color: #f5a5a5;
+  white-space: nowrap;
+}
+
 .overlay {
   position: fixed;
   inset: 0;

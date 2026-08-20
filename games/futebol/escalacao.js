@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { POSITIONS, FEET, loadSquad, isInjured } = window.WSPSquad;
+  const { POSITIONS, FEET, loadSquad, isInjured, slotPositionsFor, slotPenalty, effectiveRatingForSlot, OUT_OF_POSITION_PENALTY } = window.WSPSquad;
 
   const STORAGE_KEY = 'wsp_lineup_v1';
   const BUCKET_ABBR = { GK: 'GOL', DEF: 'ZAG', MID: 'MEI', ATT: 'ATA' };
@@ -61,6 +61,21 @@
   function getSlotValue(line, index) { return line === 'gk' ? assignment.gk : assignment[line][index]; }
   function setSlotValue(line, index, id) { if (line === 'gk') assignment.gk = id; else assignment[line][index] = id; }
 
+  // papel específico esperado por vaga (referência: Hattrick) — em vez de
+  // "4 zagueiros a torta e a direita", cada vaga da defesa/meio/ataque
+  // aponta um papel (lateral/zagueiro, volante/meia, ponta/centroavante).
+  // Escalar fora do papel ainda é permitido, só custa -20% de nota em
+  // partida (ver window.WSPSquad.effectiveRatingForSlot).
+  function slotRoleFor(line, index) {
+    if (line === 'gk') return 'goleiro';
+    const roles = slotPositionsFor(line, formation[line]);
+    return roles[index];
+  }
+  function slotRoleLabel(line, index) {
+    const key = slotRoleFor(line, index);
+    return (POSITIONS[key] && POSITIONS[key].label) || LINE_LABEL[line];
+  }
+
   function positionLabelShort(p) {
     return (POSITIONS[p.position] && POSITIONS[p.position].label) || '';
   }
@@ -96,7 +111,9 @@
   }
 
   function openPicker(line, index) {
-    pickerTitleEl.textContent = 'Escolher jogador — ' + LINE_LABEL[line] + (line === 'gk' ? '' : ' ' + (index + 1));
+    const roleKey = slotRoleFor(line, index);
+    const roleLabel = slotRoleLabel(line, index);
+    pickerTitleEl.textContent = 'Escolher jogador — ' + roleLabel;
     const used = usedIds();
     const current = getSlotValue(line, index);
     const bucket = LINE_BUCKET[line];
@@ -119,6 +136,8 @@
       const btn = document.createElement('button');
       btn.className = 'picker-player' + (p.id === current ? ' selected' : '');
       const hurt = isInjured && isInjured(p);
+      const oop = roleKey ? slotPenalty(p.position, roleKey) > 0 : false;
+      const oopTag = oop ? '<span class="oop-tag">Fora de posição −20% (nota ' + effectiveRatingForSlot(p, roleKey) + ')</span>' : '';
       btn.innerHTML =
         '<div class="picker-row-top">' +
           '<span class="num">#' + p.number + '</span>' +
@@ -127,7 +146,7 @@
         '</div>' +
         '<div class="picker-row-bottom">' +
           '<span class="pos">' + positionLabelShort(p) + ' · ' + BUCKET_ABBR[p.bucket] + '</span>' +
-          statsLine(p) +
+          statsLine(p) + oopTag +
         '</div>';
       if (hurt) btn.title = 'Machucado — pode ser substituído automaticamente se ainda estiver fora no dia do jogo';
       btn.addEventListener('click', () => {
@@ -144,14 +163,19 @@
 
   function slotRow(line, index) {
     const playerId = getSlotValue(line, index);
+    const roleKey = slotRoleFor(line, index);
+    const roleLabel = slotRoleLabel(line, index);
     const btn = document.createElement('button');
     btn.className = 'lineup-slot ' + line;
     if (playerId && byId[playerId]) {
       const p = byId[playerId];
+      const oop = line !== 'gk' && roleKey ? slotPenalty(p.position, roleKey) > 0 : false;
       const filled = document.createElement('div');
       filled.className = 'lineup-slot-filled';
       filled.innerHTML = '<span class="num">#' + p.number + '</span><span class="nm">' + p.name + (isInjured && isInjured(p) ? ' 🤕' : '') + '</span>' +
-        conditionTag(p) + '<span class="pos">' + positionLabelShort(p) + '</span>';
+        conditionTag(p) + '<span class="pos">' + roleLabel + '</span>' +
+        (oop ? '<span class="oop-tag">−20%</span>' : '');
+      if (oop) btn.title = positionLabelShort(p) + ' escalado como ' + roleLabel + ' — nota efetiva na partida cai 20%.';
       btn.appendChild(filled);
       const clearBtn = document.createElement('span');
       clearBtn.className = 'lineup-slot-clear';
@@ -165,7 +189,7 @@
     } else {
       const empty = document.createElement('div');
       empty.className = 'lineup-slot-empty';
-      empty.textContent = '+ Toque para escolher';
+      empty.textContent = line === 'gk' ? '+ Toque para escolher' : '+ ' + roleLabel;
       btn.appendChild(empty);
     }
     btn.addEventListener('click', () => openPicker(line, index));

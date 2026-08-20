@@ -527,6 +527,73 @@
     });
   }
 
+  // ---------- Vaga específica por posição na escalação ----------
+  // pedido explícito do usuário (referência: Hattrick) — em vez de "4
+  // zagueiros a torta e a direita", cada vaga da linha tem um papel
+  // específico (lateral/zagueiro na defesa, volante/meia no meio,
+  // ponta/centroavante no ataque). Escalar um jogador fora do papel da
+  // vaga custa -20% de nota efetiva na partida, exceto quando a posição
+  // do próprio jogador já é um híbrido que cobre aquele papel (ex:
+  // "Lateral/Zagueiro" joga em qualquer uma das duas vagas sem perda).
+  const OUT_OF_POSITION_PENALTY = 0.2;
+
+  const SLOT_COMPATIBLE = {
+    zagueiro: ['zagueiro', 'beque_central', 'quarto_zagueiro', 'libero_adiantado', 'libero_retaguarda', 'lateral_zagueiro'],
+    lateral: ['lateral', 'lateral_ala', 'lateral_zagueiro'],
+    volante: ['volante', 'segundo_volante', 'meia_defensivo'],
+    meia_ofensivo: ['meia_ofensivo', 'motorzinho', 'segundo_volante'],
+    centro_avante: ['centro_avante', 'segundo_atacante'],
+    segundo_atacante: ['segundo_atacante', 'centro_avante', 'atacante_pontas'],
+    atacante_pontas: ['atacante_pontas', 'segundo_atacante'],
+    goleiro: ['goleiro'],
+  };
+
+  // papel esperado de cada vaga dentro da linha, pra qualquer quantidade —
+  // laterais nas pontas da defesa, volante(s) na frente da zaga, pontas nas
+  // bordas do ataque com o centroavante no meio
+  function slotPositionsFor(line, count) {
+    if (!count || count <= 0) return [];
+    if (line === 'gk') return ['goleiro'];
+    if (line === 'def') {
+      if (count === 1) return ['zagueiro'];
+      const arr = new Array(count).fill('zagueiro');
+      arr[0] = 'lateral';
+      arr[count - 1] = 'lateral';
+      return arr;
+    }
+    if (line === 'mid') {
+      if (count === 1) return ['volante'];
+      if (count === 2) return ['volante', 'volante'];
+      const arr = new Array(count).fill('meia_ofensivo');
+      arr[0] = 'volante';
+      if (count >= 4) arr[1] = 'volante';
+      return arr;
+    }
+    if (line === 'att') {
+      if (count === 1) return ['centro_avante'];
+      if (count === 2) return ['centro_avante', 'segundo_atacante'];
+      const arr = new Array(count).fill('segundo_atacante');
+      arr[0] = 'atacante_pontas';
+      arr[count - 1] = 'atacante_pontas';
+      arr[Math.floor(count / 2)] = 'centro_avante';
+      return arr;
+    }
+    return [];
+  }
+
+  function slotPenalty(playerPositionKey, slotPositionKey) {
+    if (!slotPositionKey) return 0;
+    const compat = SLOT_COMPATIBLE[slotPositionKey];
+    if (!compat) return 0;
+    return compat.indexOf(playerPositionKey) === -1 ? OUT_OF_POSITION_PENALTY : 0;
+  }
+
+  function effectiveRatingForSlot(player, slotPositionKey) {
+    const base = (player && player.rating) || 60;
+    const penalty = slotPenalty(player && player.position, slotPositionKey);
+    return penalty > 0 ? Math.round(base * (1 - penalty)) : base;
+  }
+
   window.WSPSquad = {
     POSITIONS, TRAITS, FEET, NATIONALITIES, CAREER_STAGES,
     MARKET_VALUE_MIN, MARKET_VALUE_MAX, FULL_SQUAD_SIZE,
@@ -535,5 +602,6 @@
     renamePlayer, renumberPlayer, applyPlayerEdits, renameClub, advanceSeason, applyValorizacao,
     isInjured, setInjury, clearInjury, reduceInjuryBy,
     applyConditionRecovery, applyMatchConditionDrop,
+    OUT_OF_POSITION_PENALTY, slotPositionsFor, slotPenalty, effectiveRatingForSlot,
   };
 })();

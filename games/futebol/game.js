@@ -406,14 +406,24 @@
 
     const orderedIds = [].concat(lineup.lines.def || [], lineup.lines.mid || [], lineup.lines.att || []);
     if (orderedIds.length !== 10) return null;
+    // papel esperado de cada vaga (lateral/zagueiro na defesa, volante/meia
+    // no meio, ponta/centroavante no ataque) — usado só pra calcular a
+    // penalidade de jogador fora de posição, não muda quem entra em campo
+    const slotPositions = window.WSPSquad
+      ? [].concat(
+          window.WSPSquad.slotPositionsFor('def', (lineup.lines.def || []).length),
+          window.WSPSquad.slotPositionsFor('mid', (lineup.lines.mid || []).length),
+          window.WSPSquad.slotPositionsFor('att', (lineup.lines.att || []).length))
+      : [];
     const outfield = [];
-    for (const id of orderedIds) {
+    orderedIds.forEach((id, i) => {
       let p = byId[id];
       if (!p || usedIdsSet.has(id)) { p = pickReplacement(); anyReplaced = true; }
-      if (!p) return null; // não sobrou ninguém disponível pra completar o time
+      if (!p) return; // não sobrou ninguém disponível pra completar o time — cai no `return null` abaixo
       usedIdsSet.add(p.id);
-      outfield.push({ player: p, improvised: false });
-    }
+      outfield.push({ player: p, improvised: false, slotPosition: slotPositions[i] });
+    });
+    if (outfield.length !== 10) return null;
     const bench = available.filter((p) => !usedIdsSet.has(p.id));
     if (anyReplaced) {
       narrate('Escalação ajustada: um ou mais titulares escolhidos estavam machucados ou indisponíveis e foram substituídos por reservas.');
@@ -771,7 +781,13 @@
       tactic.slots.forEach((slot, i) => {
         const { x, y } = slotToXY('home', slot);
         const entry = outfield[i];
-        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id, rating: entry.player.rating, condition: entry.player.condition, position: entry.player.position } : null;
+        // penalidade de jogador fora de posição (só existe quando a
+        // escalação salva pelo usuário aponta um papel específico pra essa
+        // vaga — o sorteio aleatório de reserva não tem papel definido)
+        const entryRating = entry && entry.slotPosition && window.WSPSquad
+          ? window.WSPSquad.effectiveRatingForSlot(entry.player, entry.slotPosition)
+          : (entry ? entry.player.rating : 60);
+        const extra = entry ? { name: entry.player.name, foot: entry.player.foot, traits: entry.player.traits, improvised: entry.improvised, squadId: entry.player.id, rating: entryRating, condition: entry.player.condition, position: entry.player.position } : null;
         list.push(makePlayer('home', 'OUT', entry ? entry.player.number : i + 2, x, y, extra));
       });
       return list;
